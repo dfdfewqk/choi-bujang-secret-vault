@@ -20,7 +20,7 @@ export default async function handler(request, response) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data, error } = await supabase
-      .from('training_notes')
+      .from('vault_training_notes')
       .select('title, content')
       .order('sort_order', { ascending: true })
       .limit(4);
