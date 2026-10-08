@@ -19,4 +19,5 @@ jobs:
       - run: npm run test:r5
       - run: npm run test:package
       - run: node --test test/step2.test.mjs
+      - run: node --test test/step2-api.test.mjs
       - run: npm run build -- --local
