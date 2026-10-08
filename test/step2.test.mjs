@@ -35,3 +35,16 @@ test('step 2 deployment identity keeps aleph.json manifest contract', () => {
   assert.equal(identity.repoUrl, config.repoUrl);
   assert.equal(identity.sampleMarker, config.sampleMarker);
 });
+
+test('Vercel serves required security header and SQL blocks browser roles', async () => {
+  const vercel = JSON.parse(await readFile(new URL('vercel.json', root), 'utf8'));
+  assert.ok(vercel.headers.some(rule =>
+    rule.source === '/(.*)' &&
+    rule.headers.some(header => header.key.toLowerCase() === 'x-content-type-options' && header.value === 'nosniff')
+  ));
+  const sql = await readFile(new URL('supabase/step2_schema.sql', root), 'utf8');
+  assert.match(sql, /vault_training_notes/u);
+  assert.match(sql, /owner_id uuid/u);
+  assert.match(sql, /enable row level security/u);
+  assert.match(sql, /revoke all on table .* anon, authenticated/u);
+});
