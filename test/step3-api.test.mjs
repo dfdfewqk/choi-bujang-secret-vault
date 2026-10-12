@@ -71,7 +71,7 @@ async function exercise({method='GET',id=null,body=null,user=A,auth='Bearer fake
 
 test('missing and invalid login rejected as JSON',async()=>{
   const {db}=database([]);
-  for(const auth of [undefined,'Bearer a.b.c']){
+  for(const auth of [null,'Bearer a.b.c']){
     const res=await exercise({auth,user:auth?null:A,db});
     assert.equal(res.statusCode,401);
     assert.deepEqual(res.body,{error:'UNAUTHORIZED'});
