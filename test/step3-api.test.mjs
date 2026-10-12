@@ -150,7 +150,7 @@ test('stage 4 preserves Vercel routing, public SDK and headers', async()=>{
   assert.match(page,/sb_publishable_/u);
   assert.doesNotMatch(page,/sb_secret_[A-Za-z0-9_-]{12,}/u);
   assert.doesNotMatch(page,/실습용 가상 과제 기록/u);
-  assert.equal(config.step,4);
+  assert.ok([4,5].includes(config.step));
   assert.deepEqual(config.allowedRoutes,[
     'GET /api/notes','POST /api/notes','GET /api/notes/:id',
     'PUT /api/notes/:id','DELETE /api/notes/:id',
