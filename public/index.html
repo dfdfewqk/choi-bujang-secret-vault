@@ -42,6 +42,17 @@
         <p class="form-hint">처음 방문하셨나요? 위의 <strong>학습용 계정 만들기</strong>에서 이메일 인증을 진행할 수 있습니다.<br>이미 가입했다면 로그인하세요.</p>
       </section>
       <section id="vault-panel" class="hidden" aria-label="로그인한 사용자 자료실">
+        <section id="auth-completion" class="auth-completion" role="status" aria-live="polite" aria-label="계정 인증 완료 상태">
+          <span class="auth-completion-icon" aria-hidden="true">✓</span>
+          <div class="auth-completion-content">
+            <strong id="auth-completion-title">로그인 완료!</strong>
+            <p id="auth-completion-description">방어 자료실에 정상적으로 로그인했습니다.</p>
+            <div class="auth-completion-checks">
+              <span id="auth-login-check">✓ 로그인 완료</span>
+              <span id="auth-email-check">이메일 인증 상태 확인 중</span>
+            </div>
+          </div>
+        </section>
         <div class="panel vault-account">
           <h2>방어 자료실</h2>
           <p id="auth-status"></p>
@@ -63,6 +74,8 @@
 </main>
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
+  import { isSignupEmailReturn, getAuthCompletion } from './auth-feedback.mjs';
+  const returnedFromSignupEmail = isSignupEmailReturn(window.location.hash);
   const SUPABASE_URL = 'https://bcwzllejypavwgsfqfbm.supabase.co';
   // Publishable SDK key is public. Never put SUPABASE_SECRET_KEY here.
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_rQOSzVLPSmRGAAGfnV5CVw_ZsyWj-4Z";
@@ -72,6 +85,8 @@
   const $ = selector => document.querySelector(selector);
   const status = message => { $('#status').textContent = message; };
   let session = null, list = [], editingId = null;
+  let lastRenderedAccessToken = undefined;
+  let sessionUpdateVersion = 0;
   function cleanEditor() {
     editingId = null;
     $('#create-form').reset();
@@ -125,20 +140,49 @@
     if(!Array.isArray(data.notes))throw new Error('메모 응답 형식 오류');
     list=data.notes;displayNotes();
   }
+  function displayCompletion(next) {
+    const completed = getAuthCompletion(next, returnedFromSignupEmail);
+    if (!completed) return;
+    $('#auth-completion-title').textContent = completed.title;
+    $('#auth-completion-description').textContent = completed.description;
+    $('#auth-login-check').textContent = completed.loginLabel;
+    $('#auth-email-check').textContent = completed.emailLabel;
+    $('#auth-email-check').dataset.verified = String(completed.emailVerified);
+  }
   async function onSession(next) {
-    session=next;showLoggedIn(Boolean(next));
+    const token = next?.access_token ?? null;
+    if (token === lastRenderedAccessToken) return;
+    lastRenderedAccessToken = token;
+    const currentVersion = ++sessionUpdateVersion;
+    session = next;
+    showLoggedIn(Boolean(next));
     if(next){
-      $('#auth-status').textContent='로그인됨: '+(next.user?.email??'인증된 사용자');
-      try{await loadNotes();status('로그인되었습니다.');}catch(e){status(e.message);}
-    } else {status('로그인이 필요합니다.');}
+      displayCompletion(next);
+      $('#auth-status').textContent='현재 계정: '+(next.user?.email??'인증된 사용자');
+      try{
+        await loadNotes();
+        if (currentVersion === sessionUpdateVersion) status('방어 자료실을 사용할 수 있습니다.');
+      }catch(e){
+        if (currentVersion === sessionUpdateVersion) status('메모 불러오기 실패: '+e.message);
+      }
+    } else {
+      status('로그인이 필요합니다.');
+    }
   }
   $('#login-form').addEventListener('submit',async event=>{
     event.preventDefault();
     const email=$('#email').value.trim(), password=$('#password').value;
     status('로그인 확인 중...');
-    const {error}=await supabase.auth.signInWithPassword({email,password});
-    $('#password').value='';
-    if(error)status('로그인 실패: '+error.message);
+    try {
+      const {data,error}=await supabase.auth.signInWithPassword({email,password});
+      $('#password').value='';
+      if(error)status('로그인 실패: '+error.message);
+      else if(data?.session)await onSession(data.session);
+      else status('로그인 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+    } catch {
+      $('#password').value='';
+      status('로그인 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   });
   $('#logout').addEventListener('click',async()=>{
     const {error}=await supabase.auth.signOut();
