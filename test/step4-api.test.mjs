@@ -214,11 +214,30 @@ test('the stage 4 manifest keeps all API routes and original judge trust configu
   ]);
   assert.equal(config.judgeIssuer, 'https://aleph-judge-production.up.railway.app/defense/judge');
   assert.equal(config.identityProvider.audience, 'authenticated');
-  const signupPage = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-  assert.match(signupPage, /emailRedirectTo:new URL\('\/',window\.location\.href\)\.href/u,
-    'Email confirmations must return to the requested BYTE BACK origin');
-  assert.match(signupPage, /supabase\.auth\.signUp/u,
-    'The site must keep direct user signup');
+  const loginPage = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  const signupPage = await readFile(new URL('../public/signup.html', import.meta.url), 'utf8');
+  const stylesheet = await readFile(new URL('../public/monster-defense.css', import.meta.url), 'utf8');
+  assert.match(loginPage, /id="signup" href="\/signup\.html"/u,
+    'Signup button must lead to dedicated registration screen');
+  assert.doesNotMatch(loginPage, /supabase\.auth\.signUp\(/u,
+    'Login and account creation actions must be separate');
+  assert.match(signupPage, /id="signup-form"/u);
+  assert.match(signupPage, /id="signup-email"/u);
+  assert.match(signupPage, /id="signup-password"/u);
+  assert.match(signupPage, /id="signup-confirm"/u);
+  assert.match(signupPage, /supabase\.auth\.signUp/u);
+  assert.match(signupPage, /emailRedirectTo:\s*new URL\('\/',\s*window\.location\.href\)\.href/u,
+    'Email confirmation must return to BYTE BACK home');
+  assert.match(signupPage, /error\.status === 429/u);
+  assert.match(signupPage, /비밀번호가 일치하지 않습니다/u);
+  assert.match(signupPage, /인증 메일/u);
+  assert.match(signupPage, /href="\/"/u,
+    'Signup page must provide a route back to login');
+  for(const layer of ['scene-city.svg','scene-monsters.svg','scene-shield.svg']) {
+    assert.ok(signupPage.includes('/assets/'+layer), 'Signup must preserve ' + layer);
+  }
+  assert.match(stylesheet, /\.signup-steps\{/u);
+  assert.doesNotMatch(signupPage, /sb_secret_[A-Za-z0-9_-]{12,}/u);
   const verifier = await readFile(new URL('../src/verify-login.mjs', import.meta.url), 'utf8');
   assert.match(verifier, /createLoginVerifier/u);
   const code = await readFile(new URL('../src/notes-api.mjs', import.meta.url), 'utf8');
