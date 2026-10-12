@@ -155,3 +155,26 @@ test('stage 3 Vercel routing, public SDK and headers remain configured', async()
     'PUT /api/notes/:id','DELETE /api/notes/:id',
   ]);
 });
+
+
+test('monster defense theme keeps the real login form and responsive stylesheet',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const page=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  const css=await readFile(new URL('../public/monster-defense.css',import.meta.url),'utf8');
+  assert.match(page,/MONSTER\s*<br>DATA DEFENSE/u);
+  assert.match(page,/href="\/monster-defense\.css"/u);
+  assert.match(page,/id="login-form"/u);
+  assert.match(page,/id="email"/u);
+  assert.match(page,/id="password"/u);
+  assert.match(page,/id="signup"/u);
+  assert.match(page,/id="logout"/u);
+  assert.match(page,/id="vault-panel"/u);
+  assert.match(page,/id="notes"/u);
+  assert.match(page,/id="create-form"/u);
+  assert.match(page,/signInWithPassword/u);
+  assert.match(page,/signOut/u);
+  assert.match(page,/signUp/u);
+  assert.match(page,/monster\/whale\.webp/u);
+  assert.match(css,/@media\(max-width:800px\)/u);
+  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/u);
+});
