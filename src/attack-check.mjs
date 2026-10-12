@@ -110,7 +110,7 @@ export async function runAttackChecks(config) {
       attempts.push({
         attackId: 'original_data_api_access',
         expected: 'Original Supabase notes Data API denies anon and test-account JWT direct CRUD',
-        observed: 'NOT_TESTED: awaiting owner execution of reviewed table-only REVOKE and judge direct API check',
+        observed: 'NOT_TESTED: DB role grants revoked and simulated SELECT denied; live public-key/JWT HTTP challenge remains',
       });
     }
     return attempts;
