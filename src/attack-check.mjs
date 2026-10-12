@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -29,6 +29,41 @@ export async function runAttackChecks(config) {
     } catch {
       // A non-JSON response is a failed check, not a successful deployment.
     }
+  }
+  if (config.step === 3) {
+    const attempts = [{
+      attackId: 'public_data_removed',
+      expected: '/data.json does not expose any synthetic notes',
+      observed: visible
+        ? 'FAIL: old publicly accessible notes still present'
+        : `No public sample notes at /data.json (HTTP ${response.status})`,
+    }];
+    const api = await fetch(new URL('/api/notes', app), {
+      redirect: 'error', signal: AbortSignal.timeout(10000),
+    });
+    let result = null;
+    try { result = await api.json(); } catch { /* failure is recorded below */ }
+    attempts.push({
+      attackId: 'anonymous_note_read_denied',
+      expected: 'Unauthenticated notes list is JSON 401/403 with no note data',
+      observed: ([401,403].includes(api.status) && result?.error
+          && !Object.hasOwn(result, 'notes'))
+        ? `Anonymous GET /api/notes denied with JSON error (HTTP ${api.status})`
+        : `FAIL: unexpected anonymous notes response (HTTP ${api.status})`,
+    });
+    const manifest = await fetch(new URL('/aleph.json', app), {
+      redirect: 'error', signal: AbortSignal.timeout(10000),
+    });
+    let step = null;
+    try { step = (await manifest.json())?.step; } catch { /* record failure */ }
+    attempts.push({
+      attackId: 'deployment_step3_manifest',
+      expected: 'Public aleph.json is accessible and declares step 3',
+      observed: manifest.ok && step === 3
+        ? 'Public deployment manifest identifies step 3'
+        : `FAIL: manifest missing or mismatched (HTTP ${manifest.status}, step ${step})`,
+    });
+    return attempts;
   }
   if (config.step === 1) {
     return [{ attackId: 'anonymous_note_read', expected: '비로그인 화면에서 가상 메모를 확인',

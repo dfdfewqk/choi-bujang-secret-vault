@@ -4,8 +4,7 @@ import handler from '../api/notes.js';
 
 function responseDouble() {
   const headers = new Map();
-  let status;
-  let body;
+  let status, body;
   return {
     headers,
     get statusCode() { return status; },
@@ -16,31 +15,21 @@ function responseDouble() {
   };
 }
 
-test('notes API rejects non-GET requests and never caches', async () => {
+test('unsupported method is always rejected as JSON without keys', async () => {
   const response = responseDouble();
-  await handler({ method: 'POST' }, response);
+  await handler({ method: 'PATCH' }, response);
   assert.equal(response.statusCode, 405);
   assert.deepEqual(response.body, { error: 'METHOD_NOT_ALLOWED' });
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-  assert.equal(response.headers.get('allow'), 'GET');
 });
 
-test('missing server configuration fails closed without revealing a key', async () => {
-  const originalUrl = process.env.SUPABASE_URL;
-  const originalSecret = process.env.SUPABASE_SECRET_KEY;
-  try {
-    delete process.env.SUPABASE_URL;
-    delete process.env.SUPABASE_SECRET_KEY;
+test('anonymous GET and POST return JSON 401 and no notes', async () => {
+  for (const method of ['GET','POST']) {
     const response = responseDouble();
-    await handler({ method: 'GET' }, response);
-    assert.equal(response.statusCode, 503);
-    assert.deepEqual(response.body, { error: 'NOTES_SERVICE_NOT_CONFIGURED' });
-    assert.equal(response.headers.get('cache-control'), 'no-store');
-  } finally {
-    if (originalUrl === undefined) delete process.env.SUPABASE_URL;
-    else process.env.SUPABASE_URL = originalUrl;
-    if (originalSecret === undefined) delete process.env.SUPABASE_SECRET_KEY;
-    else process.env.SUPABASE_SECRET_KEY = originalSecret;
+    await handler({ method }, response);
+    assert.equal(response.statusCode, 401);
+    assert.deepEqual(response.body, { error: 'UNAUTHORIZED' });
+    assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
   }
 });

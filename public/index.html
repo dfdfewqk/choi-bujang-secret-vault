@@ -1,52 +1,173 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BYTE BACK | 2단계 자료 보호 연습</title>
-  <style>
-    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
-    body { margin: 0; min-height: 100vh; background: #101a28; color: #ecf4ff; }
-    main { max-width: 760px; margin: 0 auto; padding: 44px 22px 64px; }
-    .eyebrow { color: #8ad8df; font-size: 14px; font-weight: 700; letter-spacing: .08em; }
-    h1 { margin: 16px 0; font-size: clamp(30px, 7vw, 48px); line-height: 1.2; }
-    p { font-size: 17px; line-height: 1.7; color: #bfd0e5; }
-    .notice { margin: 26px 0; padding: 18px; border: 1px solid #d07384; border-radius: 14px; color: #ffe3e8; background: #612a3544; }
-    ul { list-style: none; display: grid; gap: 12px; padding: 0; }
-    li { border: 1px solid #51667c; border-radius: 14px; padding: 17px 19px; background: #1a2a3d; }
-    strong { display: block; font-size: 18px; margin-bottom: 5px; }
-    li span { color: #bfd0e5; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#06182f">
+<meta name="description" content="BYTE BACK 3단계: 괴물 침공으로부터 내 정보를 지키는 인증 방어 자료실">
+<title>MONSTER DATA DEFENSE | BYTE BACK</title>
+<link rel="stylesheet" href="/monster-defense.css">
 </head>
 <body>
-  <main>
-    <div class="eyebrow">BYTE BACK · 2단계 서버 자료실</div>
-    <h1>서버에서 불러오는 자료실</h1>
-    <p>가상 메모는 더 이상 공개 정적 파일에 넣지 않습니다. Vercel 서버 API를 통해 학습용 데이터베이스에서 읽습니다.</p>
-    <div class="notice">아직 로그인 검사를 구현하지 않았습니다. 비로그인 방문자도 공개 API를 직접 호출할 수 있으므로 가상 자료만 사용하세요.</div>
-    <ul id="notes" aria-live="polite"><li>가상 자료를 불러오는 중입니다.</li></ul>
-  </main>
-  <script type="module">
-    const list = document.querySelector('#notes');
-    try {
-      const response = await fetch('/api/notes', { cache: 'no-store' });
-      if (!response.ok) throw new Error('가상 자료를 불러오지 못했습니다. 서버 설정을 확인하세요.');
-      const data = await response.json();
-      if (!Array.isArray(data.notes)) throw new Error('자료 형식이 맞지 않습니다.');
-      list.replaceChildren(...data.notes.map(note => {
-        const item = document.createElement('li');
-        const title = document.createElement('strong');
-        const content = document.createElement('span');
-        title.textContent = note.title;
-        content.textContent = note.content;
-        item.append(title, content);
-        return item;
-      }));
-    } catch (error) {
-      const item = document.createElement('li');
-      item.textContent = error.message;
-      list.replaceChildren(item);
+<header class="site-header">
+  <div class="brand"><span class="brand-emblem" aria-hidden="true">⬡</span><strong>우리 반 공동 방어</strong><span class="brand-caption">BYTE BACK · LEVEL 03</span></div>
+</header>
+<main class="landing">
+  <div class="main-grid">
+    <section class="battlefield" aria-label="도시를 향해 다가오는 괴물과 정보를 지키는 푸른 방어막">
+      <div class="city-atmosphere" aria-hidden="true"></div>
+      <img class="layer layer-city" src="/assets/scene-city.svg" alt="" width="750" height="660" draggable="false">
+      <div class="city-lights" aria-hidden="true"></div>
+      <img class="layer layer-monsters" src="/assets/scene-monsters.svg" alt="" width="750" height="660" draggable="false">
+      <img class="layer layer-shield" src="/assets/scene-shield.svg" alt="" width="750" height="660" draggable="false">
+      <div class="shield-aura" aria-hidden="true"></div>
+      <div class="defense-stream" aria-hidden="true"></div>
+      <svg class="hud-icon hud-card" viewBox="0 0 72 48" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="68" height="44" rx="6" stroke="currentColor" stroke-width="2"/>
+        <circle cx="19" cy="18" r="8" fill="currentColor"/>
+        <path d="M7 39c0-11 24-11 24 0M40 15h20M40 25h20M40 35h11" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    </section>
+    <section class="command" aria-label="3단계 방어 인증">
+      <h1 class="hero-heading">MONSTER<br>DATA DEFENSE</h1>
+      <p class="hero-subtitle">괴물 침공으로부터 내 정보를 지키는 방어 시스템</p>
+      <section id="login-panel" class="panel">
+        <h2><span class="form-shield" aria-hidden="true">⬡</span> 방어 인증</h2>
+        <form id="login-form">
+          <label for="email">이메일<input id="email" type="email" autocomplete="email" placeholder="이메일을 입력하세요." maxlength="254" required></label>
+          <label for="password">비밀번호<input id="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요." minlength="6" required></label>
+          <button type="submit" class="btn-primary">보호막 활성화 <span aria-hidden="true">›</span></button>
+          <button type="button" id="signup" class="btn-secondary">학습용 계정 만들기</button>
+        </form>
+        <p class="form-hint">인증된 사용자만 자료실에 접근할 수 있습니다.<br>이메일 확인이 필요한 경우 메일함을 확인하세요.</p>
+      </section>
+      <section id="vault-panel" class="hidden" aria-label="로그인한 사용자 자료실">
+        <div class="panel vault-account">
+          <h2>방어 자료실</h2>
+          <p id="auth-status"></p>
+          <button id="logout" class="btn-secondary">로그아웃</button>
+        </div>
+        <form id="create-form" class="panel">
+          <h2 id="editor-label">메모 추가</h2>
+          <label for="title">제목<input id="title" placeholder="가상 메모 제목" maxlength="120" required></label>
+          <label for="body">내용<textarea id="body" placeholder="가상 메모 내용" maxlength="5000" required></textarea></label>
+          <button type="submit" id="save" class="btn-primary">자료 저장</button>
+          <button type="button" id="cancel" class="btn-secondary hidden">수정 취소</button>
+        </form>
+        <div class="panel vault-list"><h2>방어 자료 목록</h2><ul id="notes" aria-live="polite"></ul></div>
+      </section>
+      <p id="status" role="status" aria-live="polite"></p>
+      <p class="safety-note">학습용 가상 자료실입니다. 4단계에서 개인 메모별 접근 권한을 보완합니다. 실제 개인정보를 저장하지 마세요.</p>
+    </section>
+  </div>
+</main>
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
+  const SUPABASE_URL = 'https://bcwzllejypavwgsfqfbm.supabase.co';
+  // Publishable SDK key is public. Never put SUPABASE_SECRET_KEY here.
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_rQOSzVLPSmRGAAGfnV5CVw_ZsyWj-4Z";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+  });
+  const $ = selector => document.querySelector(selector);
+  const status = message => { $('#status').textContent = message; };
+  let session = null, list = [], editingId = null;
+  function cleanEditor() {
+    editingId = null;
+    $('#create-form').reset();
+    $('#editor-label').textContent = '메모 추가';
+    $('#cancel').classList.add('hidden');
+  }
+  function showLoggedIn(loggedIn) {
+    $('#login-panel').classList.toggle('hidden',loggedIn);
+    $('#vault-panel').classList.toggle('hidden',!loggedIn);
+    if(!loggedIn){list=[];$('#notes').replaceChildren();cleanEditor();}
+  }
+  async function api(path,options={}) {
+    const current = await supabase.auth.getSession();
+    const token = current.data.session?.access_token;
+    if(!token)throw new Error('로그인이 필요합니다.');
+    const resp=await fetch(path,{
+      method:options.method??'GET',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      cache:'no-store',
+      body:options.body?JSON.stringify(options.body):undefined,
+    });
+    let result;
+    try{result=await resp.json();}catch{throw new Error('서버가 JSON 응답을 보내지 않았습니다.');}
+    if(!resp.ok)throw new Error('요청 실패 ('+resp.status+'): '+(result.error??'알 수 없는 오류'));
+    return result;
+  }
+  function displayNotes() {
+    const ul=$('#notes');ul.replaceChildren();
+    if(list.length===0){const li=document.createElement('li');li.textContent='저장된 메모가 없습니다.';ul.append(li);}
+    for(const note of list){
+      const li=document.createElement('li'), title=document.createElement('strong'), body=document.createElement('p');
+      title.textContent=note.title;body.textContent=note.body;
+      const actions=document.createElement('div');actions.className='actions';
+      const edit=document.createElement('button');edit.textContent='수정';edit.className='secondary';
+      edit.addEventListener('click',()=>{
+        editingId=note.id;$('#title').value=note.title;$('#body').value=note.body;
+        $('#editor-label').textContent='메모 수정';$('#cancel').classList.remove('hidden');
+        $('#create-form').scrollIntoView({behavior:'smooth'});
+      });
+      const del=document.createElement('button');del.textContent='삭제';del.className='danger';
+      del.addEventListener('click',async()=>{
+        if(!confirm('이 가상 메모를 삭제하시겠습니까?'))return;
+        try{await api('/api/notes/'+encodeURIComponent(note.id),{method:'DELETE'});
+        status('메모를 삭제했습니다.');await loadNotes();}catch(err){status(err.message);}
+      });
+      actions.append(edit,del);li.append(title,body,actions);ul.append(li);
     }
-  </script>
+  }
+  async function loadNotes() {
+    const data=await api('/api/notes');
+    if(!Array.isArray(data.notes))throw new Error('메모 응답 형식 오류');
+    list=data.notes;displayNotes();
+  }
+  async function onSession(next) {
+    session=next;showLoggedIn(Boolean(next));
+    if(next){
+      $('#auth-status').textContent='로그인됨: '+(next.user?.email??'인증된 사용자');
+      try{await loadNotes();status('로그인되었습니다.');}catch(e){status(e.message);}
+    } else {status('로그인이 필요합니다.');}
+  }
+  $('#login-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const email=$('#email').value.trim(), password=$('#password').value;
+    status('로그인 확인 중...');
+    const {error}=await supabase.auth.signInWithPassword({email,password});
+    $('#password').value='';
+    if(error)status('로그인 실패: '+error.message);
+  });
+  $('#signup').addEventListener('click',async()=>{
+    const email=$('#email').value.trim(),password=$('#password').value;
+    if(!email||!password){status('이메일과 비밀번호를 입력하세요.');return;}
+    const {data,error}=await supabase.auth.signUp({email,password});
+    $('#password').value='';
+    if(error)status('계정 생성 실패: '+error.message);
+    else if(!data.session)status('계정 생성 요청을 받았습니다. 이메일 확인 안내를 확인하세요.');
+    else status('학습용 계정이 만들어졌습니다.');
+  });
+  $('#logout').addEventListener('click',async()=>{
+    const {error}=await supabase.auth.signOut();
+    if(error)status('로그아웃 실패: '+error.message);
+  });
+  $('#create-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const title=$('#title').value.trim(),body=$('#body').value.trim();
+    try{
+      if(editingId)await api('/api/notes/'+encodeURIComponent(editingId),{method:'PUT',body:{title,body}});
+      else await api('/api/notes',{method:'POST',body:{title,body}});
+      status(editingId?'메모 수정 완료':'메모 추가 완료');
+      cleanEditor();await loadNotes();
+    }catch(err){status(err.message);}
+  });
+  $('#cancel').addEventListener('click',cleanEditor);
+  supabase.auth.onAuthStateChange((_event,newSession)=>{setTimeout(()=>{void onSession(newSession);},0);});
+  const {data:{session:initialSession},error}=await supabase.auth.getSession();
+  if(error)status('인증 상태 확인 실패: '+error.message);
+  else await onSession(initialSession);
+ </script>
 </body>
 </html>

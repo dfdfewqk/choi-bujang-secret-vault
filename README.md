@@ -1,3 +1,71 @@
+# BYTE BACK · 3단계 저장점 (진짜 로그인을 붙입니다)
+
+> **상태: 3단계 구현 및 GitHub 자동 테스트 통과, 실사용자 A/B 로그인 통합 검증 대기.** 기존 2단계 운영 배포는 유지합니다. Auth 사용자 0명 확인 시점이어서 브라우저 로그인·인증된 CRUD·심판 제출은 아직 완료되지 않았습니다.
+
+## 현재 구현 기능 (5줄)
+
+1. Supabase Auth 이메일·비밀번호 로그인, 학습용 계정 가입, 로그아웃 및 세션 복원 UI를 제공합니다.
+2. 기존 `src/verify-login.mjs`로 Supabase·심판 토큰을 검증하고, 비로그인 API 호출은 JSON 401로 거부합니다.
+3. 가상 메모 CRUD는 서버가 검증한 사용자 UUID로 새 메모 `owner_id`를 기록합니다.
+4. 기존 메모 4건의 숫자 내부 ID를 유지하면서 공개용 UUID `note_uuid`를 추가했습니다.
+5. 4단계에 남겨둔 취약점: 로그인한 다른 사용자는 메모 UUID를 알면 개별 조회·수정·삭제가 가능합니다. 실제 개인정보는 넣지 마세요.
+
+## 3단계 로그인 디자인 · 원본 장면 기반 레이어 애니메이션
+
+- 승인된 2026-10-12 「괴물 단체 + 푸른 정보 보호막」 장면을 재생성하지 않고, `assets/monster-shield-scene.avif.b64`에 원본을 보존합니다. 이미지 안의 가짜 로그인 양식은 제외하고 오른쪽에 실제 Supabase Auth HTML 폼을 표시합니다.
+- `scripts/build-public.mjs`는 원본 SHA-256을 검사하고 `public/assets/monster-shield-scene.avif` 및 아래 **3개의 투명 SVG 장면 레이어**를 생성합니다.
+  - `scene-city.svg`: 도시·하늘·강변 부분을 부드러운 마스크로 유지. CSS에서는 수평 1.3px 이동(18초)과 별도 도시 조명 약한 반짝임을 적용합니다.
+  - `scene-monsters.svg`: 동일한 괴물 단체의 실루엣을 부드러운 마스크로 추출. 전체 그룹만 최대 4px 떠오르는 애니메이션(5.8초)을 적용하며, 새 괴물을 추가하지 않습니다.
+  - `scene-shield.svg`: 파란 방어막·자물쇠·데이터 UI 영역을 마스크로 분리. 밝기·글로우 맥동(4.2초)과 빛의 흐름을 적용하며, 작은 기호형 홀로그램 SVG는 별도로 6px 이내 부유합니다.
+- 완전한 포토샵 픽셀 단위 분리가 아니라 원본에서 추출한 **깃털(soft) 마스크 기반의 시각적 레이어 분리**입니다. 겹친 부분에는 원본 배경이 일부 함께 보일 수 있지만, 전체 이미지를 흔들거나 확대하는 효과는 사용하지 않습니다.
+- 메인 그림 위의 `SECURE`, `DATA SAFE`, 설명용 영문 텍스트·의미 없는 내비게이션, 하단 장식 카드를 제거했습니다. 서비스 이름과 실제 로그인·가입·메모 UI 안내는 유지합니다.
+- `public/monster-defense.css`는 데스크톱 2열·모바일 세로 배치를 유지하며, `prefers-reduced-motion: reduce`에서 도시·괴물·보호막·홀로그램 움직임을 끕니다. 실제 로그인 패널은 흔들리지 않습니다.
+- 기존 Supabase Auth, 메모 CRUD, 서버 측 `src/verify-login.mjs`는 변경하지 않았습니다.
+- GitHub 2·3단계 회귀 검사와 Vercel Preview 빌드, CI 내 생성 SVG 3개 파일 검사를 통과했습니다. **브라우저에서 실제 렌더링 및 A/B 로그인·메모 CRUD 통합 검증은 아직 완료되지 않았습니다.** Preview는 Vercel 보호로 원격 브라우저 직접 검증이 제한될 수 있습니다.
+
+## 기존 작업 보존 및 DB 마이그레이션
+
+- GitHub: https://github.com/dfdfewqk/choi-bujang-secret-vault
+- Production: https://choi-bujang-secret-vault-six-jet.vercel.app
+- Database: 기존 `pds-diary-t06` 프로젝트의 `public.vault_training_notes` 테이블만 변경합니다.
+- 마이그레이션 SQL: `supabase/step3_migration.sql`. 기존 행을 삭제하지 않고 UUID `note_uuid`를 추가하며 새 메모 생성에 장애가 되는 `sort_order` 4건 제한을 해제합니다. 다이어리 테이블은 수정하지 않습니다.
+- 기존 가상 메모 4건은 `owner_id IS NULL`인 학습용 공용 샘플로 남깁니다. 로그인한 사용자만 샘플을 볼 수 있고 새로운 메모는 검증된 `owner_id`로 저장됩니다. 목록은 로그인 사용자의 개인 메모와 공용 샘플을 합쳐 보여 줍니다.
+- 테이블은 RLS 활성화 상태를 유지하고, `anon`·`authenticated` 역할로 직접 DB를 조회할 수 없습니다. 서버의 Secret Key는 데이터베이스 전체를 볼 수 있으므로 Vercel 서버 환경변수에만 저장해야 합니다.
+
+## Supabase Auth 설정
+
+- `aleph.config.json`의 `step=3` 및 `identityProvider` 발급자·대상·JWKS URL을 참고합니다. `judgeIssuer`는 기존 값을 유지합니다.
+- 브라우저에는 Supabase Project URL과 **공개용 Publishable Key만** 사용합니다.
+- Vercel 환경변수 `SUPABASE_URL`과 `SUPABASE_SECRET_KEY`는 기존에 등록되어 있습니다. JWT, 이메일 비밀번호, Secret Key를 GitHub에 저장하지 마세요.
+- 사용자 A/B 계정은 실제 이메일 확인 절차를 통해 만듭니다. 개인정보 대신 실습용 가상 메모만 사용하고, 로그인 비밀번호/토큰을 채팅에 전송하지 마세요.
+
+## 구현 API
+
+| 메서드 | 경로 | 동작 |
+|---|---|---|
+| GET | `/api/notes` | 로그인 사용자의 메모와 기존 가상 샘플 목록 |
+| POST | `/api/notes` | `{id?,title,body}`를 저장하고 `{id}` 반환 |
+| GET | `/api/notes/:id` | `{id,title,body}` |
+| PUT | `/api/notes/:id` | 가상 메모 수정 |
+| DELETE | `/api/notes/:id` | 메모 삭제, 이후 GET 404 |
+
+모든 데이터 API는 기존 검증 도우미가 인증을 확인한 후에만 DB를 호출합니다. 개별 경로는 Vercel rewrite를 통해 `api/note.js`로 전달합니다. `allowedRoutes`도 이 경로와 일치합니다.
+
+## 검증 및 제출
+
+1. 브랜치에서 `npm ci`, `npm run test:r5`, `npm run test:package`, `node --test test/step2.test.mjs`, `node --test test/step2-api.test.mjs`, `node --test test/step3-api.test.mjs`, `npm run build -- --local` 검증
+2. 로그인하지 않은 `GET /api/notes` 및 `GET /api/notes/:id`에서 JSON 401/403과 메모 없음 확인
+3. A 계정 정상 로그인·로그아웃·새로고침 세션 복원·A 메모 추가/수정/삭제·삭제 뒤 GET 404 확인
+4. 조작·만료·다른 발급자의 토큰을 거부하는지 확인 (실제 실행 전엔 미검증으로 기록)
+5. `/data.json` 메모 0건 또는 404, `/aleph.json` `step:3`, 홈페이지 `X-Content-Type-Options:nosniff` 확인
+6. 개인 비밀값/메모 본문이 저장소·빌드 아티팩트에 없는지 확인하고, 3단계 제출 시 `npm run bundle` 실행
+
+이전 공개 커밋과 과거 배포는 남을 수 있으므로 과거 노출이 완전히 해소됐다고 주장하지 않습니다. `bundle-notes.json`과 `artifacts/submission.json`은 커밋하지 않습니다.
+
+---
+
+## 이전 단계 기록 (2단계 이하)
+
 # BYTE BACK · 2단계 저장점 (자료를 코드 밖으로 옮기기)
 
 > **작업 상태:** 2단계 DB 테이블 생성, 가상 메모 4건 입력, RLS 검증, Vercel 서버 전용 환경변수 등록과 Preview 재배포를 완료했습니다. 미리보기 URL은 Vercel 인증 보호 때문에 외부 API 응답 검증이 제한되어 있어 운영 반영 후 HTTP 응답을 추가 확인해야 합니다.
