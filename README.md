@@ -1,6 +1,6 @@
 # BYTE BACK · 2단계 저장점 (자료를 코드 밖으로 옮기기)
 
-> **작업 상태:** 이 문서는 2단계용 코드입니다. 별도 Supabase 프로젝트에 학습용 메모 4건을 넣고 Vercel 서버 환경변수를 설정하기 전에는 화면의 네 카드가 정상 표시되지 않습니다. 초기 운영 배포는 별도 브랜치로 보호합니다.
+> **작업 상태:** 2단계 DB 테이블 생성, 가상 메모 4건 입력, RLS 검증, Vercel 서버 전용 환경변수 등록과 Preview 재배포를 완료했습니다. 미리보기 URL은 Vercel 인증 보호 때문에 외부 API 응답 검증이 제한되어 있어 운영 반영 후 HTTP 응답을 추가 확인해야 합니다.
 
 ## 현재 기능 (최대 5줄)
 
@@ -15,8 +15,8 @@
 1. **무료 프로젝트 생성 제한 때문에**, 기존 `pds-diary-t06` Supabase 프로젝트 안에 **새 전용 테이블 `vault_training_notes`만 생성**했습니다. 기존 다이어리 테이블과 데이터는 변경하지 않습니다. 다만 서버 전용 API 키는 프로젝트 전체에 넓은 권한을 가질 수 있으므로 Vercel의 서버 전용 비밀 입력란에서만 관리해야 합니다.
 2. Supabase SQL Editor에서 `supabase/step2_schema.sql`을 실행합니다. **2026-10-08 실제 생성 및 RLS 확인 완료**.  `vault_training_notes`에 `owner_id uuid`가 있으며 `auth.users` 외래키는 없습니다. RLS가 켜져 있고 `anon`·`authenticated`에 테이블 접근을 부여하지 않습니다.
 3. 기존 가상 메모 **4건만** SQL Editor에서 별도로 입력합니다. **4건 DB 저장 및 건수 검증 완료**.  원문이 들어 있는 시드 SQL은 공개 저장소에 절대 커밋하지 않습니다. `select count(*) from public.vault_training_notes;`로 4건인지 확인합니다.
-4. **미완료: 서버 비밀값 직접 등록 필요.** Vercel 프로젝트 Settings → Environment Variables에서 `SUPABASE_URL`과 `SUPABASE_SECRET_KEY`를 **서버 비밀 환경변수**로 등록합니다. 실제 값은 GitHub·브라우저 코드·채팅·로그에 붙여 넣지 않습니다. Vercel Preview와 Production에 배포할 단계에 맞게 설정합니다.
-5. 설정 후 브랜치 Preview를 먼저 테스트하고 정상 4건이면 `main`에 병합하여 Production에 배포합니다. 설정 변경 후에는 재배포가 필요합니다.
+4. **완료: 서버 비밀값 등록 및 Preview/Production 적용.** Vercel 프로젝트 Settings → Environment Variables에서 `SUPABASE_URL`과 `SUPABASE_SECRET_KEY`를 **서버 비밀 환경변수**로 등록합니다. 실제 값은 GitHub·브라우저 코드·채팅·로그에 붙여 넣지 않습니다. Vercel Preview와 Production에 배포할 단계에 맞게 설정합니다.
+5. 브랜치 Preview 재배포와 코드 자동 검사를 완료했습니다. Preview의 HTTP 응답은 Vercel 인증 보호로 외부 자동 확인이 불가능했습니다. Production 배포 후 `/api/notes` 4건을 검증하고 실패 시 운영 배포를 되돌려야 합니다.
 
 ## 검증 (배포 전후)
 
