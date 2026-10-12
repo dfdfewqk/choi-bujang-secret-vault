@@ -1,8 +1,7 @@
 name: Stage 3 live verification and submission bundle
 
 on:
-  push:
-    branches: [main]
+  # Stage 3 evidence is preserved but will not run on a Stage 4 main push.
   workflow_dispatch:
 
 permissions:
