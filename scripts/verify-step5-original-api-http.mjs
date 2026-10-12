@@ -1,5 +1,5 @@
 // Stage 5 real HTTPS check against the original Supabase Data API using
-// the browser's already-public publishable key (NOT a server secret).
+// a public key retained SERVER-SIDE for the Auth proxy (NOT a server secret).
 // No student credentials, JWTs, note bodies or IDs are printed or exported.
 // Tests GET and a PATCH targeting a fresh nonexistent random UUID; no
 // production row can be modified by a successful query (unexpected success
@@ -18,8 +18,11 @@ assert.equal(url.hash, '');
 assert.ok(url.hostname.endsWith('.supabase.co'));
 
 const html = await readFile('public/index.html', 'utf8');
-const key = html.match(/const\s+SUPABASE_PUBLISHABLE_KEY\s*=\s*["'](sb_publishable_[A-Za-z0-9_-]+)["']/u)?.[1];
-assert.ok(key, 'Existing browser publishable key not found; no HTTPS requests made');
+const browserAuth = await readFile('public/auth-client.mjs', 'utf8');
+assert.doesNotMatch(html + browserAuth, /sb_publishable_[A-Za-z0-9_-]+/u);
+const serverAuth = await readFile('src/auth-api.mjs', 'utf8');
+const key = serverAuth.match(/const\s+SERVER_AUTH_PUBLIC_KEY\s*=\s*['"](sb_publishable_[A-Za-z0-9_-]+)['"]/u)?.[1];
+assert.ok(key, 'Server-only Auth public key not found; no HTTPS requests made');
 
 const attempts = [
   { name: 'public_key_direct_get', method: 'GET', endpoint: new URL(url.href) },
@@ -62,7 +65,7 @@ for (const attempt of attempts) {
 await mkdir('artifacts', { recursive: true });
 await writeFile('artifacts/stage5-original-api-http.json', JSON.stringify({
   step: 5,
-  check: 'original Supabase PostgREST, browser publishable apikey, no authenticated JWT',
+  check: 'original Supabase PostgREST, server-held publishable apikey, no authenticated JWT',
   result: results.every(r => r.denied) ? 'PASS' : 'FAIL',
   scope: 'anonymous direct GET and safe PATCH-to-nonexistent-row only',
   authenticatedJwtCheck: 'NOT_TESTED; DB simulated authenticated-role SELECT blocked; real judge test pending',
