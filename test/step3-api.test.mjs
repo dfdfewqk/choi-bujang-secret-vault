@@ -174,7 +174,15 @@ test('monster defense theme keeps the real login form and responsive stylesheet'
   assert.match(page,/signInWithPassword/u);
   assert.match(page,/signOut/u);
   assert.match(page,/signUp/u);
-  assert.match(page,/\/assets\/monster-shield-scene\.avif/u);
+  for(const layer of ['scene-city.svg','scene-monsters.svg','scene-shield.svg']) {
+    assert.match(page, new RegExp('\\\\/assets\\\\/'+layer.replace('.','\\\\.') ));
+  }
+  assert.doesNotMatch(page,/(?:SECURE|DATA SAFE|class="scene-label"|class="holo ")/u);
+  const build=await readFile(new URL('../scripts/build-public.mjs',import.meta.url),'utf8');
+  for(const layer of ['scene-city.svg','scene-monsters.svg','scene-shield.svg']) assert.ok(build.includes(layer));
+  assert.match(css,/@keyframes monsterBreathe/u);
+  assert.match(css,/@keyframes shieldEnergy/u);
+  assert.match(css,/@keyframes cityDrift/u);
   assert.doesNotMatch(page,/monsters\/whale\.webp/u);
   assert.doesNotMatch(page,/class="nav-links"/u);
   assert.doesNotMatch(page,/class="defense-footer"/u);
