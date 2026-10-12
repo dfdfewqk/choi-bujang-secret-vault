@@ -130,6 +130,8 @@
       // Do not reveal whether a pre-existing address belongs to another account.
       form.reset();
       const verifiedSession = Boolean(data?.session?.user?.email_confirmed_at);
+      document.querySelector('.result-mark').textContent = verifiedSession ? '✓' : '✉';
+      document.querySelector('.result-mark').dataset.verified = String(verifiedSession);
       document.querySelector('#result-title').textContent =
         verifiedSession ? '회원가입 및 이메일 인증 완료!' : '가입 요청이 접수되었습니다';
       document.querySelector('#result-description').textContent =
