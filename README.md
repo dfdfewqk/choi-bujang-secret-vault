@@ -1,14 +1,29 @@
-# BYTE BACK · 3단계 저장점 (진짜 로그인을 붙입니다)
+# BYTE BACK · 4단계 개발 브랜치 (로그인해도 내 자료만 보이게 합니다)
 
-> **상태: 3단계 구현 및 GitHub 자동 테스트 통과, 실사용자 A/B 로그인 통합 검증 대기.** 기존 2단계 운영 배포는 유지합니다. Auth 사용자 0명 확인 시점이어서 브라우저 로그인·인증된 CRUD·심판 제출은 아직 완료되지 않았습니다.
+> **상태 (검토 대기):** 3단계 운영 서비스는 그대로 유지합니다. 4단계 API 소유자 조건은 `stage4-owner-isolation` 브랜치에 구현했습니다. B 시험 계정이 아직 확인되지 않았고, 원본 메모 4건은 현재 DB에서 모두 `owner_id IS NULL`입니다. **SQL 승인·적용, 두 계정 실사용 교차 테스트, 운영 병합, 4단계 제출은 아직 완료되지 않았습니다.**
 
-## 현재 구현 기능 (5줄)
+## 이번 브랜치의 기능 (5줄)
 
-1. Supabase Auth 이메일·비밀번호 로그인, 학습용 계정 가입, 로그아웃 및 세션 복원 UI를 제공합니다.
-2. 기존 `src/verify-login.mjs`로 Supabase·심판 토큰을 검증하고, 비로그인 API 호출은 JSON 401로 거부합니다.
-3. 가상 메모 CRUD는 서버가 검증한 사용자 UUID로 새 메모 `owner_id`를 기록합니다.
-4. 기존 메모 4건의 숫자 내부 ID를 유지하면서 공개용 UUID `note_uuid`를 추가했습니다.
-5. 4단계에 남겨둔 취약점: 로그인한 다른 사용자는 메모 UUID를 알면 개별 조회·수정·삭제가 가능합니다. 실제 개인정보는 넣지 마세요.
+1. 기존 Supabase Auth 이메일·비밀번호 로그인/가입/로그아웃/세션 복원 및 그림 레이어 애니메이션은 그대로 유지합니다.
+2. `src/verify-login.mjs` 계약을 유지하고, 로그인 토큰에서 **서버가 검증한 userId**만 사용합니다.
+3. 목록 GET은 `owner_id = userId` 필터, 개별 GET·PUT·DELETE는 `note_uuid`와 `owner_id` 동시 조건으로 제한합니다.
+4. 메모 POST는 인증된 소유자로 저장하고, PUT은 제목/본문만 수정하며 요청 본문 `owner_id`를 거부합니다.
+5. DB 소유자 지정·RLS는 검토용 SQL만 저장했습니다. 사용자 승인 전에는 실행하지 않으며 3단계 운영 주소를 바꾸지 않습니다.
+
+## 4단계 적용 전 확인 사항
+
+- **현재 DB:** 실제 이메일 확인 Auth 사용자 1명, 미지정 학습용 원본 메모 4건. B 계정 이메일 인증 필요
+- **A/B 데이터 초안:** `supabase/step4_seed_review.sql`. A/B 이메일은 사용자가 자신의 Supabase SQL Editor에서만 입력합니다. 기존 4건을 A에게 지정하고 B 시험 메모 1건만 추가합니다. 정확히 4건인 경우에만 실행되며 오류 시 트랜잭션 롤백
+- **권한 초안:** `supabase/step4_rls_review.sql`. `PUBLIC`/`anon`/`authenticated`의 기존 테이블 권한을 회수하고 `authenticated`에는 SELECT·INSERT·UPDATE·DELETE만 GRANT, 정책 4개로 `auth.uid() = owner_id` 검사. 사용자가 검토·승인할 때까지 **실행하지 않음**
+- **권한 확인:** `supabase/step4_verify_permissions.sql`은 데이터 변경 없는 조회 쿼리. `information_schema.role_table_grants`, `has_table_privilege`, `pg_policies` 점검
+- **중요:** 서버는 `service_role`을 사용하므로 RLS를 우회할 수 있습니다. 새 API의 원자적 `.eq('owner_id',verified.userId)` 검사를 제거하면 안 됩니다.
+- **테스트:** `node --test test/step4-api.test.mjs` (A/B 목록·개별 조회·타인 수정/삭제·소유자 변경 시도·비로그인·심판/학생 구분 로컬 모의시험). 이 테스트가 통과해도 실제 A/B JWT·운영 DB·심판 공격 통과를 증명하지는 않습니다.
+- **배포/제출:** `npm run build -- --local`로 정적 파일, `npm run bundle`은 실 배포 확인과 `bundle-notes.json`이 준비된 뒤 실행. 운영 병합 후 `scripts/verify-step4-live.mjs` 및 stage4-live GitHub Action이 /api/notes 비로그인 거부, /aleph.json step=4, nosniff를 확인
+- **A/B 수동 점검:** 두 실습 계정에서 각자 GET·POST·PUT·DELETE 성공 / 상대방의 개별 GET·PUT·DELETE 404를 확인한 뒤에만 운영 반영
+
+## 이전 3단계 구현 기록
+
+> 과거 3단계 README의 초기 검증 대기 문구는 현재 상태와 다릅니다. 실제 3단계는 운영 배포·로그인·가상 메모 CRUD·비로그인 JSON 거부까지 확인되었고, 3단계 제출 번들 자동화도 성공했습니다. 다음 섹션은 기존 디자인 및 DB 구조 보존을 위한 이력입니다.
 
 ## 3단계 로그인 디자인 · 원본 장면 기반 레이어 애니메이션
 
