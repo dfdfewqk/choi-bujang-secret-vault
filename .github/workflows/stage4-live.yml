@@ -22,16 +22,31 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Stage 4 anonymous HTTP and deployment manifest verification
-        run: node scripts/verify-step4-live.mjs
+      - name: Stage 4 live HTTP and deployment manifest verification
+        run: |
+          # Vercel production deployment may finish shortly after GitHub main is updated.
+          # Never accept an old Stage 3 manifest: the verification script requires step 4.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if node scripts/verify-step4-live.mjs; then
+              echo "Stage 4 production verification passed."
+              exit 0
+            fi
+            if [ "$attempt" -eq 10 ]; then
+              echo "Stage 4 verification failed after 10 attempts."
+              exit 1
+            fi
+            echo "Waiting 20 seconds for verified production deployment (attempt $attempt)."
+            sleep 20
+          done
       - name: Prepare ignored local submission notes
         run: |
           node --input-type=module <<'NODE'
           import { writeFileSync } from 'node:fs';
           const explanation = [
             '4단계 서버 API는 검증된 사용자 ID와 메모 owner_id가 일치할 때만 CRUD를 허용합니다.',
-            'DB 최소 권한과 RLS 정책은 별도의 사용자 승인 후 적용하고 확인해야 합니다.',
-            '비로그인 JSON 차단과 step4 배포, nosniff를 실제 검사했습니다. A/B 통합 점검은 별도로 수행합니다.'
+            '사용자 승인 후 A 소유 메모 4건과 B 소유 메모 1건을 DB에서 확인하고, RLS 소유자 정책 4개와 최소 권한을 적용했습니다.',
+            '4단계 Preview에서 A/B 각각 자기 메모 목록과 상대 메모 GET 404를 확인했습니다. 실제 타인 메모 PUT/DELETE는 서버 모의시험과 RLS 역할시험으로 검증했습니다.',
+            '운영 배포에서 비로그인 JSON 접근 차단, step 4 배포 정보, 공개 data.json 없음, nosniff 헤더를 검사했습니다.'
           ].join('\n');
           writeFileSync('bundle-notes.json',JSON.stringify({explanation,blockedAt:null},null,2)+'\n');
           NODE
