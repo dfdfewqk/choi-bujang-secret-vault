@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3) {
+  if (config.step === 3 || config.step === 4) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -57,12 +57,36 @@ export async function runAttackChecks(config) {
     let step = null;
     try { step = (await manifest.json())?.step; } catch { /* record failure */ }
     attempts.push({
-      attackId: 'deployment_step3_manifest',
-      expected: 'Public aleph.json is accessible and declares step 3',
-      observed: manifest.ok && step === 3
-        ? 'Public deployment manifest identifies step 3'
+      attackId: 'deployment_step' + config.step + '_manifest',
+      expected: 'Public aleph.json is accessible and declares step ' + config.step,
+      observed: manifest.ok && step === config.step
+        ? 'Public deployment manifest identifies step ' + config.step
         : `FAIL: manifest missing or mismatched (HTTP ${manifest.status}, step ${step})`,
     });
+    if (config.step === 4) {
+      // A/B cross-owner tests require real credentials and are NOT claimed here.
+      const item = await fetch(new URL('/api/notes/11111111-1111-4111-8111-111111111111', app), {
+        redirect: 'error', signal: AbortSignal.timeout(10000),
+      });
+      let itemJson = null;
+      try { itemJson = await item.json(); } catch { /* recorded as failure */ }
+      attempts.push({
+        attackId: 'anonymous_item_read_denied',
+        expected: 'Unauthenticated GET /api/notes/:id returns JSON 401/403, without data',
+        observed: ([401, 403].includes(item.status) && itemJson?.error
+            && !Object.hasOwn(itemJson, 'body') && !Object.hasOwn(itemJson, 'notes'))
+          ? 'Anonymous GET /api/notes/:id denied with JSON error (HTTP ' + item.status + ')'
+          : 'FAIL: unexpected anonymous item response (HTTP ' + item.status + ')',
+      });
+      const home = await fetch(app, { redirect: 'error', signal: AbortSignal.timeout(10000) });
+      attempts.push({
+        attackId: 'home_security_header',
+        expected: 'Home responds HTTP 200 with X-Content-Type-Options: nosniff',
+        observed: home.status === 200 && home.headers.get('x-content-type-options') === 'nosniff'
+          ? 'Home returned HTTP 200 and nosniff header'
+          : 'FAIL: HTTP ' + home.status + ', security header missing or unexpected',
+      });
+    }
     return attempts;
   }
   if (config.step === 1) {
