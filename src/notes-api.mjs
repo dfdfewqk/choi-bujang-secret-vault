@@ -36,7 +36,7 @@ function header(req, name) {
 
 export async function handleNotes(request, response, {
   itemId = null,
-  verifyAuthorization = getVerifier(),
+  verifyAuthorization = null,
   databaseFactory = getDatabase,
 } = {}) {
   response.setHeader('Cache-Control', 'no-store');
@@ -60,7 +60,7 @@ export async function handleNotes(request, response, {
   }
   let verified;
   try {
-    verified = await verifyAuthorization(authorization);
+    verified = await (verifyAuthorization ?? getVerifier())(authorization);
   } catch {
     return response.status(401).json({ error: 'UNAUTHORIZED' });
   }
