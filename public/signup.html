@@ -83,13 +83,9 @@
   </div>
 </main>
 <script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
-  const SUPABASE_URL = 'https://bcwzllejypavwgsfqfbm.supabase.co';
-  // Public publishable key only. Never expose a Supabase secret/server key.
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rQOSzVLPSmRGAAGfnV5CVw_ZsyWj-4Z';
-  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-  });
+  import { createServerAuthClient } from './auth-client.mjs';
+  // No Supabase publishable or secret key is included in browser-served files.
+  const supabase = createServerAuthClient();
   const form = document.querySelector('#signup-form');
   const submit = document.querySelector('#signup-submit');
   const feedback = document.querySelector('#signup-status');

@@ -15,6 +15,8 @@ test('패키징 함수 기준표는 시작 틀의 실제 API와 일치한다', a
   assert.deepEqual(baseline.allowedNew, ['api/ai.js', 'api/threat-intel.js']);
   const config = JSON.parse(await readFile(new URL('../aleph.config.json', import.meta.url), 'utf8'));
   const stageFunctions = config.step >= 3 ? ['api/notes.js', 'api/note.js'] : config.step >= 2 ? ['api/notes.js'] : [];
+  // Stage 5 no-browser-key bonus adds a same-origin Auth endpoint.
+  if (config.step >= 5) stageFunctions.push('api/auth.js');
   assert.deepEqual(actual, [...baseline.functions, ...baseline.allowedNew, ...stageFunctions].sort());
 });
 

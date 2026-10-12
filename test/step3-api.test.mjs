@@ -136,7 +136,7 @@ test('existing verify-login contract rejects malformed token and verifies issuer
     {...valid,exp:now-10}])assert.equal(await verifier('Bearer '+token(bad)),null);
 });
 
-test('stage 4 preserves Vercel routing, public SDK and headers', async()=>{
+test('stage 5 keeps Vercel routing and notes while server-proxying Auth', async()=>{
   const { readFile }=await import('node:fs/promises');
   const vercel=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
   assert.deepEqual(vercel.rewrites,[{source:'/api/notes/:id',destination:'/api/note?id=:id'}]);
@@ -147,7 +147,9 @@ test('stage 4 preserves Vercel routing, public SDK and headers', async()=>{
   assert.match(page,/href="\/signup\.html"/u);
   const registrationPage=await readFile(new URL('../public/signup.html',import.meta.url),'utf8');
   assert.match(registrationPage,/supabase\.auth\.signUp/u);
-  assert.match(page,/sb_publishable_/u);
+  assert.doesNotMatch(page,/sb_publishable_/u);
+  assert.doesNotMatch(registrationPage,/sb_publishable_/u);
+  assert.match(page,/createServerAuthClient/u);
   assert.doesNotMatch(page,/sb_secret_[A-Za-z0-9_-]{12,}/u);
   assert.doesNotMatch(page,/실습용 가상 과제 기록/u);
   assert.ok([4,5].includes(config.step));

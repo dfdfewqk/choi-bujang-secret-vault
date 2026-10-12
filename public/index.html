@@ -74,15 +74,11 @@
   </div>
 </main>
 <script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
+  import { createServerAuthClient } from './auth-client.mjs';
   import { isSignupEmailReturn, getAuthCompletion } from './auth-feedback.mjs';
   const returnedFromSignupEmail = isSignupEmailReturn(window.location.hash);
-  const SUPABASE_URL = 'https://bcwzllejypavwgsfqfbm.supabase.co';
-  // Publishable SDK key is public. Never put SUPABASE_SECRET_KEY here.
-  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_rQOSzVLPSmRGAAGfnV5CVw_ZsyWj-4Z";
-  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-  });
+  // Supabase Auth requests now use the same-origin server function.
+  const supabase = createServerAuthClient();
   const $ = selector => document.querySelector(selector);
   const status = message => { $('#status').textContent = message; };
   let session = null, list = [], editingId = null;
