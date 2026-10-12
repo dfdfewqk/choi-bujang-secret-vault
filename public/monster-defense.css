@@ -140,7 +140,9 @@ a.btn-secondary.signup-action-link{margin-top:11px;min-height:52px;color:#c1f4ff
 .signup-feedback[data-state="progress"]{color:#99eafd}
 .signup-result{text-align:center;animation:panelGlow 6s ease-in-out infinite}
 .signup-result h2{justify-content:center;line-height:1.45}
-.result-mark{font-size:31px;width:64px;height:64px;border:1px solid #53ebc7;background:#17615d52;color:#87ffe6;border-radius:50%;display:grid;place-items:center;margin:4px auto 16px;box-shadow:0 0 20px #2ff8d244}
+.result-mark{font-size:31px;width:64px;height:64px;border:1px solid #57c7f3;background:#16527052;color:#b2edff;border-radius:50%;display:grid;place-items:center;margin:4px auto 16px;box-shadow:0 0 20px #2bbff044}
+.result-mark[data-verified="true"]{border-color:#53ebc7;background:#17615d52;color:#87ffe6;box-shadow:0 0 20px #2ff8d244}
+.signup-result-warning{color:#ffdfae;background:#493e1c55;border:1px solid #aa91514a;padding:12px 13px;border-radius:8px;font-size:11px;line-height:1.85;text-align:left;margin:0 0 20px}
 #result-description{color:#bfdae9;font-size:13px;line-height:1.85}
 .signup-result-steps{text-align:left;margin:22px 0 26px;border-top:1px solid #386782;border-bottom:1px solid #386782;padding:8px 0}
 .signup-result-steps p{color:#b8d1e0;font-size:12px;margin:12px 0}
