@@ -28,3 +28,17 @@ jobs:
       - run: node --test test/step2-api.test.mjs
       - run: node --test test/step3-api.test.mjs
       - run: npm run build -- --local
+      - name: Verify generated city, monsters, shield assets
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          for (const layer of ['city','monsters','shield']) {
+            const svg = await readFile('public/assets/scene-' + layer + '.svg', 'utf8');
+            assert.match(svg, /<mask id="layerMask"/);
+            assert.match(svg, /data:image\/avif;base64,/);
+            assert.match(svg, /mask="url\(#layerMask\)"/);
+            assert.ok(svg.length > 77000, 'generated image layer unexpectedly small');
+          }
+          console.log('3 independent masked illustration assets generated successfully');
+          NODE
