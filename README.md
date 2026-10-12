@@ -12,7 +12,7 @@
 
 ## 사이트에서 직접 가입할 수 있도록 설정하기
 
-- 기존 `학습용 계정 만들기` 버튼은 Supabase Auth `signUp`을 그대로 호출합니다. 관리자가 B 계정을 대신 만드는 방식이 아닙니다.
+- 로그인 화면의 `학습용 계정 만들기`는 `/signup.html`로 이동합니다. 이메일·비밀번호·비밀번호 확인을 별도 페이지에서 입력하고, 제출 시 Supabase Auth `signUp`을 호출합니다. 가입 후 인증 메일 안내와 로그인 복귀 링크를 제공합니다. 기존 로그인·자료실 화면은 유지합니다.
 - 확인 메일의 반환 주소는 프런트엔드에서 `emailRedirectTo: new URL('/', window.location.href).href`로 지정합니다. Supabase Auth URL Configuration의 Redirect URLs에 실제 가입 사이트 URL을 등록해야 합니다. 운영 URL: `https://choi-bujang-secret-vault-six-jet.vercel.app/**`. 미리보기 도메인을 이용한 가입은 그 주소도 추가로 허용해야 합니다.
 - **실제 발송 차단 원인:** Supabase 로그의 `/signup` HTTP 429 및 `over_email_send_rate_limit`. 기본 Supabase SMTP는 시간당 약 2건으로 제한되며 프로젝트 팀 이메일 외 주소로 발송이 제한됩니다. 앱 코드만으로 해결되지 않습니다.
 - 정상적인 회원가입을 위해 프로젝트 관리자 화면 `Authentication → SMTP Settings`에 **별도의 정상적인 SMTP 제공자**를 설정해야 합니다. 인증메일 확인을 프로젝트 전체에서 끄거나, 가입 API에서 사용자 이메일을 임의로 검증 처리하지 않습니다. 이 Supabase 프로젝트의 다른 다이어리 앱도 같은 Auth 설정을 사용하므로 담당자 확인이 필요합니다.
