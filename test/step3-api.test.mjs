@@ -144,7 +144,9 @@ test('stage 4 preserves Vercel routing, public SDK and headers', async()=>{
   const page=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
   assert.match(page,/signInWithPassword/u);
   assert.match(page,/signOut/u);
-  assert.match(page,/signUp/u);
+  assert.match(page,/href="\/signup\.html"/u);
+  const registrationPage=await readFile(new URL('../public/signup.html',import.meta.url),'utf8');
+  assert.match(registrationPage,/supabase\.auth\.signUp/u);
   assert.match(page,/sb_publishable_/u);
   assert.doesNotMatch(page,/sb_secret_[A-Za-z0-9_-]{12,}/u);
   assert.doesNotMatch(page,/실습용 가상 과제 기록/u);
@@ -172,7 +174,9 @@ test('monster defense theme keeps the real login form and responsive stylesheet'
   assert.match(page,/id="create-form"/u);
   assert.match(page,/signInWithPassword/u);
   assert.match(page,/signOut/u);
-  assert.match(page,/signUp/u);
+  assert.match(page,/href="\/signup\.html"/u);
+  const registrationPage=await readFile(new URL('../public/signup.html',import.meta.url),'utf8');
+  assert.match(registrationPage,/supabase\.auth\.signUp/u);
   for(const layer of ['scene-city.svg','scene-monsters.svg','scene-shield.svg']) {
     assert.ok(page.includes('/assets/'+layer), 'missing visual layer '+layer);
   }
