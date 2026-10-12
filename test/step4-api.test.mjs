@@ -214,6 +214,11 @@ test('the stage 4 manifest keeps all API routes and original judge trust configu
   ]);
   assert.equal(config.judgeIssuer, 'https://aleph-judge-production.up.railway.app/defense/judge');
   assert.equal(config.identityProvider.audience, 'authenticated');
+  const signupPage = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  assert.match(signupPage, /emailRedirectTo:new URL\('\/',window\.location\.href\)\.href/u,
+    'Email confirmations must return to the requested BYTE BACK origin');
+  assert.match(signupPage, /supabase\.auth\.signUp/u,
+    'The site must keep direct user signup');
   const verifier = await readFile(new URL('../src/verify-login.mjs', import.meta.url), 'utf8');
   assert.match(verifier, /createLoginVerifier/u);
   const code = await readFile(new URL('../src/notes-api.mjs', import.meta.url), 'utf8');
