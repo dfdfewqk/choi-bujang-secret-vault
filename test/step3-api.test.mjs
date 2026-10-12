@@ -174,7 +174,7 @@ test('monster defense theme keeps the real login form and responsive stylesheet'
   assert.match(page,/signInWithPassword/u);
   assert.match(page,/signOut/u);
   assert.match(page,/signUp/u);
-  assert.match(page,/monster\/whale\.webp/u);
+  assert.match(page,/monsters\/whale\.webp/u);
   assert.match(css,/@media\(max-width:800px\)/u);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/u);
 });
