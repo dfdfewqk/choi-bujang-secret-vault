@@ -36,7 +36,8 @@ try {
     if (error.message?.startsWith('origin 주소가') || error.message?.startsWith('GitHub HTTPS')) throw error;
     fail('GitHub HTTPS 저장소 주소를 origin으로 등록해 주세요.');
   }
-  const changedFiles = git('diff-tree', '--root', '--no-commit-id', '--name-only', '--no-renames', '-r', commit)
+  // Include the first-parent diff for a merge commit; diff-tree without -m lists no files for merges.
+  const changedFiles = git('diff-tree', '--root', '--first-parent', '-m', '--no-commit-id', '--name-only', '--no-renames', '-r', commit)
     .split(/\r?\n/u).filter(Boolean).sort();
   if (!changedFiles.length) fail('마지막 커밋에 바뀐 파일이 없습니다.');
   const config = fromCommit('aleph.config.json');
