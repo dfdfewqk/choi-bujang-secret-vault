@@ -53,8 +53,4 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; else RESULT="failure"; fi
-          gh api -X POST "repos/$REPOSITORY/statuses/$COMMIT_SHA" \\
-            -f state="$RESULT" \\
-            -f context="stage2-live-check" \\
-            -f target_url="https://github.com/$REPOSITORY/actions/runs/$RUN_ID" \\
-            -f description="Step 2 live HTTP verification and bundle: $RESULT" > /dev/null
+          gh api -X POST "repos/$REPOSITORY/statuses/$COMMIT_SHA" -f state="$RESULT" -f context="stage2-live-check" -f target_url="https://github.com/$REPOSITORY/actions/runs/$RUN_ID" -f description="Step 2 live HTTP verification and bundle: $RESULT" > /dev/null
