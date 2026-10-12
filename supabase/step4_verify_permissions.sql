@@ -24,11 +24,25 @@ FROM pg_policies
 WHERE schemaname = 'public' AND tablename = 'vault_training_notes'
 ORDER BY policyname;
 
-SELECT (owner_id IS NULL) AS owner_unassigned,
-       count(*)::integer AS notes_count
-FROM public.vault_training_notes
-GROUP BY (owner_id IS NULL)
-ORDER BY owner_unassigned DESC;
+-- Determine A/B by signup order, without showing private user identifiers.
+WITH users_by_signup AS (
+  SELECT id, row_number() OVER (ORDER BY created_at ASC, id ASC) AS signup_position
+  FROM auth.users
+)
+SELECT CASE WHEN u.signup_position=1 THEN 'A'
+            WHEN u.signup_position=2 THEN 'B'
+            WHEN n.owner_id IS NULL THEN 'UNASSIGNED'
+            ELSE 'UNKNOWN' END AS owner,
+       count(*)::integer AS note_count,
+       count(*) FILTER(WHERE n.sort_order IN (1,2,3,4))::integer AS original_notes
+FROM public.vault_training_notes n
+LEFT JOIN users_by_signup u ON n.owner_id=u.id
+GROUP BY 1
+ORDER BY 1;
+
+-- The A/B proof must show A=4 and B=1 after the approved ownership fix.
+-- Before the fix, expect UNASSIGNED=4 and B=1.
+-- No SQL statement here modifies data, authorization or schema.
 
 -- IMPORTANT: GRANT alone does not prove row isolation.
 -- Verify row-level behavior using real A/B sessions with authenticated JWTs
