@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   live:
@@ -42,3 +43,18 @@ jobs:
             artifacts/submission.json
           if-no-files-found: error
           retention-days: 7
+      - name: Publish live check status without secrets
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; else RESULT="failure"; fi
+          gh api -X POST "repos/$REPOSITORY/statuses/$COMMIT_SHA" \\
+            -f state="$RESULT" \\
+            -f context="stage2-live-check" \\
+            -f target_url="https://github.com/$REPOSITORY/actions/runs/$RUN_ID" \\
+            -f description="Step 2 live HTTP verification and bundle: $RESULT" > /dev/null
