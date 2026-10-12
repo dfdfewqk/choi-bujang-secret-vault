@@ -278,3 +278,26 @@ test('login completion labels reflect a genuinely verified email only', () => {
   assert.equal(isSignupEmailReturn('#type=recovery&access_token=fake'), false);
   assert.equal(isSignupEmailReturn(''), false);
 });
+
+test('step 4 SQL review preserves the already-created B memo and only reassigns A originals', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const seed = await readFile(new URL('../supabase/step4_seed_review.sql', import.meta.url), 'utf8');
+  const policy = await readFile(new URL('../supabase/step4_rls_review.sql', import.meta.url), 'utf8');
+  const audit = await readFile(new URL('../supabase/step4_verify_permissions.sql', import.meta.url), 'utf8');
+
+  // This is a conservative static review; actual DB changes still require explicit approval.
+  assert.match(seed, /count\(\*\) FROM public\.vault_training_notes\) <> 5/u);
+  assert.match(seed, /owner_id = owner_b AND sort_order IS NULL/u);
+  assert.match(seed, /UPDATE public\.vault_training_notes\s+SET owner_id = owner_a/u);
+  assert.doesNotMatch(seed, /\bINSERT\s+INTO\s+public\.vault_training_notes\b/iu);
+  assert.doesNotMatch(seed, /\bDELETE\s+FROM\s+public\.vault_training_notes\b/iu);
+  assert.match(seed, /assigned <> 4/u);
+  assert.match(seed, /count\(\*\) FROM public\.vault_training_notes\s+WHERE owner_id = owner_b\) <> 1/u);
+  assert.match(policy, /FOR SELECT TO authenticated/u);
+  assert.match(policy, /FOR INSERT TO authenticated/u);
+  assert.match(policy, /FOR UPDATE TO authenticated/u);
+  assert.match(policy, /FOR DELETE TO authenticated/u);
+  assert.match(policy, /auth\.uid\(\)/u);
+  assert.match(audit, /UNASSIGNED/u);
+  assert.match(audit, /original_notes/u);
+});
