@@ -1,7 +1,7 @@
 // BYTE BACK Stage 5 optional 10-point bonus: Auth takes place in the server.
 // This key is a PUBLIC PUBLISHABLE key intentionally scoped to this backend
 // source file. It is never shipped in public HTML, JS or static assets.
-// Never replace it with SUPABASE_SECRET_KEY or expose service_role credentials.
+// Never replace it with a privileged database key or expose elevated credentials.
 import { createClient } from '@supabase/supabase-js';
 import config from '../aleph.config.json' with { type: 'json' };
 
