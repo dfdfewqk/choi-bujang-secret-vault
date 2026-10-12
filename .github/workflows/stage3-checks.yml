@@ -1,0 +1,30 @@
+name: Stage 3 implementation tests
+
+on:
+  push:
+    branches: [stage3-auth-crud]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:r5
+      - run: npm run test:package
+      - run: node --test test/step2.test.mjs
+      - run: node --test test/step2-api.test.mjs
+      - run: node --test test/step3-api.test.mjs
+      - run: npm run build -- --local
