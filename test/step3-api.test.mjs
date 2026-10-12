@@ -178,6 +178,7 @@ test('monster defense theme keeps the real login form and responsive stylesheet'
     assert.ok(page.includes('/assets/'+layer), 'missing visual layer '+layer);
   }
   assert.doesNotMatch(page,/(?:SECURE|DATA SAFE|class="scene-label"|class="holo ")/u);
+  assert.doesNotMatch(page, /hud-check/u, 'No checkmark may overlay the monster eye');
   const build=await readFile(new URL('../scripts/build-public.mjs',import.meta.url),'utf8');
   for(const layer of ['scene-city.svg','scene-monsters.svg','scene-shield.svg']) assert.ok(build.includes(layer));
   assert.match(css,/@keyframes monsterBreathe/u);
