@@ -1,0 +1,79 @@
+name: Stage 5 production live security verification and submission bundle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify Stage 5 live production HTTPS and deployment identity
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if node scripts/verify-step5-live.mjs; then
+              echo "Stage 5 production HTTP checks passed."
+              exit 0
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "Stage 5 production HTTP failed after waiting for rollout."
+              exit 1
+            fi
+            echo "Waiting 20 seconds for latest production deployment (attempt $attempt)."
+            sleep 20
+          done
+      - name: Verify public Supabase key cannot reach original notes table directly
+        run: node scripts/verify-step5-original-api-http.mjs
+      - name: Confirm source checkout is clean before creating submission
+        run: |
+          git status --short
+          test -z "$(git status --porcelain --untracked-files=all)"
+      - name: Generate local-only submission explanation
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const explanation = [
+            '5단계: 브라우저의 메모 자료 GET/POST/PUT/DELETE는 Vercel 서버 함수만 호출하고 Supabase Auth 로그인을 유지합니다.',
+            '서버 함수는 검증된 userId 및 owner_id 조건을 유지하며 기존 A/B 로그인 동작과 UI를 보존합니다.',
+            '승인된 메모 테이블의 PUBLIC/anon/authenticated 직접 권한 회수 후 DB 역할 검사에서 권한 거부, service_role 정상 조회를 확인했습니다.',
+            '운영 HTTPS에서 공개 자료 미노출, 비로그인 서버 API 차단, 공개 키를 넣은 원본 Supabase API GET/PATCH 차단, step5 manifest 및 nosniff를 검사했습니다.',
+            '실제 서명된 사용자 JWT로 원본 HTTPS API를 보내는 검사는 심판 판정에서 최종 확인해야 합니다.'
+          ].join('\n');
+          writeFileSync('bundle-notes.json', JSON.stringify({explanation,blockedAt:null},null,2)+'\n');
+          NODE
+      - name: Generate Stage 5 production submission
+        run: npm run bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage5-live-and-submission
+          path: |
+            artifacts/stage5-live-check.json
+            artifacts/stage5-original-api-http.json
+            artifacts/submission.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record production security status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; else RESULT="failure"; fi
+          gh api -X POST "repos/$REPOSITORY/statuses/$COMMIT_SHA" -f state="$RESULT" -f context="stage5-live-check" -f target_url="https://github.com/$REPOSITORY/actions/runs/$RUN_ID" -f description="Stage 5 original API and production HTTP security check: $RESULT" > /dev/null
