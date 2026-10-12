@@ -2,6 +2,8 @@
 
 > **작업 상태 (2026-10-12):** 4단계는 이미 `main`에 병합돼 [운영 사이트](https://choi-bujang-secret-vault-six-jet.vercel.app/)로 배포됐고 운영 익명 API 검증도 통과했습니다. 직전 `main` 커밋은 `5cad12e1dea4359c0b9965724ae77e1c4a23e69e`(4단계 Artifacts 90일 보관 설정)입니다. 기존 README가 **4단계 운영 배포 대기**라고 적은 것은 최신 기록과 달라 여기서 바로잡았습니다. 현재 5단계는 `stage5-server-only` 검토 브랜치에 있으며 운영 사이트를 아직 5단계로 전환하지 않았습니다. **메모 테이블의 직접 권한 회수 SQL은 사용자가 검토·실행하기 전까지 미적용**입니다.
 
+> **5단계 저장점 최종 검증:** GitHub Actions의 2·3·4·5단계 자동 테스트가 모두 통과했고, `npm run bundle`을 실제 실행하여 5단계 JSON을 생성했습니다. Vercel **미리보기** `https://choi-bujang-secret-vault-isxr2s9oo-dfdfewqk.vercel.app/`는 READY 상태입니다. 4단계 **운영** 사이트와 학습 DB 권한은 아직 그대로입니다. 권한 회수 전에는 심판의 원본 직접 접근 차단 검증이 완료됐다고 주장하지 않습니다.
+
 ## 현재 작동하는 기능 (5줄)
 
 1. Supabase Auth로 회원가입·이메일 인증·로그인·로그아웃·세션 복원을 합니다.
