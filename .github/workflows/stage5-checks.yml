@@ -33,6 +33,8 @@ jobs:
           node --test test/step2.test.mjs test/step2-api.test.mjs test/step3-api.test.mjs test/step4-api.test.mjs
       - name: Test Stage 5 browser/API boundary and review-only SQL
         run: node --test test/step5-api.test.mjs
+      - name: Stage 5 HTTPS original API with real browser public key
+        run: node scripts/verify-step5-original-api-http.mjs
       - name: Confirm workspace clean before bundling
         run: |
           git status --short
@@ -58,6 +60,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: stage5-checkpoint-submission
-          path: artifacts/submission.json
+          path: |
+            artifacts/submission.json
+            artifacts/stage5-original-api-http.json
           if-no-files-found: error
           retention-days: 90
