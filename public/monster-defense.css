@@ -46,7 +46,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   filter:drop-shadow(0 0 12px #0dc9ff);opacity:.85;pointer-events:none;
   animation:iconFloat 6.1s ease-in-out infinite;
 }
-.hud-check{width:34px;left:77%;top:46%;animation-delay:-2s}
 .hud-card{width:52px;left:49%;top:72%;animation-delay:-3.3s}
 @keyframes cityDrift{0%{transform:translateX(-1.3px)}100%{transform:translateX(1.3px)}}
 @keyframes cityTwinkle{0%,100%{opacity:.15}55%{opacity:.43}}
@@ -99,12 +98,12 @@ input:hover,textarea:hover{border-color:#58d8f6}
 /* Keep the actual Supabase form stationary while the illustration layers move. */
 @media(max-width:780px){
   .battlefield{min-height:350px;max-height:450px;height:48vw}
-  .hud-check{width:26px}.hud-card{width:38px}
+  .hud-card{width:38px}
   .shield-aura{filter:blur(10px)}
 }
 @media(max-width:450px){
   .battlefield{height:320px;min-height:320px}
-  .hud-check{width:22px}.hud-card{width:30px}
+  .hud-card{width:30px}
 }
 @media(prefers-reduced-motion:reduce){
   .layer-city,.layer-monsters,.layer-shield,.city-lights,.shield-aura,.defense-stream,.hud-icon{
