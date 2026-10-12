@@ -1,0 +1,58 @@
+name: Stage 4 live verification and submission bundle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Stage 4 anonymous HTTP and deployment manifest verification
+        run: node scripts/verify-step4-live.mjs
+      - name: Prepare ignored local submission notes
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const explanation = [
+            '4단계 서버 API는 검증된 사용자 ID와 메모 owner_id가 일치할 때만 CRUD를 허용합니다.',
+            'DB 최소 권한과 RLS 정책은 별도의 사용자 승인 후 적용하고 확인해야 합니다.',
+            '비로그인 JSON 차단과 step4 배포, nosniff를 실제 검사했습니다. A/B 통합 점검은 별도로 수행합니다.'
+          ].join('\n');
+          writeFileSync('bundle-notes.json',JSON.stringify({explanation,blockedAt:null},null,2)+'\n');
+          NODE
+      - name: Generate ignored stage4 submission bundle
+        run: npm run bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-live-and-submission
+          path: |
+            artifacts/stage4-live-check.json
+            artifacts/submission.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Report Stage 4 live check status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; else RESULT="failure"; fi
+          gh api -X POST "repos/$REPOSITORY/statuses/$COMMIT_SHA" -f state="$RESULT" -f context="stage4-live-check" -f target_url="https://github.com/$REPOSITORY/actions/runs/$RUN_ID" -f description="Stage 4 anonymous HTTP and submission check: $RESULT" > /dev/null
