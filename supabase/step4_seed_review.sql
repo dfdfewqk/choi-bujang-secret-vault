@@ -1,9 +1,13 @@
--- BYTE BACK 4 / REVIEW ONLY. Do NOT run until user approves data changes.
--- Edit ONLY A_EMAIL_HERE and B_EMAIL_HERE in your own Supabase SQL Editor.
--- Never paste emails, passwords, or session tokens into GitHub or chat.
--- Assumes there are exactly four unassigned demo notes and two confirmed Auth accounts.
--- Modifies only public.vault_training_notes (NOT diary tables).
--- Running the complete transaction again fails safely rather than reassigning notes.
+-- BYTE BACK STEP 4: REVIEW ONLY. Apply ONLY after the owner authorizes changes.
+-- No email addresses, access tokens, passwords or fixed private UUIDs are needed.
+-- Precondition: EXACTLY TWO verified and successfully signed-in Supabase Auth users:
+--  A = oldest signup (the original account), B = latest signup (the test account).
+-- If the shared Auth project has additional users by execution time, ABORT, do not guess.
+-- Only public.vault_training_notes is modified; the diary app is untouched.
+-- Original 4 demo rows are preserved, assigned to A. Only 1 synthetic B row is added.
+-- This is a one-time transaction and deliberately aborts if run again.
+-- Existing id column is GENERATED ALWAYS AS IDENTITY; no sequence/default changes needed.
+
 BEGIN;
 
 LOCK TABLE public.vault_training_notes IN SHARE ROW EXCLUSIVE MODE;
@@ -12,35 +16,45 @@ DO $migration$
 DECLARE
   owner_a uuid;
   owner_b uuid;
+  total_users integer;
+  verified_users integer;
+  logged_in_users integer;
   assigned integer;
 BEGIN
+  SELECT count(*)::integer,
+         count(*) FILTER (WHERE email_confirmed_at IS NOT NULL)::integer,
+         count(*) FILTER (WHERE email_confirmed_at IS NOT NULL
+                             AND last_sign_in_at IS NOT NULL)::integer
+    INTO total_users, verified_users, logged_in_users
+    FROM auth.users;
+
+  IF total_users <> 2 OR verified_users <> 2 OR logged_in_users <> 2 THEN
+    RAISE EXCEPTION 'AB test requires exactly two verified, signed-in Auth users; got total %, verified %, signed-in %',
+                    total_users, verified_users, logged_in_users;
+  END IF;
+
   SELECT id INTO STRICT owner_a
-  FROM auth.users
-  WHERE lower(email) = lower('A_EMAIL_HERE')
-    AND email_confirmed_at IS NOT NULL;
-
+    FROM auth.users ORDER BY created_at ASC, id ASC LIMIT 1;
   SELECT id INTO STRICT owner_b
-  FROM auth.users
-  WHERE lower(email) = lower('B_EMAIL_HERE')
-    AND email_confirmed_at IS NOT NULL;
+    FROM auth.users ORDER BY created_at DESC, id DESC LIMIT 1;
 
-  IF owner_a IS NULL OR owner_b IS NULL OR owner_a = owner_b THEN
-    RAISE EXCEPTION 'Two different verified accounts A and B are required';
+  IF owner_a = owner_b THEN
+    RAISE EXCEPTION 'A and B must be separate, verified users';
   END IF;
 
   IF (SELECT count(*) FROM public.vault_training_notes) <> 4
      OR (SELECT count(*) FROM public.vault_training_notes
          WHERE sort_order IN (1,2,3,4)
            AND owner_id IS NULL AND note_uuid IS NOT NULL) <> 4 THEN
-    RAISE EXCEPTION 'Unexpected data: four unassigned original notes were not found; no changes committed';
+    RAISE EXCEPTION 'Expected exactly 4 original, unassigned notes; aborting without changes';
   END IF;
 
   UPDATE public.vault_training_notes
-  SET owner_id = owner_a
-  WHERE sort_order IN (1,2,3,4) AND owner_id IS NULL;
+     SET owner_id = owner_a
+   WHERE sort_order IN (1,2,3,4) AND owner_id IS NULL;
   GET DIAGNOSTICS assigned = ROW_COUNT;
   IF assigned <> 4 THEN
-    RAISE EXCEPTION 'Original note assignment failed';
+    RAISE EXCEPTION 'Original note assignment failed; rolling back';
   END IF;
 
   INSERT INTO public.vault_training_notes (owner_id, title, content)
@@ -57,20 +71,18 @@ $migration$;
 
 COMMIT;
 
--- Read-only post-check: omit emails, UUIDs and note bodies from shared reports.
-WITH owners AS (
-  SELECT id,
-  CASE WHEN lower(email)=lower('A_EMAIL_HERE') THEN 'A'
-       WHEN lower(email)=lower('B_EMAIL_HERE') THEN 'B'
-       ELSE 'OTHER' END AS account
+-- Read-only report: no account emails, UUIDs or memo contents.
+WITH numbered_users AS (
+  SELECT id, row_number() OVER (ORDER BY created_at ASC, id ASC) AS signup_order
   FROM auth.users
 )
-SELECT COALESCE(owners.account, 'UNASSIGNED') AS account,
+SELECT CASE WHEN numbered_users.signup_order = 1 THEN 'A'
+            WHEN numbered_users.signup_order = 2 THEN 'B'
+            ELSE 'OTHER/UNASSIGNED' END AS account,
        count(*)::integer AS note_count
-FROM public.vault_training_notes AS notes
-LEFT JOIN owners ON owners.id = notes.owner_id
-GROUP BY owners.account
+FROM public.vault_training_notes notes
+LEFT JOIN numbered_users ON numbered_users.id = notes.owner_id
+GROUP BY numbered_users.signup_order
 ORDER BY account;
 
--- If data needs reverting, do NOT run a broad DELETE.
--- First inspect the five notes and obtain user approval for a separate targeted rollback.
+-- Do not delete any rows to revert. A targeted rollback requires separate approval.
