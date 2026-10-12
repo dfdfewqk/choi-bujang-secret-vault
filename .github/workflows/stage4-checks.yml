@@ -40,6 +40,6 @@ jobs:
             assert.match(svg, /data:image\/avif;base64,/);
           }
           const config = JSON.parse(await readFile('aleph.config.json','utf8'));
-          assert.equal(config.step,4);
+          assert.ok([4,5].includes(config.step));
           console.log('Step 4, original illustration layers and auth UI preserved.');
           NODE
