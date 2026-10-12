@@ -18,7 +18,7 @@ test('no tracked public or root JSON with original sample notes', async () => {
     await assert.rejects(access(new URL(path, root)));
   }
   const page = await readFile(new URL('public/index.html', root), 'utf8');
-  assert.match(page, /fetch\('\/api\/notes'/u);
+  assert.match(page, /api\\('\/api\/notes'/u);
   assert.doesNotMatch(page, /fetch\('\/data.json'/u);
 });
 
