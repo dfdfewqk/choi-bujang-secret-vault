@@ -9,7 +9,7 @@
 1. Supabase Auth로 회원가입·이메일 인증·로그인·로그아웃·세션 복원을 합니다.
 2. 브라우저의 메모 GET/POST/PUT/DELETE는 Vercel `/api/notes`·`/api/notes/:id`만 호출하고 Supabase 데이터 API를 직접 호출하지 않습니다.
 3. 서버 함수는 인증된 사용자 ID와 `owner_id`가 일치하는 메모만 조회·추가·수정·삭제합니다.
-4. A의 기존 메모 4건, B의 기존 메모 1건을 보존하고 양방향 상대 메모 직접 GET에서 404를 확인했습니다.
+4. 계정별 메모 소유권과 A↔B 상대 메모 직접 GET 404 차단을 유지합니다. 과거 A 4건/B 1건이었지만, 사용자가 실제 CRUD 테스트에서 메모를 추가·삭제한 후 현재 A 3건/B 1건입니다.
 5. 기존 도시·괴물·보호막 애니메이션과 `X-Content-Type-Options: nosniff` 응답 헤더를 유지합니다.
 
 ## 5단계에서 확인한 사실과 변경
@@ -18,6 +18,8 @@
 - **제작 2 DB 적용 완료 (2026-10-12):** 승인된 `public.vault_training_notes` 한 테이블에만 `PUBLIC`·`anon`·`authenticated`의 모든 직접 권한을 회수했습니다. `anon`과 `authenticated`의 SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER는 전부 false, `service_role`의 권한은 모두 유지, RLS ON·정책 4개 유지입니다.
 - **실제로 적용한 SQL:** 사용자 승인 후 `supabase/step5_revoke_direct_notes_review.sql`을 Supabase 마이그레이션 `byteback_step5_revoke_direct_notes_privileges`로 적용했습니다. 메모 데이터 변경 및 INSERT/DELETE는 없었습니다. 이 파일은 적용 당시의 검토본으로 유지합니다. 다른 다이어리 테이블, 서버 환경 변수 및 Auth 설정은 변경하지 않았습니다.
 - **적용 전후 검사 통과:** `supabase/step5_verify_permissions.sql`과 DB 역할 모의 조회를 통해 인증·비인증 역할의 직접 SELECT 차단을 검증했습니다. 서버 전용 역할은 기존 5건을 정상 조회했습니다. A=4, B=1, 미지정=0, 제목·내용·메모 식별자에 대한 사전·사후 지문이 동일합니다.
+- **브라우저 실제 사용 후 DB 재조회:** 사용자가 5단계 메모 추가·수정·삭제를 직접 확인했습니다. 이후 확인한 현재 소유자별 건수는 **A 3건, B 1건**이며 A의 기존 `포트폴리오` 메모가 없고 새 메모 제목은 `훈련 행정 자`로 기록됐습니다. 사용자 메모를 자동 복원/변경하지 않았습니다. 이는 5단계 보안 정책 문제가 아니라 실제 자료 상태이므로, 이전 단계의 A 4/B 1 결과를 현재 건수로 오인하지 않습니다.
+- **실제 원본 API HTTPS 공개 키 검사:** 5단계 CI에서 브라우저에 포함된 공개 `apikey`로 Supabase PostgREST 원본 GET와 존재하지 않는 UUID에 대한 PATCH를 실행했고 **양쪽 모두 HTTP 401**을 확인했습니다. 사용자 로그인 JWT를 넣은 직접 HTTPS 테스트는 별도 미실행이며, SQL 역할 검사로는 authenticated 직접 SELECT 권한 없음이 확인됐습니다.
 - **원본 자료 API:** `aleph.config.json` `originalApiUrl`은 `https://bcwzllejypavwgsfqfbm.supabase.co/rest/v1/vault_training_notes` (HTTPS, 쿼리 없음)입니다. `step=5`, `allowedRoutes` 5종, 심판/학생 발급자 설정을 보존합니다.
 - **브라우저의 공개 Supabase Auth 키:** 로그인/가입을 위해 유지합니다. 가점 항목인 공개 키 완전 제거는 로그인 흐름의 위험이 커 이번 저장점에서 **시도하지 않았습니다**. 서버 전용 키는 브라우저에 없습니다.
 - **검증 수준:** A의 서버 함수 CRUD는 기존 Stage 3/4 모의 API 자동 시험으로 확인한 상태입니다. 실제 DB 역할에서 `anon`/`authenticated` 직접 조회 거부, `service_role` 기존 메모 5건 조회 성공을 별도로 확인했습니다. 실계정 A의 POST/PUT/DELETE 및 공개 키·실제 JWT를 포함한 PostgREST 직접 HTTPS 호출은 이번 작업에서 실행했다고 주장하지 않습니다. 양방향 A/B GET 404와 비로그인 Vercel API 차단은 4단계에서 확인했습니다.
