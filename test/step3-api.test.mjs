@@ -136,3 +136,22 @@ test('existing verify-login contract rejects malformed token and verifies issuer
   for(const bad of [{...valid,aud:'different'}, {...valid,iss:'https://other.example.com/auth/v1'},
     {...valid,exp:now-10}])assert.equal(await verifier('Bearer '+token(bad)),null);
 });
+
+test('stage 3 Vercel routing, public SDK and headers remain configured', async()=>{
+  const { readFile }=await import('node:fs/promises');
+  const vercel=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
+  assert.deepEqual(vercel.rewrites,[{source:'/api/notes/:id',destination:'/api/note?id=:id'}]);
+  assert.ok(vercel.headers.some(r=>r.headers?.some(h=>h.key==='X-Content-Type-Options' && h.value==='nosniff')));
+  const page=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  assert.match(page,/signInWithPassword/u);
+  assert.match(page,/signOut/u);
+  assert.match(page,/signUp/u);
+  assert.match(page,/sb_publishable_/u);
+  assert.doesNotMatch(page,/sb_secret_[A-Za-z0-9_-]{12,}/u);
+  assert.doesNotMatch(page,/실습용 가상 과제 기록/u);
+  assert.equal(config.step,3);
+  assert.deepEqual(config.allowedRoutes,[
+    'GET /api/notes','POST /api/notes','GET /api/notes/:id',
+    'PUT /api/notes/:id','DELETE /api/notes/:id',
+  ]);
+});
