@@ -61,7 +61,7 @@ jobs:
           for(let i=19;i<input.alerts.length;i++){
             assert.notEqual(result.decisions[i].action,'block',input.alerts[i].id);
           }
-          assert.equal(rules.rules.length,10);
+          assert.equal(rules.rules.length,9); // bf-01 and bf-02 share one source
           for(const rule of rules.rules){
             assert.equal(rule.effect,'deny');
             assert.ok(rule.evidenceAlertIds.length>0);
