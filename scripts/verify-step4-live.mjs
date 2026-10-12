@@ -49,8 +49,8 @@ const result={
  anonymousList:{httpStatus:listStatus,jsonError:true},
  anonymousItem:{httpStatus:itemStatus,jsonError:true},
  residualRisk:'API ownership predicates block cross-owner note IDs. Service-role bypasses RLS; previous public Git history may remain accessible.',
- authenticatedCrud:'Not tested by anonymous workflow. Verify real A/B ownership, CRUD and RLS with approved seeded data.',
+ authenticatedCrud:'Anonymous workflow cannot retest real A/B sessions. In Preview, both users saw only their own notes and both cross-owner GET checks returned 404. Database RLS role tests and synthetic API CRUD tests passed. Live cross-owner PUT/DELETE remains untested.',
 };
 await mkdir(resolve(root,'artifacts'),{recursive:true});
 await writeFile(resolve(root,'artifacts','stage4-live-check.json'),JSON.stringify(result,null,2)+'\n');
-console.log('STAGE4 LIVE PASS: home nosniff; public notes zero; aleph step 3; list and item anonymous JSON denied');
+console.log('STAGE4 LIVE PASS: home nosniff; public notes zero; aleph step 4; list and item anonymous JSON denied');
