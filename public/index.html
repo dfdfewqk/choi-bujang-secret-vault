@@ -14,25 +14,27 @@
 </header>
 <main class="landing">
   <div class="main-grid">
-    <section class="battlefield" aria-label="괴물들의 정보 침공을 막아내는 푸른 방어막">
-      <img class="scene-image" src="/assets/monster-shield-scene.avif" alt="서울의 야경을 배경으로 고래와 음식 괴물들이 푸른 데이터 방어막에 막혀 있는 모습" width="750" height="660" decoding="async" fetchpriority="high">
-      <div class="scene-vignette" aria-hidden="true"></div>
-      <div class="shield-glow" aria-hidden="true"></div>
-      <div class="data-trail" aria-hidden="true"></div>
-      <div class="holo holo-a" aria-hidden="true">✓ <span>SECURE</span></div>
-      <div class="holo holo-b" aria-hidden="true">⬡ <span>DATA SAFE</span></div>
-      <div class="holo holo-c" aria-hidden="true">✓</div>
-      <div class="scene-label">BYTE BACK // 괴물 침공 방어 작전</div>
+    <section class="battlefield" aria-label="도시를 향해 다가오는 괴물과 정보를 지키는 푸른 방어막">
+      <div class="city-atmosphere" aria-hidden="true"></div>
+      <img class="layer layer-city" src="/assets/scene-city.svg" alt="" width="750" height="660" draggable="false">
+      <div class="city-lights" aria-hidden="true"></div>
+      <img class="layer layer-monsters" src="/assets/scene-monsters.svg" alt="" width="750" height="660" draggable="false">
+      <img class="layer layer-shield" src="/assets/scene-shield.svg" alt="" width="750" height="660" draggable="false">
+      <div class="shield-aura" aria-hidden="true"></div>
+      <div class="defense-stream" aria-hidden="true"></div>
+      <svg class="hud-icon hud-check" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2"/>
+        <path d="m13 24 8 8 15-18" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <svg class="hud-icon hud-card" viewBox="0 0 72 48" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="68" height="44" rx="6" stroke="currentColor" stroke-width="2"/>
+        <circle cx="19" cy="18" r="8" fill="currentColor"/>
+        <path d="M7 39c0-11 24-11 24 0M40 15h20M40 25h20M40 35h11" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      </svg>
     </section>
     <section class="command" aria-label="3단계 방어 인증">
-      <div class="alarm-label" aria-hidden="true"><span class="alarm-dot"></span> INVASION ALERT</div>
       <h1 class="hero-heading">MONSTER<br>DATA DEFENSE</h1>
       <p class="hero-subtitle">괴물 침공으로부터 내 정보를 지키는 방어 시스템</p>
-      <div class="status-row" aria-label="방어 작전 상태">
-        <span class="status-chip alert">침입 경보</span>
-        <span class="status-chip safe">방어망 활성화</span>
-        <span class="status-chip level">보안 단계 3</span>
-      </div>
       <section id="login-panel" class="panel">
         <h2><span class="form-shield" aria-hidden="true">⬡</span> 방어 인증</h2>
         <form id="login-form">
