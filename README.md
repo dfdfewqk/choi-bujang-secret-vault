@@ -1,3 +1,22 @@
+# BYTE BACK · 5단계 90점 → 100점 가점 보완 (배포 대기)
+
+> **현재 상태:** 기존 5단계 심판 결과는 **90/100점**이며, 남은 10점의 원인은 **브라우저 공개 Supabase 키**입니다. 코드에서는 3개 화면에서 키를 제거하고 로그인까지 서버 함수를 경유하도록 수정했습니다. GitHub 회귀 검사는 통과했지만 Vercel이 무료 API 배포 횟수 한도(HTTP 402)로 새 배포를 거부하여 **아직 100점이나 운영 반영을 주장하지 않습니다.** 예전에 제출한 미리보기는 이전 버전(90점)으로 계속 유지됩니다.
+
+## 보너스 구현 및 원상 복원 조건
+
+- `public/index.html` · `public/signup.html` · `public/access-check.html`: 브라우저 Supabase SDK, API 주소, `sb_publishable_...` 형태 공개 키를 제거했습니다.
+- `public/auth-client.mjs`: 모든 로그인·가입·로그아웃·세션 확인·갱신은 **같은 출처의** `/api/auth`를 이용합니다. 기존 Supabase 세션의 로컬 저장값은 한 번 이전하며, 이메일 인증 URL의 토큰은 서버에서 검증하고 주소창에서 제거합니다.
+- `api/auth.js`, `src/auth-api.mjs`: 서버에서만 Supabase Auth를 호출합니다. Auth에는 **공개 가능한 publishable 키**만 사용하고, 기존 메모 DB용 서버 전용 키를 사용하거나 반환하지 않습니다.
+- `src/notes-api.mjs`, `src/verify-login.mjs`과 DB 권한·A/B 메모·기본 ZTNA 규칙 및 화면 디자인은 수정하지 않았습니다.
+- `test/step5-server-auth.test.mjs`: 공개 화면 키 제거, 서버 로그인·가입·세션·갱신·로그아웃, 기존 토큰 처리 시험. 기존 Stage2~5 및 XDR1/2 회귀 검사와 원본 Supabase API 직접 접근 차단 HTTP 검사를 추가 실행합니다.
+- 실계정 로그인·메일 링크·A/B 메모 동작은 **새 배포에서 사용자가 재검증하기 전까지 미확인**입니다. 정상 동작을 확인하기 전에는 기존 90점 배포의 주소를 대체하지 않고, 문제가 있다면 이 변경안 브랜치만 되돌립니다.
+
+### 점수 반영을 위한 남은 작업
+
+Vercel 새 배포 제한이 풀리면 **이 브랜치의 최신 전체 커밋**을 배포하고, 공개 접근 가능한 URL에서 로그인 → 기존 A 메모 읽기·추가·수정·삭제 → B 접근 차단 확인 → 심판 재제출의 순서로 검증합니다. 심판이 새 배포 커밋에서 `aleph.config.json`의 기존 `step=5`·`allowedRoutes`, `vercel.json`의 `nosniff`, 화면 공개 키 없음 3가지를 모두 확인할 수 있게 유지합니다.
+
+---
+
 # BYTE BACK · 보너스 XDR-02 저장점 (웹 주입 공격 탐지)
 
 > **작업 범위:** 기존 1~5단계 메모·Supabase Auth·ZTNA 판정기와 보너스 XDR-01은 유지합니다. `xdr/fixtures/web-injection.json`의 가상 경보 26건에만 새 독립형 판단 모듈을 추가합니다. 보너스 작업이라 `aleph.config.json` 단계 값과 실 배포 주소는 변경하지 않습니다.
