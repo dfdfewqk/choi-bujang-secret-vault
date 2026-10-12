@@ -164,7 +164,7 @@
     }catch(err){status(err.message);}
   });
   $('#cancel').addEventListener('click',cleanEditor);
-  supabase.auth.onAuthStateChange((_event,newSession)=>{void onSession(newSession);});
+  supabase.auth.onAuthStateChange((_event,newSession)=>{setTimeout(()=>{void onSession(newSession);},0);});
   const {data:{session:initialSession},error}=await supabase.auth.getSession();
   if(error)status('인증 상태 확인 실패: '+error.message);
   else await onSession(initialSession);
