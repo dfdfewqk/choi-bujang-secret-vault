@@ -1,0 +1,99 @@
+name: Bonus XDR-01 brute-force check and savepoint
+
+on:
+  push:
+    branches: [bonus-xdr-01-brute-force]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Preserve existing 1-5 tests and XDR runner contract
+        run: |
+          npm run test:r5
+          npm run test:package
+          node --test test/step2.test.mjs test/step2-api.test.mjs test/step3-api.test.mjs test/step4-api.test.mjs test/step5-api.test.mjs
+          node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs
+      - name: Check raw fixture and redacted reader have equal line counts
+        run: |
+          node xdr/brute-force/read-alerts.mjs > /tmp/byteback-xdr-readout.txt
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          const f = JSON.parse(await readFile('xdr/fixtures/brute-force.json','utf8'));
+          const lines = (await readFile('/tmp/byteback-xdr-readout.txt','utf8')).trim().split('\n');
+          assert.equal(lines.length-1, f.alerts.length);
+          assert.equal(f.alerts.length,28);
+          console.log('Original Wazuh events: ' + f.alerts.length + '; safe projected lines: ' + (lines.length-1));
+          NODE
+      - name: Run original requested command first time
+        run: npm run xdr:run -- brute-force
+      - name: Repeat requested command and refresh result.json
+        run: npm run xdr:run -- brute-force
+      - name: Check counts, normal events, deny evidence and no leaked secrets
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          const input=JSON.parse(await readFile('xdr/fixtures/brute-force.json','utf8'));
+          const result=JSON.parse(await readFile('xdr/brute-force/result.json','utf8'));
+          const rules=JSON.parse(await readFile('xdr/brute-force/deny-rules.runtime.json','utf8'));
+          const expected={block:10,alert:9,record:9};
+          assert.equal(input.alerts.length,28);
+          assert.equal(result.decisions.length,input.alerts.length);
+          assert.deepEqual(result.counts,expected);
+          for(let i=19;i<input.alerts.length;i++){
+            assert.notEqual(result.decisions[i].action,'block',input.alerts[i].id);
+          }
+          assert.equal(rules.rules.length,9); // bf-01 and bf-02 share one source
+          for(const rule of rules.rules){
+            assert.equal(rule.effect,'deny');
+            assert.ok(rule.evidenceAlertIds.length>0);
+            assert.ok(Date.parse(rule.expiresAt)>Date.parse(rule.createdAt));
+          }
+          const log=await readFile('xdr/alerts.log','utf8');
+          assert.doesNotMatch(log,/password=|Bearer\s+|sb_secret_|\bsrcuser\b|\bsrcip\b/u);
+          console.log('XDR-01 final counts: block='+result.counts.block+
+            ', alert='+result.counts.alert+', record='+result.counts.record+
+            '; normal events blocked=0');
+          NODE
+      - name: Verify only result.json is staged as generated output
+        run: |
+          git add -- xdr/brute-force/result.json
+          git diff --cached --name-only
+          if [ "$(git diff --cached --name-only)" != "xdr/brute-force/result.json" ] && [ -n "$(git diff --cached --name-only)" ]; then
+            echo "Unexpected files staged." >&2
+            exit 1
+          fi
+      - name: Create requested bonus savepoint commit after passing tests
+        if: github.event_name == 'push' && github.ref == 'refs/heads/bonus-xdr-01-brute-force'
+        run: |
+          if git diff --cached --quiet; then
+            echo "Result file is already at the verified savepoint."
+          else
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "보너스 xdr-01 저장점: brute-force 28건 분류 및 결과 검증"
+            git push origin HEAD:bonus-xdr-01-brute-force
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bonus-xdr-01-verification
+          path: xdr/brute-force/result.json
+          if-no-files-found: error
+          retention-days: 90

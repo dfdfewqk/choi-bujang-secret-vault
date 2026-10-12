@@ -8,3 +8,7 @@ public/aleph.json
 *.local.sql
 private-*.sql
 .vercel/
+
+# XDR-01 transient alerts contain local security events and are not for public Git.
+xdr/alerts.log
+xdr/brute-force/deny-rules.runtime.json

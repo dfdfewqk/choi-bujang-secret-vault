@@ -1,0 +1,31 @@
+{
+  "schema": "byteback.xdr.brute-force.patterns.v1",
+  "mitre": "T1110",
+  "source": "https://attack.mitre.org/techniques/T1110/",
+  "patterns": [
+    {
+      "id": "rapid_failures",
+      "name": "단시간 동일 출발지 로그인 실패 집중",
+      "condition": "T1110, Wazuh rule.level>=10, 로그인 실패 30회 이상이며 단기간·동일 주소·동일 계정·연속 시도의 정황이 명시됨",
+      "evidence": "MITRE ATT&CK T1110.001: 반복적인 비밀번호 추측은 짧은 기간 많은 인증 실패를 만들 수 있음."
+    },
+    {
+      "id": "password_spraying",
+      "name": "다중 계정 대상 비밀번호 스프레이",
+      "condition": "T1110, rule.level>=10, 다수 계정을 대상으로 같은 비밀번호를 적용한 정황(최소 5계정) 또는 많은 계정에 규칙적 실패가 확인됨",
+      "evidence": "MITRE ATT&CK T1110.003: 같은 비밀번호를 여러 사용자 계정에 대입하는 시도는 password spraying의 전형적 특징."
+    },
+    {
+      "id": "sequential_guessing",
+      "name": "같은 계정에 비밀번호 변화 반복",
+      "condition": "T1110, rule.level>=10, 연속 비밀번호 변경 시도와 실패 30회 이상의 구체적 관측값",
+      "evidence": "MITRE ATT&CK T1110.001: 체계적으로 여러 비밀번호를 반복 시도하는 행동은 password guessing으로 분류됨."
+    },
+    {
+      "id": "suspicious_login_failure",
+      "name": "추가 확인이 필요한 로그인 실패",
+      "condition": "T1110 경보, rule.level>=5, 로그인 실패 3회 이상·낯선 주소·잠금 이후 실패 등의 약한 징후만 있고 확정적인 다량 공격 조건은 없음",
+      "evidence": "MITRE ATT&CK T1110: 로그인 실패만으로 정당한 사용자와 공격자를 분리할 수 없으므로 추가 경보로만 관찰."
+    }
+  ]
+}

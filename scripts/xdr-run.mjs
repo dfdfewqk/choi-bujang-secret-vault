@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -55,6 +55,25 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   const outDir = join(root, 'xdr', moduleKey);
   await mkdir(outDir, { recursive: true });
   await writeFile(join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`, 'utf8');
+  if (moduleKey === 'brute-force') {
+    // The original runner remains usable with a standalone decide.mjs (e.g.
+    // in isolated judge and package tests). Only attach this optional
+    // responder when the local bonus module is present.
+    const responderPath = join(outDir, 'respond.mjs');
+    let found = true;
+    try { await access(responderPath); }
+    catch (error) {
+      if (error?.code === 'ENOENT') found = false;
+      else throw error;
+    }
+    if (found) {
+      const { processXdrResponses } = await import(pathToFileURL(responderPath).href);
+      if (typeof processXdrResponses !== 'function') {
+        throw new Error('XDR-01 응답 연결 함수가 없습니다.');
+      }
+      await processXdrResponses({ alerts: fixture.alerts, root });
+    }
+  }
   return result;
 }
 
