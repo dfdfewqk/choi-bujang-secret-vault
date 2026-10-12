@@ -1,3 +1,35 @@
+# BYTE BACK · 보너스 XDR-01 저장점 (무차별 로그인 시도 탐지)
+
+> **작업 범위:** 1~5단계 자료실·Supabase DB·로그인 화면·기존 ZTNA 기본 판정 규칙을 보존하고, `xdr/brute-force/`에 Wazuh 모양의 **가상** 로그인 경보 방어 모듈만 추가합니다. 이번 보너스는 별도 단계이므로 `aleph.config.json`의 `step=5`는 바꾸지 않습니다.
+
+## 현재 ZTNA 판정기와 이번 보너스의 연결 (5줄)
+
+1. `src/decider.mjs`의 `RULE_IDS=['starter.deny']`와 `decide(request)`가 기본 ZTNA 정책을 판단하며, 기존 구현은 기본 거부입니다.
+2. ZTNA의 실제 검증된 요청·응답 계약은 `docs/DECIDER_REQUEST.md`에 있고, 이번 보너스에서는 해당 파일과 판정기 코드를 바꾸지 않습니다.
+3. `xdr/brute-force/decide.mjs`는 인터넷·파일·패키지 없이 시험 경보 하나만 받아 `block/alert/record`와 0~1 확신도를 반환합니다.
+4. `xdr/brute-force/respond.mjs`는 `block` 후보만 만료 시간이 있는 임시 거부 규칙으로 만들고 `createZtnaDenyGate` 연결기를 제공합니다.
+5. **연결기는 신뢰할 수 있는 호출자가 검증된 접속 출발지 주소를 제공해야 작동하며**, 실제 반 엔진에 자동 등록되는 것으로 주장하지 않습니다.
+
+## 보너스 XDR-01 실행
+
+- `xdr/fixtures/brute-force.json`: 수정하지 않는 28건의 Wazuh 형태 가상 경보
+- `xdr/brute-force/read-alerts.mjs`: 경보마다 시각·IP·가상 계정·규칙 수준·설명 **5개 필드만** 읽고 출력 시 비밀값처럼 보이는 문자열을 제거
+- `xdr/brute-force/patterns.json`: [MITRE ATT&CK T1110](https://attack.mitre.org/techniques/T1110/) 및 T1110.001/.003에 기반한 네 가지 패턴과 일련의 조건·한 줄 근거
+- `xdr/brute-force/decide.mjs`: 단일 파일의 정적 패턴을 사용하여 0.85 이상 자동 차단 후보, 0.5 이상 경고, 나머지는 기록으로 분류
+- `xdr/brute-force/respond.mjs`: 같은 출발지에 정상 성공 기록이 있을 때 자동 차단을 보류하고, 확실한 공격 출발지의 **15분짜리 거부 후보 규칙** 및 경보 ID를 생성합니다. `xdr/alerts.log`와 임시 규칙 캐시는 Git에서 제외합니다.
+- `scripts/xdr-run.mjs`: 기존 일반 XDR 시험은 그대로 두되 `brute-force` 모듈이 있을 때만 로컬 응답기를 호출합니다. `xdr/brute-force/result.json`만 공개 Git에 저장합니다.
+
+```bash
+npm ci
+node xdr/brute-force/read-alerts.mjs
+node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs
+npm run xdr:run -- brute-force
+```
+
+위 명령의 `result.json`은 수업용 경보에 대한 **오프라인 모의 판정**입니다. 실제 Wazuh 서비스, 인터넷 차단 장치, 운영 ZTNA 정책 배포나 심판 점수를 확인한 것으로 해석하지 않습니다. 최종 커밋·실행 결과는 GitHub Actions의 `Bonus XDR-01 brute-force check and savepoint`에서도 확인할 수 있습니다.
+
+---
+
 # BYTE BACK · 5단계 저장점 (자료 요청을 서버 한곳으로 모읍니다)
 
 > **작업 상태 (2026-10-12):** 4단계는 이미 `main`에 병합돼 [운영 사이트](https://choi-bujang-secret-vault-six-jet.vercel.app/)로 배포됐고 운영 익명 API 검증도 통과했습니다. 직전 `main` 커밋은 `5cad12e1dea4359c0b9965724ae77e1c4a23e69e`(4단계 Artifacts 90일 보관 설정)입니다. 기존 README가 **4단계 운영 배포 대기**라고 적은 것은 최신 기록과 달라 여기서 바로잡았습니다. 현재 5단계는 `stage5-server-only` 검토 브랜치에 있으며 운영 사이트를 아직 5단계로 전환하지 않았습니다. **메모 테이블의 직접 권한 회수 SQL은 사용자 승인 후 적용 완료**했습니다. `PUBLIC`·`anon`·`authenticated`의 직접 CRUD는 차단됐고 `service_role`은 유지됩니다. 다른 테이블·기존 메모 5건은 변경하지 않았습니다.
