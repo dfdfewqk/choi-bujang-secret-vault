@@ -1,3 +1,34 @@
+# BYTE BACK · 보너스 XDR-02 저장점 (웹 주입 공격 탐지)
+
+> **작업 범위:** 기존 1~5단계 메모·Supabase Auth·ZTNA 판정기와 보너스 XDR-01은 유지합니다. `xdr/fixtures/web-injection.json`의 가상 경보 26건에만 새 독립형 판단 모듈을 추가합니다. 보너스 작업이라 `aleph.config.json` 단계 값과 실 배포 주소는 변경하지 않습니다.
+
+## 현재 기능과 ZTNA 규칙 위치 (5줄)
+
+1. `src/decider.mjs`에서 ZTNA 기본 규칙 `RULE_IDS=['starter.deny']`를 직접 읽어 `decide(request)`로 판단합니다.
+2. 기존 ZTNA 계약은 `docs/DECIDER_REQUEST.md`이며 XDR-02는 기존 판단 함수나 판정기 규칙을 대체하지 않습니다.
+3. `xdr/web-injection/decide.mjs`는 `patterns.json` 패턴을 내장해 단독·오프라인으로 T1190 웹 경보를 `block / alert / record`로 분류합니다.
+4. `respond.mjs`는 명확한 반복 공격만 15분짜리 출발 주소별 임시 거부 후보로 만들고, `xdr/alerts.log`에 비밀값 없는 경고를 남깁니다.
+5. 검증된 출발 주소를 제공하는 신뢰된 호출자가 연결기에 접속을 맡길 때만 임시 규칙을 검사하며, 그 밖의 요청은 기존 ZTNA 판단기로 전달합니다.
+
+## 실행 방법
+
+```bash
+npm ci
+node xdr/web-injection/read-alerts.mjs
+node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs
+npm run xdr:run -- web-injection
+```
+
+- 원본 경보는 **26건**, 읽기 모듈은 경보마다 시각·출발 주소·계정·경보 수준·설명 **5개 필드**만 출력합니다. 요청 URL, 계정 토큰 및 원본 상세 경보는 출력하지 않습니다.
+- `patterns.json`은 [MITRE ATT&CK T1190](https://attack.mitre.org/techniques/T1190/)을 기반으로 반복 SQL 입력, 스크립트 삽입, 경로 이탈·명령 구분자, 단발 모호 입력 네 패턴을 정의합니다.
+- `decide.mjs`는 파일·패키지·네트워크 사용 없이 경보만 분류하고, 확신도 0.85 이상이면 차단 후보, 0.5 이상이면 경고, 나머지는 기록합니다.
+- `respond.mjs`는 중복 출발지 주소를 하나의 차단 규칙으로 묶고, 정상 사용 기록이 같은 주소에 있다면 자동 차단을 보류합니다. 차단 만료 시각과 `wi-..` 증거 경보 ID를 포함합니다.
+- `scripts/xdr-run.mjs`은 기존 `brute-force` 동작을 유지하면서 `web-injection` 모듈에만 선택적으로 `respond.mjs`를 연결합니다.
+- `result.json`은 시험용 판정 결과일 뿐 실제 운영 Wazuh·ZTNA 시스템에 차단 규칙을 등록했다는 뜻은 아닙니다.
+- 저장점 생성과 결과 파일 커밋은 GitHub Actions `Bonus XDR-02 web injection check and savepoint`에서 두 번 재실행한 뒤 합니다.
+
+---
+
 # BYTE BACK · 보너스 XDR-01 저장점 (무차별 로그인 시도 탐지)
 
 > **작업 범위:** 1~5단계 자료실·Supabase DB·로그인 화면·기존 ZTNA 기본 판정 규칙을 보존하고, `xdr/brute-force/`에 Wazuh 모양의 **가상** 로그인 경보 방어 모듈만 추가합니다. 이번 보너스는 별도 단계이므로 `aleph.config.json`의 `step=5`는 바꾸지 않습니다.
