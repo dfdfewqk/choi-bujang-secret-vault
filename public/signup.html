@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#06182f">
+<meta name="description" content="BYTE BACK 학습용 방어 계정 만들기. 이메일 확인을 거쳐 나만의 자료실을 시작하세요.">
+<title>학습용 계정 만들기 | BYTE BACK</title>
+<link rel="stylesheet" href="/monster-defense.css">
+</head>
+<body class="signup-page">
+<header class="site-header">
+  <div class="brand">
+    <span class="brand-emblem" aria-hidden="true">⬡</span>
+    <strong>우리 반 공동 방어</strong>
+    <span class="brand-caption">BYTE BACK · JOIN DEFENSE</span>
+  </div>
+  <a class="header-return" href="/">로그인으로 돌아가기 <span aria-hidden="true">↗</span></a>
+</header>
+<main class="landing">
+  <div class="main-grid">
+    <section class="battlefield" aria-label="괴물로부터 도시의 데이터를 보호하는 푸른 방어막">
+      <div class="city-atmosphere" aria-hidden="true"></div>
+      <img class="layer layer-city" src="/assets/scene-city.svg" alt="" width="750" height="660" draggable="false">
+      <div class="city-lights" aria-hidden="true"></div>
+      <img class="layer layer-monsters" src="/assets/scene-monsters.svg" alt="" width="750" height="660" draggable="false">
+      <img class="layer layer-shield" src="/assets/scene-shield.svg" alt="" width="750" height="660" draggable="false">
+      <div class="shield-aura" aria-hidden="true"></div>
+      <div class="defense-stream" aria-hidden="true"></div>
+      <svg class="hud-icon hud-card" viewBox="0 0 72 48" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="68" height="44" rx="6" stroke="currentColor" stroke-width="2"/>
+        <circle cx="19" cy="18" r="8" fill="currentColor"/>
+        <path d="M7 39c0-11 24-11 24 0M40 15h20M40 25h20M40 35h11" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    </section>
+    <section class="command signup-command">
+      <p class="signup-eyebrow">LEVEL 04 / NEW DEFENDER</p>
+      <h1 class="hero-heading">MONSTER<br>DATA DEFENSE</h1>
+      <p class="hero-subtitle">나만의 방어 계정을 만들어 자료실에 참여하세요.</p>
+      <nav class="signup-steps" aria-label="가입 절차">
+        <div class="step-current"><span>01</span>계정 정보 입력</div>
+        <div><span>02</span>이메일 확인</div>
+        <div><span>03</span>로그인</div>
+      </nav>
+
+      <section class="panel signup-panel" id="signup-panel" aria-labelledby="signup-title">
+        <h2 id="signup-title"><span class="form-shield" aria-hidden="true">⬡</span> 학습용 계정 만들기</h2>
+        <p class="signup-description">새 계정은 본인 메모만 볼 수 있습니다. 로그인에 사용할 이메일 주소로 인증 안내를 받습니다.</p>
+        <form id="signup-form">
+          <label for="signup-email">이메일 주소
+            <input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254"
+              placeholder="이메일 주소를 입력하세요" required>
+          </label>
+          <label for="signup-password">비밀번호
+            <input id="signup-password" name="password" type="password" autocomplete="new-password"
+              minlength="8" maxlength="128" placeholder="8자 이상 입력" required>
+          </label>
+          <label for="signup-confirm">비밀번호 확인
+            <input id="signup-confirm" name="confirm-password" type="password" autocomplete="new-password"
+              minlength="8" maxlength="128" placeholder="비밀번호를 한 번 더 입력" required>
+          </label>
+          <p class="signup-small-note">비밀번호는 Supabase Auth에서 관리합니다. 실제 개인정보 대신 학습용 가상 메모만 사용하세요.</p>
+          <button id="signup-submit" class="btn-primary" type="submit">인증 메일 받기 <span aria-hidden="true">›</span></button>
+        </form>
+        <p id="signup-status" class="signup-feedback" role="status" aria-live="polite"></p>
+      </section>
+      <section class="panel signup-result hidden" id="signup-result" aria-labelledby="result-title">
+        <div class="result-mark" aria-hidden="true">✉</div>
+        <h2 id="result-title" tabindex="-1">가입 요청이 접수되었습니다</h2>
+        <p id="result-description">가입 요청이 접수되었습니다. 메일의 인증 링크를 열어야 이메일 인증이 완료됩니다.</p>
+        <div class="signup-result-steps">
+          <p><strong>01.</strong> 인증 안내 메일 확인</p>
+          <p><strong>02.</strong> 이메일 인증 링크 열기</p>
+          <p><strong>03.</strong> 로그인 화면에서 접속하기</p>
+        </div>
+        <p class="signup-result-warning">이 화면은 이메일 인증 완료 표시가 아닙니다. 이미 가입한 이메일은 확인 메일이 다시 오지 않을 수 있습니다. 그런 경우 기존 비밀번호로 로그인해 보세요.</p>
+        <a href="/" class="btn-primary signup-action-link">로그인 화면으로 이동 <span aria-hidden="true">›</span></a>
+      </section>
+      <a class="signup-return" href="/">이미 계정이 있나요? <strong>로그인하기 →</strong></a>
+      <p class="signup-help">메일이 오지 않는다면 스팸함을 확인하세요. 발송 제한이 발생하면 가입을 반복하지 말고 사이트 관리자에게 알려주세요.</p>
+      <p class="safety-note">BYTE BACK은 학습용 자료실입니다. 실제 개인정보나 비밀자료를 저장하지 마세요.</p>
+    </section>
+  </div>
+</main>
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
+  const SUPABASE_URL = 'https://bcwzllejypavwgsfqfbm.supabase.co';
+  // Public publishable key only. Never expose a Supabase secret/server key.
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rQOSzVLPSmRGAAGfnV5CVw_ZsyWj-4Z';
+  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+  });
+  const form = document.querySelector('#signup-form');
+  const submit = document.querySelector('#signup-submit');
+  const feedback = document.querySelector('#signup-status');
+  const notify = (text, type='error') => {
+    feedback.textContent = text;
+    feedback.dataset.state = type;
+  };
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (submit.disabled) return;
+    if (!form.reportValidity()) return;
+    const email = document.querySelector('#signup-email').value.trim();
+    const password = document.querySelector('#signup-password').value;
+    const confirmation = document.querySelector('#signup-confirm').value;
+    if (password !== confirmation) {
+      notify('비밀번호가 일치하지 않습니다. 다시 확인해 주세요.');
+      document.querySelector('#signup-confirm').focus();
+      return;
+    }
+    submit.disabled = true;
+    notify('가입 요청을 확인하는 중입니다.', 'progress');
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: new URL('/', window.location.href).href },
+      });
+      if (error) {
+        const rateLimited = error.status === 429 || error.code === 'over_email_send_rate_limit';
+        const unauthorizedEmail = error.code === 'email_address_not_authorized'
+          || /email address not authorized/i.test(error.message ?? '');
+        if (rateLimited) notify('인증 메일 발송 제한(429)입니다. 가입 버튼을 반복해서 누르지 말고 잠시 후 다시 시도하거나 사이트 관리자에게 알려주세요.');
+        else if (unauthorizedEmail) notify('이 주소로 메일을 보낼 수 없습니다. 사이트 관리자의 인증 메일 발송 설정이 필요합니다.');
+        else notify('가입 요청을 처리하지 못했습니다: ' + error.message);
+        return;
+      }
+      // Do not reveal whether a pre-existing address belongs to another account.
+      form.reset();
+      const verifiedSession = Boolean(data?.session?.user?.email_confirmed_at);
+      document.querySelector('.result-mark').textContent = verifiedSession ? '✓' : '✉';
+      document.querySelector('.result-mark').dataset.verified = String(verifiedSession);
+      document.querySelector('#result-title').textContent =
+        verifiedSession ? '회원가입 및 이메일 인증 완료!' : '가입 요청이 접수되었습니다';
+      document.querySelector('#result-description').textContent =
+        verifiedSession
+          ? '이메일 인증이 확인되었습니다. 방어 자료실로 이동해 주세요.'
+          : '아직 이메일 인증 완료 상태가 아닙니다. 메일함과 스팸함에서 인증 링크를 열어주세요. 이미 가입된 이메일이라면 새 메일이 발송되지 않을 수 있습니다.';
+      const currentStep = document.querySelector('.signup-steps .step-current');
+      currentStep?.classList.remove('step-current');
+      const steps = document.querySelectorAll('.signup-steps > div');
+      steps[verifiedSession ? 2 : 1].classList.add('step-current');
+      document.querySelector('.signup-result-warning').classList.toggle('hidden', verifiedSession);
+      document.querySelector('#signup-panel').classList.add('hidden');
+      document.querySelector('#signup-result').classList.remove('hidden');
+      document.querySelector('#result-title').focus();
+    } catch {
+      notify('일시적으로 가입 요청에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      submit.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

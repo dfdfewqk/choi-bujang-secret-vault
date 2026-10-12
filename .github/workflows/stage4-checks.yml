@@ -1,0 +1,45 @@
+name: Stage 4 ownership and regression tests
+
+on:
+  push:
+    branches: [stage4-owner-isolation]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:r5
+      - run: npm run test:package
+      - run: node --test test/step2.test.mjs test/step2-api.test.mjs
+      - run: node --test test/step3-api.test.mjs
+      - run: node --test test/step4-api.test.mjs
+      - run: npm run build -- --local
+      - name: Check preserved defensive illustration layers
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          for (const layer of ['city','monsters','shield']) {
+            const svg = await readFile('public/assets/scene-' + layer + '.svg', 'utf8');
+            assert.match(svg, /mask="url\(#layerMask\)"/);
+            assert.match(svg, /data:image\/avif;base64,/);
+          }
+          const config = JSON.parse(await readFile('aleph.config.json','utf8'));
+          assert.equal(config.step,4);
+          console.log('Step 4, original illustration layers and auth UI preserved.');
+          NODE

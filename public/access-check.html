@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#06182f">
+<meta name="description" content="BYTE BACK 4단계: A/B 메모 읽기 권한 확인용 안전 검사 화면">
+<title>계정별 접근 차단 확인 | BYTE BACK</title>
+<link rel="stylesheet" href="/monster-defense.css">
+</head>
+<body class="access-check-page">
+<header class="site-header">
+  <div class="brand"><span class="brand-emblem" aria-hidden="true">⬡</span><strong>우리 반 공동 방어</strong><span class="brand-caption">BYTE BACK · LEVEL 04 CHECK</span></div>
+</header>
+<main class="access-check-main">
+  <div class="access-check-wrap">
+    <p class="signup-eyebrow">LEVEL 04 / OWNERSHIP CHECK</p>
+    <h1>계정별 접근 차단 검사</h1>
+    <p class="access-check-lead">다른 계정의 메모 ID로 직접 조회할 수 있는지 확인합니다. <strong>읽기 전용 검사</strong>이므로 메모가 바뀌거나 삭제되지 않습니다.</p>
+    <a class="btn-secondary signup-action-link" href="/">← 방어 자료실로 돌아가기</a>
+    <div class="panel access-check-account">
+      <h2>현재 로그인 상태</h2>
+      <p id="check-account" role="status" aria-live="polite">로그인 확인 중...</p>
+      <p class="access-check-muted">각 계정에서 메모 ID를 복사한 뒤, 다른 계정으로 로그인하여 검사합니다. 비밀번호나 로그인 토큰을 복사할 필요는 없습니다.</p>
+    </div>
+    <section class="panel" aria-labelledby="own-notes-heading">
+      <h2 id="own-notes-heading">1. 내 메모 ID 복사</h2>
+      <p class="access-check-muted">A 또는 B로 로그인했을 때 아래에서 본인 메모의 「ID 복사」를 누르세요.</p>
+      <ul id="check-own-list" class="access-check-list" aria-live="polite"></ul>
+      <button id="check-refresh" class="btn-secondary" type="button">내 메모 다시 불러오기</button>
+    </section>
+    <section class="panel" aria-labelledby="foreign-check-heading">
+      <h2 id="foreign-check-heading">2. 다른 계정으로 검사</h2>
+      <p class="access-check-muted">자료실에서 로그아웃하고 반대 계정으로 로그인한 후, 앞서 복사해 둔 메모 ID를 붙여 넣으세요.</p>
+      <form id="check-form">
+        <label for="check-id">상대 계정에서 복사한 메모 ID
+          <input id="check-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false" maxlength="36" required>
+        </label>
+        <button id="check-submit" class="btn-primary" type="submit">접근 차단 검사 (조회만 실행)</button>
+      </form>
+      <p id="check-result" class="access-check-result" role="status" aria-live="polite"></p>
+      <p class="access-check-muted">참고: 404는 「접근 거부 또는 없는 ID」를 의미합니다. <strong>상대 계정에서 실제로 복사한 ID</strong>여야 차단을 확인한 증거가 됩니다.</p>
+    </section>
+    <p class="safety-note">학습용 가상 메모만 검사하세요. 로그인 정보·토큰·실제 개인정보를 복사하거나 공유하지 마세요.</p>
+  </div>
+</main>
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
+  const supabase = createClient(
+    'https://bcwzllejypavwgsfqfbm.supabase.co',
+    'sb_publishable_rQOSzVLPSmRGAAGfnV5CVw_ZsyWj-4Z',
+    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
+  );
+  const $ = selector => document.querySelector(selector);
+  const list = $('#check-own-list');
+  const feedback = $('#check-result');
+  function report(message, kind='info') {
+    feedback.textContent=message;
+    feedback.dataset.kind=kind;
+  }
+  async function sessionOrThrow() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session?.access_token) throw new Error('로그인이 필요합니다. 자료실에서 먼저 로그인해 주세요.');
+    return data.session;
+  }
+  async function getNotes() {
+    list.replaceChildren();
+    const pending=document.createElement('li');
+    pending.textContent='본인 메모를 확인하는 중입니다...';
+    list.append(pending);
+    try {
+      const current=await sessionOrThrow();
+      $('#check-account').textContent='로그인됨: '+(current.user?.email ?? '인증된 사용자');
+      const response=await fetch('/api/notes', {
+        method:'GET',
+        headers: {'Authorization':'Bearer '+current.access_token},
+        cache:'no-store',
+      });
+      if (!response.ok) throw new Error('메모 목록 요청 실패 ('+response.status+')');
+      const body=await response.json();
+      if (!Array.isArray(body.notes)) throw new Error('메모 목록 형식을 확인할 수 없습니다.');
+      list.replaceChildren();
+      if (body.notes.length===0) {
+        const item=document.createElement('li');
+        item.textContent='본인 메모가 없습니다. 자료실에 로그인한 계정을 확인하세요.';
+        list.append(item);
+      }
+      for (const [index, note] of body.notes.entries()) {
+        const li=document.createElement('li');
+        const title=document.createElement('span');
+        title.textContent=(index+1)+'. '+note.title;
+        const copy=document.createElement('button');
+        copy.type='button';
+        copy.className='access-check-copy';
+        copy.textContent='ID 복사';
+        copy.addEventListener('click',async()=>{
+          try {
+            await navigator.clipboard.writeText(note.id);
+            report('메모 ID를 복사했습니다. 자료실로 돌아가 다른 계정으로 로그인해 주세요.','info');
+          } catch {
+            report('클립보드 복사가 차단됐습니다. 브라우저의 복사 권한을 확인해 주세요.','error');
+          }
+        });
+        li.append(title,copy);
+        list.append(li);
+      }
+    } catch(error){
+      list.replaceChildren();
+      const item=document.createElement('li');
+      item.textContent=error.message;
+      list.append(item);
+      $('#check-account').textContent='로그인 확인이 필요합니다.';
+    }
+  }
+  const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  $('#check-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const id=$('#check-id').value.trim();
+    if(!UUID.test(id)){report('메모 ID 형식이 올바르지 않습니다.','error');return;}
+    const button=$('#check-submit');
+    button.disabled=true;
+    report('다른 계정 메모를 읽을 수 있는지 확인하는 중입니다...','info');
+    try{
+      const current=await sessionOrThrow();
+      // Read-only request: never call PUT, POST or DELETE during this inspection.
+      const response=await fetch('/api/notes/'+encodeURIComponent(id),{
+        method:'GET',
+        headers:{'Authorization':'Bearer '+current.access_token},
+        cache:'no-store',
+      });
+      if (response.status===404) {
+        report('404 — 메모를 조회할 수 없습니다. 실제 상대 계정의 ID를 입력했다면 접근 차단 성공입니다.','success');
+      } else if (response.status===200) {
+        report('200 — 현재 계정에서 이 ID에 접근 가능합니다. 본인 메모 ID를 입력했는지 확인해 주세요. 다른 계정의 메모 ID라면 보안 점검이 필요합니다.','error');
+      } else {
+        report('검사 미완료: 서버 응답 '+response.status+'. 로그인 상태와 사이트 접속을 확인해 주세요.','error');
+      }
+    }catch(error){report('검사 미완료: '+error.message,'error');}
+    finally{button.disabled=false;}
+  });
+  $('#check-refresh').addEventListener('click',()=>{void getNotes();});
+  void getNotes();
+</script>
+</body>
+</html>

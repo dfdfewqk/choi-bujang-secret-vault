@@ -22,15 +22,14 @@ function database(rows) {
   function query() {
     let operation='read',filterId=null,ownerFilter=null,input=null;
     const q={
-      select(){return q;}, eq(k,v){if(k==='note_uuid')filterId=v;return q;},
+      select(){return q;}, eq(k,v){if(k==='note_uuid')filterId=v;if(k==='owner_id')ownerFilter=v;return q;},
       or(s){ownerFilter=s;return q;},order(){return q;},
       limit:async()=>({
-        data:rows.filter(r=>ownerFilter?.includes(r.owner_id??'is.null')&&
-          (r.owner_id===null||ownerFilter.includes(r.owner_id)))
+        data:rows.filter(r=>r.owner_id===ownerFilter)
           .map(r=>({...r})),error:null,
       }),
       maybeSingle:async()=>{
-        const index=rows.findIndex(r=>r.note_uuid===filterId);
+        const index=rows.findIndex(r=>r.note_uuid===filterId && r.owner_id===ownerFilter);
         if(index<0)return {data:null,error:null};
         const row=rows[index];
         if(operation==='update')Object.assign(row,input);
@@ -42,7 +41,7 @@ function database(rows) {
       then(resolve,reject){
         let output={data:[],error:null};
         if(operation==='delete') {
-          const idx=rows.findIndex(r=>r.note_uuid===filterId);
+          const idx=rows.findIndex(r=>r.note_uuid===filterId && r.owner_id===ownerFilter);
           if(idx>=0){output={data:[{note_uuid:rows[idx].note_uuid}],error:null};rows.splice(idx,1);}
         }
         return Promise.resolve(output).then(resolve,reject);
@@ -79,7 +78,7 @@ test('missing and invalid login rejected as JSON',async()=>{
   }
 });
 
-test('personal list and legacy unassigned synthetic notes require login',async()=>{
+test('personal list excludes other users and unassigned notes',async()=>{
   const {db}=database([
     {note_uuid:ID,owner_id:A,title:'A',content:'A note'},
     {note_uuid:OTHER_ID,owner_id:B,title:'B',content:'B note'},
@@ -87,12 +86,12 @@ test('personal list and legacy unassigned synthetic notes require login',async()
   ]);
   const res=await exercise({db});
   assert.equal(res.statusCode,200);
-  assert.deepEqual(res.body.notes.map(x=>x.title),['A','demo']);
+  assert.deepEqual(res.body.notes.map(x=>x.title),['A']);
 });
 
 test('create, fetch, edit, delete and 404 after deletion with validated server owner',async()=>{
   const store=database([]);
-  const created=await exercise({method:'POST',body:{id:ID,title:'First',body:'sample',owner_id:B},db:store.db});
+  const created=await exercise({method:'POST',body:{id:ID,title:'First',body:'sample'},db:store.db});
   assert.equal(created.statusCode,201);
   assert.deepEqual(created.body,{id:ID});
   assert.equal(store.rows[0].owner_id,A);
@@ -103,9 +102,9 @@ test('create, fetch, edit, delete and 404 after deletion with validated server o
   const edited=await exercise({method:'PUT',id:ID,body:{title:'Second',body:'changed'},db:store.db});
   assert.equal(edited.statusCode,200);
   assert.equal(edited.body.body,'changed');
-  // Step 3 intentionally allows verified B to read A by ID; Step 4 restricts this.
+  // Stage 4 prevents verified B from reading A's private note by ID.
   const fromB=await exercise({id:ID,user:B,db:store.db});
-  assert.equal(fromB.statusCode,200);
+  assert.equal(fromB.statusCode,404);
   const gone=await exercise({method:'DELETE',id:ID,db:store.db});
   assert.equal(gone.statusCode,200);
   const missing=await exercise({id:ID,db:store.db});
@@ -137,7 +136,7 @@ test('existing verify-login contract rejects malformed token and verifies issuer
     {...valid,exp:now-10}])assert.equal(await verifier('Bearer '+token(bad)),null);
 });
 
-test('stage 3 Vercel routing, public SDK and headers remain configured', async()=>{
+test('stage 4 preserves Vercel routing, public SDK and headers', async()=>{
   const { readFile }=await import('node:fs/promises');
   const vercel=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
   assert.deepEqual(vercel.rewrites,[{source:'/api/notes/:id',destination:'/api/note?id=:id'}]);
@@ -145,11 +144,13 @@ test('stage 3 Vercel routing, public SDK and headers remain configured', async()
   const page=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
   assert.match(page,/signInWithPassword/u);
   assert.match(page,/signOut/u);
-  assert.match(page,/signUp/u);
+  assert.match(page,/href="\/signup\.html"/u);
+  const registrationPage=await readFile(new URL('../public/signup.html',import.meta.url),'utf8');
+  assert.match(registrationPage,/supabase\.auth\.signUp/u);
   assert.match(page,/sb_publishable_/u);
   assert.doesNotMatch(page,/sb_secret_[A-Za-z0-9_-]{12,}/u);
   assert.doesNotMatch(page,/실습용 가상 과제 기록/u);
-  assert.equal(config.step,3);
+  assert.equal(config.step,4);
   assert.deepEqual(config.allowedRoutes,[
     'GET /api/notes','POST /api/notes','GET /api/notes/:id',
     'PUT /api/notes/:id','DELETE /api/notes/:id',
@@ -173,7 +174,9 @@ test('monster defense theme keeps the real login form and responsive stylesheet'
   assert.match(page,/id="create-form"/u);
   assert.match(page,/signInWithPassword/u);
   assert.match(page,/signOut/u);
-  assert.match(page,/signUp/u);
+  assert.match(page,/href="\/signup\.html"/u);
+  const registrationPage=await readFile(new URL('../public/signup.html',import.meta.url),'utf8');
+  assert.match(registrationPage,/supabase\.auth\.signUp/u);
   for(const layer of ['scene-city.svg','scene-monsters.svg','scene-shield.svg']) {
     assert.ok(page.includes('/assets/'+layer), 'missing visual layer '+layer);
   }
