@@ -45,12 +45,9 @@
   </div>
 </main>
 <script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
-  const supabase = createClient(
-    'https://bcwzllejypavwgsfqfbm.supabase.co',
-    'sb_publishable_rQOSzVLPSmRGAAGfnV5CVw_ZsyWj-4Z',
-    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
-  );
+  import { createServerAuthClient } from './auth-client.mjs';
+  // No Supabase publishable or secret key is included in browser-served files.
+  const supabase = createServerAuthClient();
   const $ = selector => document.querySelector(selector);
   const list = $('#check-own-list');
   const feedback = $('#check-result');
