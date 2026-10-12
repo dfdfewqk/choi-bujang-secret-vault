@@ -1,0 +1,97 @@
+name: Bonus XDR-02 web injection check and savepoint
+
+on:
+  push:
+    branches: [bonus-xdr-02-web-injection]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Preserve R5, Stage 2-5 and XDR-01 existing tests
+        run: |
+          npm run test:r5
+          npm run test:package
+          node --test test/step2.test.mjs test/step2-api.test.mjs test/step3-api.test.mjs test/step4-api.test.mjs test/step5-api.test.mjs
+          node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs
+      - name: Count redacted Wazuh rows without writing source alerts
+        run: |
+          node xdr/web-injection/read-alerts.mjs > /tmp/byteback-xdr02-safe-output.txt
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          const f=JSON.parse(await readFile('xdr/fixtures/web-injection.json','utf8'));
+          const lines=(await readFile('/tmp/byteback-xdr02-safe-output.txt','utf8')).trim().split('\n');
+          assert.equal(f.alerts.length,26);
+          assert.equal(lines.length-1,f.alerts.length);
+          for(const row of lines.slice(1))assert.equal(Object.keys(JSON.parse(row)).length,5);
+          console.log('Wazuh web alerts='+f.alerts.length+'; safe projected rows='+(lines.length-1));
+          NODE
+      - name: Run required XDR command first time
+        run: npm run xdr:run -- web-injection
+      - name: Rerun required XDR command and refresh result.json
+        run: npm run xdr:run -- web-injection
+      - name: Validate result counts, source bans and normal-event safety
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          const fixture=JSON.parse(await readFile('xdr/fixtures/web-injection.json','utf8'));
+          const result=JSON.parse(await readFile('xdr/web-injection/result.json','utf8'));
+          const cache=JSON.parse(await readFile('xdr/web-injection/deny-rules.runtime.json','utf8'));
+          const log=await readFile('xdr/alerts.log','utf8');
+          assert.equal(fixture.alerts.length,26);
+          assert.deepEqual(result.counts,{block:8,alert:9,record:9});
+          assert.equal(result.decisions.length,26);
+          for(let i=17;i<26;i++)assert.notEqual(result.decisions[i].action,'block',fixture.alerts[i].id);
+          assert.equal(cache.rules.length,7);
+          for(const rule of cache.rules){
+            assert.equal(rule.effect,'deny');
+            assert.ok(Date.parse(rule.expiresAt)>Date.parse(rule.createdAt));
+            assert.ok(rule.evidenceAlertIds.length>0);
+          }
+          assert.doesNotMatch(log,/password=|Bearer\s+|sb_secret_|\bsrcuser\b|\bsrcip\b|doc-sql-chain/u);
+          console.log('XDR-02 final counts: block='+result.counts.block+
+            ', alert='+result.counts.alert+', record='+result.counts.record+
+            '; normal events blocked=0; temporary IP denies='+cache.rules.length);
+          NODE
+      - name: Check only the safe generated result is staged
+        run: |
+          git add -- xdr/web-injection/result.json
+          git diff --cached --name-only
+          if [ "$(git diff --cached --name-only)" != "xdr/web-injection/result.json" ] && [ -n "$(git diff --cached --name-only)" ]; then
+            echo "Unexpected generated files are staged." >&2
+            exit 1
+          fi
+      - name: Commit requested bonus xdr-02 savepoint
+        if: github.event_name == 'push' && github.ref == 'refs/heads/bonus-xdr-02-web-injection'
+        run: |
+          if git diff --cached --quiet; then
+            echo "Verified XDR-02 result already committed."
+          else
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "보너스 xdr-02 저장점: 웹 주입 26건 분류 및 정상 차단 검증"
+            git push origin HEAD:bonus-xdr-02-web-injection
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bonus-xdr-02-verification
+          path: xdr/web-injection/result.json
+          if-no-files-found: error
+          retention-days: 90

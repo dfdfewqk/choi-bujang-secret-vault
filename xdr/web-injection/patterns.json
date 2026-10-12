@@ -1,0 +1,31 @@
+{
+  "schema": "byteback.xdr.web-injection.patterns.v1",
+  "mitre": "T1190",
+  "source": "https://attack.mitre.org/techniques/T1190/",
+  "patterns": [
+    {
+      "id": "repeated_sql_injection",
+      "name": "반복 SQL 주입 의심 요청",
+      "condition": "T1190 웹 경보이며 같은 출발 주소에서 SQL 구문·데이터베이스 질의 연결·SQL 표기가 적어도 8회 반복되었다는 기록과 Wazuh 경보 수준 10 이상",
+      "evidence": "MITRE ATT&CK T1190: 외부 공개 웹 애플리케이션의 입력 처리 취약점을 노린 반복적인 SQL 주입 요청은 악용 정황이다."
+    },
+    {
+      "id": "repeated_script_injection",
+      "name": "반복 스크립트 주입 의심 요청",
+      "condition": "T1190 웹 경보이며 삽입용 스크립트 태그·표식 또는 SQL과 스크립트 표식이 같은 출발 주소에서 8회 이상 반복되고 경보 수준이 10 이상",
+      "evidence": "MITRE ATT&CK T1190: 외부 공개 앱의 웹 입력을 악용하는 반복적인 스크립트 삽입 시도는 추가 방어가 필요한 징후다."
+    },
+    {
+      "id": "repeated_path_or_command",
+      "name": "반복 경로 이탈·명령 구분자 시도",
+      "condition": "T1190 웹 경보이며 상위 경로로 반복 이동하는 표기 또는 연속된 명령 구분자 요청이 같은 출발 주소에서 8회 이상 보고되고 경보 수준이 10 이상",
+      "evidence": "MITRE ATT&CK T1190: 외부 공개 앱의 파일 경로나 명령 처리 결함을 악용하려는 반복 입력은 공격 탐지 신호다."
+    },
+    {
+      "id": "ambiguous_web_marker",
+      "name": "추가 확인이 필요한 단발 웹 입력",
+      "condition": "T1190 웹 경보이며 낮은 수준 5 이상과 단발 검색 구분자·SQL/스크립트 단어·이상 입력 정황만 존재하거나 반복 증거가 불충분함",
+      "evidence": "MITRE ATT&CK T1190: 공개 앱 입력의 의심 정황만으로 실제 취약점 악용을 확정할 수 없어 정상 검색어와 구분하여 경고로 관찰한다."
+    }
+  ]
+}
