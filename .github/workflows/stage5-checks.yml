@@ -44,11 +44,11 @@ jobs:
           const explanation = [
             '5단계: 브라우저의 메모 GET/POST/PUT/DELETE는 기존 Vercel 서버 API로만 전달되며 로그인 Auth만 Supabase SDK를 유지합니다.',
             '기존 A/B 소유자 서버 필터, RLS, Vercel 헤더 및 허용 API 경로를 보존했습니다.',
-            '학습용 메모 테이블의 PUBLIC/anon/authenticated 직접 권한 회수 SQL은 사용자 검토·직접 실행 대기 중입니다.',
-            '현재 운영 배포는 4단계이며 원본 데이터 API의 공개 키·실제 학생 토큰 교차 시험은 아직 수행하지 않았습니다.'
+            '사용자 승인으로 학습용 메모 테이블의 PUBLIC/anon/authenticated 직접 권한 회수 SQL을 적용했습니다. DB 모의 역할 조회에서 직접 읽기가 거부되고 서버 권한은 유지됩니다.',
+            '현재 운영 코드는 4단계이고 DB 메모 직접 권한은 5단계에 맞게 회수했습니다. 원본 Data API의 공개 키·실제 학생 토큰 HTTPS 시험과 5단계 운영 배포는 아직 수행하지 않았습니다.'
           ].join('\n');
           writeFileSync('bundle-notes.json',JSON.stringify({
-            explanation,blockedAt:'manual_notes_table_REVOKE_and_stage5_production_pending'
+            explanation,blockedAt:'stage5_production_and_direct_api_http_verification_pending'
           },null,2)+'\n');
           NODE
       - name: Generate committed Stage 5 checkpoint submission JSON
