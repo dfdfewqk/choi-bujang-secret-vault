@@ -10,6 +10,14 @@
 4. 기존 메모 4건의 숫자 내부 ID를 유지하면서 공개용 UUID `note_uuid`를 추가했습니다.
 5. 4단계에 남겨둔 취약점: 로그인한 다른 사용자는 메모 UUID를 알면 개별 조회·수정·삭제가 가능합니다. 실제 개인정보는 넣지 마세요.
 
+## 3단계 로그인 디자인 · 승인 시안 적용
+
+- 승인된 2026-10-12 「괴물 단체 + 푸른 정보 보호막」 시안의 **왼쪽 그림만 직접 추출**해 정적 히어로 비주얼로 사용합니다. 이미지에 그려진 가짜 로그인 양식은 포함하지 않으며 오른쪽은 실제 HTML 입력·버튼입니다.
+- 원본에서 추출한 이미지는 `assets/monster-shield-scene.avif.b64`로 보존합니다. `scripts/build-public.mjs`가 SHA-256을 확인한 뒤 `public/assets/monster-shield-scene.avif`로 생성합니다. 빌드가 실패할 때 손상된 그림이 배포되지 않도록 합니다.
+- `public/index.html`과 `public/monster-defense.css`: 보안 게이트 콘셉트, 반응형 2열 레이아웃, 보호막 발광·홀로그램 부유·데이터 흐름·로그인 카드 발광·버튼 반응 및 `prefers-reduced-motion` 대응.
+- 기능 없는 내비게이션과 하단 소개 카드, 별개로 끼워 넣었던 외부 괴물 이미지 5개를 제거했습니다. 실제 Supabase Auth 및 메모 CRUD JavaScript와 서버 인증 검증 파일은 변경하지 않았습니다.
+- GitHub 단위/회귀 검사 및 Vercel Preview 빌드 통과. **실제 A/B 로그인 통합 테스트는 아직 진행되지 않았습니다.** 미리보기 페이지는 Vercel 인증 보호로 연결 도구의 외부 HTTP 검증이 403 거부될 수 있으므로 계정 로그인·실제 렌더링·모바일 레이아웃은 별도로 확인합니다.
+
 ## 기존 작업 보존 및 DB 마이그레이션
 
 - GitHub: https://github.com/dfdfewqk/choi-bujang-secret-vault
