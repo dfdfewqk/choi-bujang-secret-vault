@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3 || config.step === 4) {
+  if (config.step === 3 || config.step === 4 || config.step === 5) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -63,7 +63,7 @@ export async function runAttackChecks(config) {
         ? 'Public deployment manifest identifies step ' + config.step
         : `FAIL: manifest missing or mismatched (HTTP ${manifest.status}, step ${step})`,
     });
-    if (config.step === 4) {
+    if (config.step >= 4) {
       // A/B cross-owner tests require real credentials and are NOT claimed here.
       const item = await fetch(new URL('/api/notes/11111111-1111-4111-8111-111111111111', app), {
         redirect: 'error', signal: AbortSignal.timeout(10000),
@@ -85,6 +85,32 @@ export async function runAttackChecks(config) {
         observed: home.status === 200 && home.headers.get('x-content-type-options') === 'nosniff'
           ? 'Home returned HTTP 200 and nosniff header'
           : 'FAIL: HTTP ' + home.status + ', security header missing or unexpected',
+      });
+    }
+    if (config.step === 5) {
+      // Never mistake a missing apikey 401 for proof that a *valid* public-key
+      // client is blocked. The owner must review/apply the table-only REVOKE.
+      // The judge checks the original PostgREST URL with anon key / test JWT.
+      const original = config.originalApiUrl;
+      let validOriginal = false;
+      try {
+        const url = new URL(original);
+        validOriginal = url.protocol === 'https:'
+          && !url.username && !url.password && !url.search && !url.hash
+          && url.pathname === '/rest/v1/vault_training_notes'
+          && url.hostname.endsWith('.supabase.co');
+      } catch { /* invalid original API URL recorded below */ }
+      attempts.push({
+        attackId: 'original_data_api_config',
+        expected: 'Query-free HTTPS Supabase PostgREST path points to vault_training_notes',
+        observed: validOriginal
+          ? 'Configured query-free original Supabase notes API; live key/JWT denial requires separate test'
+          : 'FAIL: original Supabase notes API URL is invalid',
+      });
+      attempts.push({
+        attackId: 'original_data_api_access',
+        expected: 'Original Supabase notes Data API denies anon and test-account JWT direct CRUD',
+        observed: 'NOT_TESTED: awaiting owner execution of reviewed table-only REVOKE and judge direct API check',
       });
     }
     return attempts;
