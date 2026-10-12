@@ -208,7 +208,7 @@ test('judge and student verified user IDs obey identical ownership predicates', 
 test('the stage 4 manifest keeps all API routes and original judge trust configuration', async () => {
   const { readFile } = await import('node:fs/promises');
   const config = JSON.parse(await readFile(new URL('../aleph.config.json', import.meta.url), 'utf8'));
-  assert.equal(config.step, 4);
+  assert.ok([4,5].includes(config.step));
   assert.deepEqual(config.allowedRoutes, [
     'GET /api/notes', 'POST /api/notes', 'GET /api/notes/:id',
     'PUT /api/notes/:id', 'DELETE /api/notes/:id',

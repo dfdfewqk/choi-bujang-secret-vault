@@ -1,0 +1,67 @@
+name: Stage 5 server-only notes regression and checkpoint bundle
+
+on:
+  push:
+    branches: [stage5-server-only]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # PR checks otherwise use a temporary synthetic merge commit.
+          # Bundle must refer to the real 5th-stage branch HEAD on GitHub.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Preserve R5 and server ownership regressions
+        run: |
+          npm run test:r5
+          npm run test:package
+          node --test test/step2.test.mjs test/step2-api.test.mjs test/step3-api.test.mjs test/step4-api.test.mjs
+      - name: Test Stage 5 browser/API boundary and review-only SQL
+        run: node --test test/step5-api.test.mjs
+      - name: Stage 5 HTTPS original API with real browser public key
+        run: node scripts/verify-step5-original-api-http.mjs
+      - name: Confirm workspace clean before bundling
+        run: |
+          git status --short
+          test -z "$(git status --porcelain --untracked-files=all)"
+      - name: Prepare local-only checkpoint explanation
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const explanation = [
+            '5단계: 브라우저의 메모 GET/POST/PUT/DELETE는 기존 Vercel 서버 API로만 전달되며 로그인 Auth만 Supabase SDK를 유지합니다.',
+            '기존 A/B 소유자 서버 필터, RLS, Vercel 헤더 및 허용 API 경로를 보존했습니다.',
+            '사용자 승인으로 학습용 메모 테이블의 PUBLIC/anon/authenticated 직접 권한 회수 SQL을 적용했습니다. DB 모의 역할 조회에서 직접 읽기가 거부되고 서버 권한은 유지됩니다.',
+            '현재 운영 코드는 4단계이고 DB 메모 직접 권한은 5단계에 맞게 회수했습니다. 원본 Data API의 공개 키·실제 학생 토큰 HTTPS 시험과 5단계 운영 배포는 아직 수행하지 않았습니다.'
+          ].join('\n');
+          writeFileSync('bundle-notes.json',JSON.stringify({
+            explanation,blockedAt:'stage5_production_and_direct_api_http_verification_pending'
+          },null,2)+'\n');
+          NODE
+      - name: Generate committed Stage 5 checkpoint submission JSON
+        run: npm run bundle
+      - name: Build private-safe static assets
+        run: npm run build -- --local
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage5-checkpoint-submission
+          path: |
+            artifacts/submission.json
+            artifacts/stage5-original-api-http.json
+          if-no-files-found: error
+          retention-days: 90

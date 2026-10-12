@@ -1,8 +1,8 @@
 name: Stage 4 live verification and submission bundle
 
 on:
-  push:
-    branches: [main]
+  # Historical Stage 4 production evidence is already archived.
+  # Stage 5 owns checks after its main release; do not rerun old step=4 assertions.
   workflow_dispatch:
 
 permissions:
