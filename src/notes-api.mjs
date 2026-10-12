@@ -75,10 +75,9 @@ export async function handleNotes(request, response, {
     const db = databaseFactory();
     const table = db.from('vault_training_notes');
     if (!item && method === 'GET') {
-      // Four unassigned legacy demo notes remain available only after login.
-      // User-created notes are scoped to the authenticated user for listing.
+      // Stage 4: never include unowned legacy notes or another user's rows.
       const { data, error } = await table.select('note_uuid,title,content')
-        .or(`owner_id.eq.${verified.userId},owner_id.is.null`)
+        .eq('owner_id', verified.userId)
         .order('sort_order', { ascending: true, nullsFirst: false })
         .order('id', { ascending: true })
         .limit(100);
@@ -92,6 +91,10 @@ export async function handleNotes(request, response, {
       if (given !== undefined && (typeof given !== 'string' || !UUID.test(given))) {
         return response.status(400).json({ error: 'INVALID_NOTE_ID' });
       }
+      // Owner identity is assigned exclusively from the verified token.
+      if (Object.hasOwn(request.body ?? {}, 'owner_id')) {
+        return response.status(400).json({ error: 'OWNER_ID_NOT_ALLOWED' });
+      }
       const newId = given ?? randomUUID();
       const { error } = await table.insert({
         note_uuid: newId, title: data.title, content: data.content, owner_id: verified.userId,
@@ -100,11 +103,10 @@ export async function handleNotes(request, response, {
       return response.status(201).json({ id: newId });
     }
 
-    // Intentionally no owner filter on single-item routes in Stage 3.
-    // Stage 4 closes this IDOR hole. Only synthetic data may be used.
+    // Atomic DB predicates enforce ownership; service_role bypasses RLS.
     if (method === 'GET') {
       const { data, error } = await table.select('note_uuid,title,content')
-        .eq('note_uuid', itemId).maybeSingle();
+        .eq('note_uuid', itemId).eq('owner_id', verified.userId).maybeSingle();
       if (error) throw error;
       if (!data) return response.status(404).json({ error: 'NOT_FOUND' });
       return response.status(200).json(publicNote(data));
@@ -112,13 +114,17 @@ export async function handleNotes(request, response, {
     if (method === 'PUT') {
       const updated = validateNote(request.body);
       if (!updated) return response.status(400).json({ error: 'INVALID_NOTE' });
-      const { data, error } = await table.update(updated).eq('note_uuid', itemId)
+      // Whitelist title/body; reject an attempted ownership transfer.
+      if (Object.hasOwn(request.body ?? {}, 'owner_id')) {
+        return response.status(400).json({ error: 'OWNER_ID_NOT_ALLOWED' });
+      }
+      const { data, error } = await table.update(updated).eq('note_uuid', itemId).eq('owner_id', verified.userId)
         .select('note_uuid,title,content').maybeSingle();
       if (error) throw error;
       if (!data) return response.status(404).json({ error: 'NOT_FOUND' });
       return response.status(200).json(publicNote(data));
     }
-    const { data, error } = await table.delete().eq('note_uuid', itemId).select('note_uuid');
+    const { data, error } = await table.delete().eq('note_uuid', itemId).eq('owner_id', verified.userId).select('note_uuid');
     if (error) throw error;
     if (!data?.length) return response.status(404).json({ error: 'NOT_FOUND' });
     return response.status(200).json({ deleted: true, id: itemId });
