@@ -1,6 +1,6 @@
 # BYTE BACK · 4단계 개발 브랜치 (로그인해도 내 자료만 보이게 합니다)
 
-> **상태 (검토 대기):** 3단계 운영 서비스는 그대로 유지합니다. 4단계 API 소유자 조건은 `stage4-owner-isolation` 브랜치에 구현했습니다. B 시험 계정이 아직 확인되지 않았고, 원본 메모 4건은 현재 DB에서 모두 `owner_id IS NULL`입니다. **SQL 승인·적용, 두 계정 실사용 교차 테스트, 운영 병합, 4단계 제출은 아직 완료되지 않았습니다.**
+> **상태 (SQL 승인 대기):** 3단계 운영 서비스는 그대로 유지합니다. 4단계 API 소유자 조건은 `stage4-owner-isolation` 브랜치에 구현했습니다. 실제 A/B 2개 계정의 이메일 인증과 로그인은 확인했고 원본 메모 4건은 여전히 `owner_id IS NULL`입니다. **SQL 승인·적용, 두 계정 데이터 교차 테스트, 운영 병합, 4단계 제출은 아직 완료되지 않았습니다.**
 
 ## 이번 브랜치의 기능 (5줄)
 
@@ -30,8 +30,8 @@
 
 ## 4단계 적용 전 확인 사항
 
-- **현재 DB:** 실제 이메일 확인 Auth 사용자 1명, 미지정 학습용 원본 메모 4건. B 계정 이메일 인증 필요
-- **A/B 데이터 초안:** `supabase/step4_seed_review.sql`. A/B 이메일은 사용자가 자신의 Supabase SQL Editor에서만 입력합니다. 기존 4건을 A에게 지정하고 B 시험 메모 1건만 추가합니다. 정확히 4건인 경우에만 실행되며 오류 시 트랜잭션 롤백
+- **현재 DB (2026-10-12 점검):** 이메일 인증 및 로그인 완료 Auth 사용자 2명(A/B), 미지정 원본 가상 메모 4건, RLS ON·정책 0개. 사용자 승인 전 데이터와 정책을 수정하지 않음
+- **A/B 데이터 초안:** `supabase/step4_seed_review.sql`. 사전 점검에서 계정이 정확히 2개이고 둘 다 이메일 인증·로그인했음을 확인했습니다. 이메일·비밀번호 입력 없이 Auth 가입 순서로 첫 계정 A, 둘째 B를 매칭합니다. 실행 당시 **정확히 2개 계정이 아니면 중단**합니다. 기존 가상 메모 4건의 소유자를 A로 지정하고 B 시험 메모 1건을 추가합니다. 조건이 일치하지 않거나 실패하면 트랜잭션 롤백됩니다. 사용자 승인 전 **실행하지 않음**
 - **권한 초안:** `supabase/step4_rls_review.sql`. `PUBLIC`/`anon`/`authenticated`의 기존 테이블 권한을 회수하고 `authenticated`에는 SELECT·INSERT·UPDATE·DELETE만 GRANT, 정책 4개로 `auth.uid() = owner_id` 검사. 사용자가 검토·승인할 때까지 **실행하지 않음**
 - **권한 확인:** `supabase/step4_verify_permissions.sql`은 데이터 변경 없는 조회 쿼리. `information_schema.role_table_grants`, `has_table_privilege`, `pg_policies` 점검
 - **중요:** 서버는 `service_role`을 사용하므로 RLS를 우회할 수 있습니다. 새 API의 원자적 `.eq('owner_id',verified.userId)` 검사를 제거하면 안 됩니다.
