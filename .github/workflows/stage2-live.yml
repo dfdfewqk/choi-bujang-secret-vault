@@ -1,8 +1,6 @@
 name: Stage 2 live verification and submission bundle
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
