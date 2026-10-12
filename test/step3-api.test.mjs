@@ -175,7 +175,7 @@ test('monster defense theme keeps the real login form and responsive stylesheet'
   assert.match(page,/signOut/u);
   assert.match(page,/signUp/u);
   for(const layer of ['scene-city.svg','scene-monsters.svg','scene-shield.svg']) {
-    assert.match(page, new RegExp('\\\\/assets\\\\/'+layer.replace('.','\\\\.') ));
+    assert.ok(page.includes('/assets/'+layer), 'missing visual layer '+layer);
   }
   assert.doesNotMatch(page,/(?:SECURE|DATA SAFE|class="scene-label"|class="holo ")/u);
   const build=await readFile(new URL('../scripts/build-public.mjs',import.meta.url),'utf8');
