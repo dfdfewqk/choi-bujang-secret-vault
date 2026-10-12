@@ -5,7 +5,7 @@ import { runAttackChecks } from '../src/attack-check.mjs';
 
 const load = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
 
-test('stage 5 keeps note CRUD behind Vercel functions, with Auth left in Supabase', async () => {
+test('stage 5 keeps note CRUD and browser Auth behind server functions', async () => {
   const pages = await Promise.all([
     load('public/index.html'),
     load('public/access-check.html'),
@@ -18,12 +18,16 @@ test('stage 5 keeps note CRUD behind Vercel functions, with Auth left in Supabas
     assert.doesNotMatch(page, /supabase\s*\.\s*storage\s*\./iu);
     assert.doesNotMatch(page, /\/rest\/v1\/vault_training_notes/iu);
     assert.doesNotMatch(page, /sb_secret_[A-Za-z0-9_-]{12,}/u);
+    assert.doesNotMatch(page, /sb_publishable_[A-Za-z0-9_-]+/u);
+    assert.doesNotMatch(page, /esm\.sh\/@supabase/u);
   }
   assert.match(pages[0], /['"]\/api\/notes['"]/u);
   assert.match(pages[0], /supabase\.auth\.signInWithPassword/u);
   assert.match(pages[0], /supabase\.auth\.signOut/u);
   assert.match(pages[2], /supabase\.auth\.signUp/u);
   assert.match(pages[1], /fetch\('\/api\/notes'/u);
+  for (const page of pages) assert.match(page, /createServerAuthClient\(\)/u);
+  assert.match(await load('public/auth-client.mjs'), /fetch\('\/api\/auth'/u);
 
   const api = await load('src/notes-api.mjs');
   assert.match(api, /process\.env\.SUPABASE_SECRET_KEY/u);
