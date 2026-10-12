@@ -1,8 +1,8 @@
 # BYTE BACK · 5단계 저장점 (자료 요청을 서버 한곳으로 모읍니다)
 
-> **작업 상태 (2026-10-12):** 4단계는 이미 `main`에 병합돼 [운영 사이트](https://choi-bujang-secret-vault-six-jet.vercel.app/)로 배포됐고 운영 익명 API 검증도 통과했습니다. 직전 `main` 커밋은 `5cad12e1dea4359c0b9965724ae77e1c4a23e69e`(4단계 Artifacts 90일 보관 설정)입니다. 기존 README가 **4단계 운영 배포 대기**라고 적은 것은 최신 기록과 달라 여기서 바로잡았습니다. 현재 5단계는 `stage5-server-only` 검토 브랜치에 있으며 운영 사이트를 아직 5단계로 전환하지 않았습니다. **메모 테이블의 직접 권한 회수 SQL은 사용자가 검토·실행하기 전까지 미적용**입니다.
+> **작업 상태 (2026-10-12):** 4단계는 이미 `main`에 병합돼 [운영 사이트](https://choi-bujang-secret-vault-six-jet.vercel.app/)로 배포됐고 운영 익명 API 검증도 통과했습니다. 직전 `main` 커밋은 `5cad12e1dea4359c0b9965724ae77e1c4a23e69e`(4단계 Artifacts 90일 보관 설정)입니다. 기존 README가 **4단계 운영 배포 대기**라고 적은 것은 최신 기록과 달라 여기서 바로잡았습니다. 현재 5단계는 `stage5-server-only` 검토 브랜치에 있으며 운영 사이트를 아직 5단계로 전환하지 않았습니다. **메모 테이블의 직접 권한 회수 SQL은 사용자 승인 후 적용 완료**했습니다. `PUBLIC`·`anon`·`authenticated`의 직접 CRUD는 차단됐고 `service_role`은 유지됩니다. 다른 테이블·기존 메모 5건은 변경하지 않았습니다.
 
-> **5단계 저장점 최종 검증:** GitHub Actions의 2·3·4·5단계 자동 테스트가 모두 통과했고, `npm run bundle`을 실제 실행하여 5단계 JSON을 생성했습니다. Vercel **미리보기** `https://choi-bujang-secret-vault-git-stage5-server-only-dfdfewqk.vercel.app/`는 READY 상태입니다. 4단계 **운영** 사이트와 학습 DB 권한은 아직 그대로입니다. 권한 회수 전에는 심판의 원본 직접 접근 차단 검증이 완료됐다고 주장하지 않습니다.
+> **5단계 저장점 최종 검증:** GitHub Actions의 2·3·4·5단계 자동 테스트가 모두 통과했고, `npm run bundle`을 실제 실행하여 5단계 JSON을 생성했습니다. Vercel **미리보기** `https://choi-bujang-secret-vault-git-stage5-server-only-dfdfewqk.vercel.app/`는 READY 상태입니다. **운영 사이트의 코드는 여전히 4단계**이지만 DB의 학습용 메모 테이블 권한은 5단계 기준으로 변경 완료했습니다. DB 역할 모의 검사에서 직접 SELECT 거부를 확인했으며, 심판이 사용하는 실제 공개 키·시험 계정 JWT 기반 HTTP 검사는 별도 확인이 필요합니다.
 
 ## 현재 작동하는 기능 (5줄)
 
@@ -15,19 +15,19 @@
 ## 5단계에서 확인한 사실과 변경
 
 - **제작 1:** `public/index.html`, `public/access-check.html`, `public/signup.html` 검사 결과 메모 자료에 대한 Supabase 직접 호출은 **없음**. 따라서 브라우저 파일과 Auth 기능은 **변경하지 않았습니다**.
-- **제작 2 현 상태:** DB `public.vault_training_notes`에 대해 `anon`의 직접 테이블 CRUD 권한은 없고 `authenticated`에는 SELECT/INSERT/UPDATE/DELETE가 아직 있습니다. `service_role` CRUD 및 RLS 정책 4개는 작동 중입니다. 단, RLS에 의한 본인 행 제한만으로는 5단계의 **저장소 직접 경로 차단** 요건을 충족하지 못합니다.
-- **권한 회수 검토용 SQL:** `supabase/step5_revoke_direct_notes_review.sql`. **이 파일은 자동 적용되지 않습니다.** 오직 `public.vault_training_notes`에 대해 `PUBLIC`, `anon`, `authenticated`의 직접 권한을 회수하며 `service_role`과 다른 다이어리 테이블의 권한은 유지합니다. 실행 전 테이블/RLS/서버 권한을 검사하며 실행 오류 시 트랜잭션 전체를 되돌립니다.
-- **적용 전후 검사 SQL:** `supabase/step5_verify_permissions.sql`. 적용 전에는 `authenticated` 직접 CRUD true, 적용 후에는 `anon`·`authenticated` 직접 테이블 CRUD false, `service_role` CRUD true, RLS ON·정책 4개를 확인합니다. A/B 데이터 행 수와 내용은 SQL로 바꾸지 않습니다.
+- **제작 2 DB 적용 완료 (2026-10-12):** 승인된 `public.vault_training_notes` 한 테이블에만 `PUBLIC`·`anon`·`authenticated`의 모든 직접 권한을 회수했습니다. `anon`과 `authenticated`의 SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER는 전부 false, `service_role`의 권한은 모두 유지, RLS ON·정책 4개 유지입니다.
+- **실제로 적용한 SQL:** 사용자 승인 후 `supabase/step5_revoke_direct_notes_review.sql`을 Supabase 마이그레이션 `byteback_step5_revoke_direct_notes_privileges`로 적용했습니다. 메모 데이터 변경 및 INSERT/DELETE는 없었습니다. 이 파일은 적용 당시의 검토본으로 유지합니다. 다른 다이어리 테이블, 서버 환경 변수 및 Auth 설정은 변경하지 않았습니다.
+- **적용 전후 검사 통과:** `supabase/step5_verify_permissions.sql`과 DB 역할 모의 조회를 통해 인증·비인증 역할의 직접 SELECT 차단을 검증했습니다. 서버 전용 역할은 기존 5건을 정상 조회했습니다. A=4, B=1, 미지정=0, 제목·내용·메모 식별자에 대한 사전·사후 지문이 동일합니다.
 - **원본 자료 API:** `aleph.config.json` `originalApiUrl`은 `https://bcwzllejypavwgsfqfbm.supabase.co/rest/v1/vault_training_notes` (HTTPS, 쿼리 없음)입니다. `step=5`, `allowedRoutes` 5종, 심판/학생 발급자 설정을 보존합니다.
 - **브라우저의 공개 Supabase Auth 키:** 로그인/가입을 위해 유지합니다. 가점 항목인 공개 키 완전 제거는 로그인 흐름의 위험이 커 이번 저장점에서 **시도하지 않았습니다**. 서버 전용 키는 브라우저에 없습니다.
-- **검증 수준:** A의 서버 함수 CRUD는 기존 Stage 3/4 모의 API 자동 시험으로 확인한 상태입니다. 실계정 A의 POST/PUT/DELETE를 이번 작업에서 실행했다고 주장하지 않습니다. 양방향 A/B GET 404 및 비로그인 차단은 4단계에서 실제 확인했습니다.
-- **남은 일:** 사용자 SQL 검토/적용 → 적용 전후 권한 확인 → 브라우저 A 정상 CRUD 및 B 타인 메모/무로그인 거부 → **공개 키/시험 토큰을 사용한 원본 Supabase API 직접 거부** 검증 → 5단계 운영 승인 및 배포 → `npm run bundle`을 운영 주소 기준으로 다시 실행/제출. 현재 자체 점검은 직접 원본 API 접근을 `NOT_TESTED`로 정직하게 표시합니다.
+- **검증 수준:** A의 서버 함수 CRUD는 기존 Stage 3/4 모의 API 자동 시험으로 확인한 상태입니다. 실제 DB 역할에서 `anon`/`authenticated` 직접 조회 거부, `service_role` 기존 메모 5건 조회 성공을 별도로 확인했습니다. 실계정 A의 POST/PUT/DELETE 및 공개 키·실제 JWT를 포함한 PostgREST 직접 HTTPS 호출은 이번 작업에서 실행했다고 주장하지 않습니다. 양방향 A/B GET 404와 비로그인 Vercel API 차단은 4단계에서 확인했습니다.
+- **남은 일:** 브라우저에서 실계정 A 정상 CRUD → 실제 공개 키/시험 JWT를 사용한 원본 Supabase API 직접 거부(심판 포함) 확인 → 5단계 운영 반영 승인·배포 → 운영 주소 기준 최종 `npm run bundle` 재실행/제출. DB 권한 회수와 역할 검증은 완료했고, 직접 HTTP 검사는 여전히 `NOT_TESTED`로 표시합니다.
 
 ## 다시 실행하는 방법
 
 - 로컬에서 `npm ci`, `node --test test/step3-api.test.mjs test/step4-api.test.mjs test/step5-api.test.mjs`, `npm run build -- --local`로 회귀 시험할 수 있습니다.
 - 제출 묶음은 **GitHub에서 커밋된 클린 워크트리** 기준으로 `bundle-notes.json`(Git 제외)에 설명·미완료 사유를 적고 `npm run bundle`을 실행해 `artifacts/submission.json`을 생성합니다. 브랜치 CI도 이를 실행합니다.
-- 운영 주소는 별도 승인 없이 변경하지 않습니다. 실제 DB 권한 회수는 리뷰한 SQL에 대해 사용자가 직접 실행합니다.
+- 운영 주소는 별도 승인 없이 변경하지 않습니다. 사용자 승인된 DB 권한 회수는 2026-10-12에 이미 적용했으며 직접 HTTP 및 실제 계정 브라우저 검사는 남아 있습니다.
 
 ---
 
