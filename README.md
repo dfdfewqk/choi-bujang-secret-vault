@@ -1,6 +1,38 @@
-# BYTE BACK · 4단계 개발 브랜치 (로그인해도 내 자료만 보이게 합니다)
+# BYTE BACK · 5단계 저장점 (자료 요청을 서버 한곳으로 모읍니다)
 
-> **상태 (2026-10-12 4단계 A/B 실제 읽기 차단 검증 완료·운영 배포 대기):** 사용자 승인으로 원본 메모 4건을 A 소유로 지정하고 B 메모 1건을 그대로 보존했습니다. **A 4건/B 1건, 전체 5건**의 원본 제목·내용·ID가 유지됩니다. `vault_training_notes`의 RLS 소유자 정책 4개와 최소 권한을 적용했고, A/B SQL 모의 역할 테스트에서 타인 메모 조회·수정·삭제가 차단됐습니다. **사용자는 4단계 Preview에서 A→B 및 B→A 타인 메모 직접 조회를 실제로 테스트하여 양쪽 모두 404를 확인했습니다.** 실제 계정 간 수정/삭제 요청은 브라우저에서 별도로 실행하지 않았고, 서버 API 모의시험 및 DB RLS 역할시험으로 검증했습니다. **3단계 운영 사이트와 main 브랜치는 변경하지 않은 상태**이며 운영 배포·최종 제출이 남아 있습니다.
+> **작업 상태 (2026-10-12):** 4단계는 이미 `main`에 병합돼 [운영 사이트](https://choi-bujang-secret-vault-six-jet.vercel.app/)로 배포됐고 운영 익명 API 검증도 통과했습니다. 직전 `main` 커밋은 `5cad12e1dea4359c0b9965724ae77e1c4a23e69e`(4단계 Artifacts 90일 보관 설정)입니다. 기존 README가 **4단계 운영 배포 대기**라고 적은 것은 최신 기록과 달라 여기서 바로잡았습니다. 현재 5단계는 `stage5-server-only` 검토 브랜치에 있으며 운영 사이트를 아직 5단계로 전환하지 않았습니다. **메모 테이블의 직접 권한 회수 SQL은 사용자가 검토·실행하기 전까지 미적용**입니다.
+
+## 현재 작동하는 기능 (5줄)
+
+1. Supabase Auth로 회원가입·이메일 인증·로그인·로그아웃·세션 복원을 합니다.
+2. 브라우저의 메모 GET/POST/PUT/DELETE는 Vercel `/api/notes`·`/api/notes/:id`만 호출하고 Supabase 데이터 API를 직접 호출하지 않습니다.
+3. 서버 함수는 인증된 사용자 ID와 `owner_id`가 일치하는 메모만 조회·추가·수정·삭제합니다.
+4. A의 기존 메모 4건, B의 기존 메모 1건을 보존하고 양방향 상대 메모 직접 GET에서 404를 확인했습니다.
+5. 기존 도시·괴물·보호막 애니메이션과 `X-Content-Type-Options: nosniff` 응답 헤더를 유지합니다.
+
+## 5단계에서 확인한 사실과 변경
+
+- **제작 1:** `public/index.html`, `public/access-check.html`, `public/signup.html` 검사 결과 메모 자료에 대한 Supabase 직접 호출은 **없음**. 따라서 브라우저 파일과 Auth 기능은 **변경하지 않았습니다**.
+- **제작 2 현 상태:** DB `public.vault_training_notes`에 대해 `anon`의 직접 테이블 CRUD 권한은 없고 `authenticated`에는 SELECT/INSERT/UPDATE/DELETE가 아직 있습니다. `service_role` CRUD 및 RLS 정책 4개는 작동 중입니다. 단, RLS에 의한 본인 행 제한만으로는 5단계의 **저장소 직접 경로 차단** 요건을 충족하지 못합니다.
+- **권한 회수 검토용 SQL:** `supabase/step5_revoke_direct_notes_review.sql`. **이 파일은 자동 적용되지 않습니다.** 오직 `public.vault_training_notes`에 대해 `PUBLIC`, `anon`, `authenticated`의 직접 권한을 회수하며 `service_role`과 다른 다이어리 테이블의 권한은 유지합니다. 실행 전 테이블/RLS/서버 권한을 검사하며 실행 오류 시 트랜잭션 전체를 되돌립니다.
+- **적용 전후 검사 SQL:** `supabase/step5_verify_permissions.sql`. 적용 전에는 `authenticated` 직접 CRUD true, 적용 후에는 `anon`·`authenticated` 직접 테이블 CRUD false, `service_role` CRUD true, RLS ON·정책 4개를 확인합니다. A/B 데이터 행 수와 내용은 SQL로 바꾸지 않습니다.
+- **원본 자료 API:** `aleph.config.json` `originalApiUrl`은 `https://bcwzllejypavwgsfqfbm.supabase.co/rest/v1/vault_training_notes` (HTTPS, 쿼리 없음)입니다. `step=5`, `allowedRoutes` 5종, 심판/학생 발급자 설정을 보존합니다.
+- **브라우저의 공개 Supabase Auth 키:** 로그인/가입을 위해 유지합니다. 가점 항목인 공개 키 완전 제거는 로그인 흐름의 위험이 커 이번 저장점에서 **시도하지 않았습니다**. 서버 전용 키는 브라우저에 없습니다.
+- **검증 수준:** A의 서버 함수 CRUD는 기존 Stage 3/4 모의 API 자동 시험으로 확인한 상태입니다. 실계정 A의 POST/PUT/DELETE를 이번 작업에서 실행했다고 주장하지 않습니다. 양방향 A/B GET 404 및 비로그인 차단은 4단계에서 실제 확인했습니다.
+- **남은 일:** 사용자 SQL 검토/적용 → 적용 전후 권한 확인 → 브라우저 A 정상 CRUD 및 B 타인 메모/무로그인 거부 → **공개 키/시험 토큰을 사용한 원본 Supabase API 직접 거부** 검증 → 5단계 운영 승인 및 배포 → `npm run bundle`을 운영 주소 기준으로 다시 실행/제출. 현재 자체 점검은 직접 원본 API 접근을 `NOT_TESTED`로 정직하게 표시합니다.
+
+## 다시 실행하는 방법
+
+- 로컬에서 `npm ci`, `node --test test/step3-api.test.mjs test/step4-api.test.mjs test/step5-api.test.mjs`, `npm run build -- --local`로 회귀 시험할 수 있습니다.
+- 제출 묶음은 **GitHub에서 커밋된 클린 워크트리** 기준으로 `bundle-notes.json`(Git 제외)에 설명·미완료 사유를 적고 `npm run bundle`을 실행해 `artifacts/submission.json`을 생성합니다. 브랜치 CI도 이를 실행합니다.
+- 운영 주소는 별도 승인 없이 변경하지 않습니다. 실제 DB 권한 회수는 리뷰한 SQL에 대해 사용자가 직접 실행합니다.
+
+---
+
+## 4단계 기록 (과거 이력)
+
+> **4단계 완료 (2026-10-12):** 기존 A 메모 4건·B 메모 1건을 보존하고, RLS 정책 4개·서버 소유자 검사를 적용했습니다. 양방향 실제 A/B 상대 메모 GET 404, GitHub 테스트, Vercel 4단계 운영 배포 및 `stage4-live` 자동 검사가 통과했습니다. 아래 기록은 4단계 개발 당시 작성된 이력이며, 5단계의 현재 상태는 상단을 따릅니다.
+
 
 ## 이번 브랜치의 기능 (5줄)
 
