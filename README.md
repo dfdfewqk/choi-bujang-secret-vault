@@ -10,14 +10,14 @@
 4. 메모 POST는 인증된 소유자로 저장하고, PUT은 제목/본문만 수정하며 요청 본문 `owner_id`를 거부합니다.
 5. DB 소유자 지정·RLS는 검토용 SQL만 저장했습니다. 사용자 승인 전에는 실행하지 않으며 3단계 운영 주소를 바꾸지 않습니다.
 
-## B 계정 이메일 발송 제한 대응 (2026-10-12)
+## 사이트에서 직접 가입할 수 있도록 설정하기
 
-- Supabase Auth 로그에서 `/signup` 응답 `HTTP 429`, `over_email_send_rate_limit` 확인. 이메일 서버의 발송 횟수 제한이며 네이버 메일의 수신 실패라고 단정하지 않습니다.
-- 기본 SMTP는 Supabase 팀 미등록 이메일로 발송이 제한될 수도 있습니다. 계정 가입 버튼 반복 클릭이나 프로젝트 공통 이메일 인증 설정 해제는 하지 않습니다.
-- **가장 작은 수동 조치:** Supabase Dashboard → Authentication → Users → Add user → Create new user. 본인이 보유한 B 시험 이메일과 별도 비밀번호를 관리자 UI에서 입력합니다. 화면에 제공되는 `Auto Confirm User`는 **본인이 소유한 학습용 계정에만** 사용합니다. 이 흐름은 이메일 발송 없이 테스트 사용자 1명을 만들 수 있으며 설정을 프로젝트 전체에서 바꾸지 않습니다.
-- 만들어진 B 계정에서는 로그인 화면의 **`보호막 활성화`(로그인)**를 사용합니다. `학습용 계정 만들기`를 다시 누르지 않습니다.
-- 새로운 B 계정이 실제로 `auth.users`에 존재하는지 읽기 전용 조회로 재검증한 후, `supabase/step4_seed_review.sql`과 `supabase/step4_rls_review.sql`은 사용자 승인 하에 순서대로 적용합니다.
-- 관리자 UI 메뉴 이름은 Supabase 버전에 따라 달라질 수 있으므로 버튼이 보이지 않으면 섣불리 SQL로 `auth.users`에 직접 행을 만들지 말고 안내를 요청합니다.
+- 기존 `학습용 계정 만들기` 버튼은 Supabase Auth `signUp`을 그대로 호출합니다. 관리자가 B 계정을 대신 만드는 방식이 아닙니다.
+- 확인 메일의 반환 주소는 프런트엔드에서 `emailRedirectTo: new URL('/', window.location.href).href`로 지정합니다. Supabase Auth URL Configuration의 Redirect URLs에 실제 가입 사이트 URL을 등록해야 합니다. 운영 URL: `https://choi-bujang-secret-vault-six-jet.vercel.app/**`. 미리보기 도메인을 이용한 가입은 그 주소도 추가로 허용해야 합니다.
+- **실제 발송 차단 원인:** Supabase 로그의 `/signup` HTTP 429 및 `over_email_send_rate_limit`. 기본 Supabase SMTP는 시간당 약 2건으로 제한되며 프로젝트 팀 이메일 외 주소로 발송이 제한됩니다. 앱 코드만으로 해결되지 않습니다.
+- 정상적인 회원가입을 위해 프로젝트 관리자 화면 `Authentication → SMTP Settings`에 **별도의 정상적인 SMTP 제공자**를 설정해야 합니다. 인증메일 확인을 프로젝트 전체에서 끄거나, 가입 API에서 사용자 이메일을 임의로 검증 처리하지 않습니다. 이 Supabase 프로젝트의 다른 다이어리 앱도 같은 Auth 설정을 사용하므로 담당자 확인이 필요합니다.
+- 단기 개인 학습용 발송에 발신자가 소유한 네이버 메일 SMTP를 사용할 수도 있지만, 공개 서비스에는 별도 메일 발송 계정/도메인을 가진 전용 SMTP 제공자를 권장합니다. 네이버 메일 공식 정보는 `smtp.naver.com`, 포트 `587`(TLS), 2단계 인증 및 외부 앱 비밀번호 필요. 비밀번호는 공식 네이버 및 Supabase 화면에만 입력하고 GitHub/대화에 공유하지 않습니다.
+- B를 사이트에서 가입하고 실제 메일 인증·로그인한 뒤에야 `supabase/step4_seed_review.sql` 및 `supabase/step4_rls_review.sql`를 사용자 승인 후 진행합니다.
 
 ## 4단계 적용 전 확인 사항
 
