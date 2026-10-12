@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { handleNotes } from '../src/notes-api.mjs';
+import { getAuthCompletion, isSignupEmailReturn } from '../public/auth-feedback.mjs';
 
 const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -217,6 +218,16 @@ test('the stage 4 manifest keeps all API routes and original judge trust configu
   const loginPage = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
   const signupPage = await readFile(new URL('../public/signup.html', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../public/monster-defense.css', import.meta.url), 'utf8');
+  assert.match(loginPage, /id="auth-completion"/u);
+  assert.match(loginPage, /id="auth-completion-title"/u);
+  assert.match(loginPage, /id="auth-email-check"/u);
+  assert.match(loginPage, /getAuthCompletion\(next, returnedFromSignupEmail\)/u);
+  assert.match(loginPage, /Boolean\(next\)/u);
+  assert.match(stylesheet, /\.auth-completion\{/u);
+  assert.match(signupPage, /가입 요청이 접수되었습니다/u);
+  assert.match(signupPage, /인증 완료 상태가 아닙니다/u);
+  assert.match(signupPage, /const verifiedSession = Boolean\(data\?\.session\?\.user\?\.email_confirmed_at\)/u);
+  assert.match(signupPage, /result-mark.*verified/u);
   assert.match(loginPage, /id="signup" href="\/signup\.html"/u,
     'Signup button must lead to dedicated registration screen');
   assert.doesNotMatch(loginPage, /supabase\.auth\.signUp\(/u,
@@ -243,4 +254,27 @@ test('the stage 4 manifest keeps all API routes and original judge trust configu
   const code = await readFile(new URL('../src/notes-api.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(code, /owner_id\.is\.null/u);
   assert.match(code, /\.eq\('owner_id', verified\.userId\)/u);
+});
+
+test('login completion labels reflect a genuinely verified email only', () => {
+  assert.equal(getAuthCompletion(null), null);
+  assert.equal(getAuthCompletion({}), null);
+  const pending = getAuthCompletion({
+    user: { email: 'pending@example.test', email_confirmed_at: null },
+  }, true);
+  assert.equal(pending.title, '로그인 완료!');
+  assert.equal(pending.emailVerified, false);
+  assert.equal(pending.emailLabel, '이메일 인증 대기');
+  const verified = { user: { email: 'verified@example.test',
+    email_confirmed_at: '2026-10-12T04:00:00Z' } };
+  const signedIn = getAuthCompletion(verified);
+  assert.equal(signedIn.title, '로그인 완료!');
+  assert.equal(signedIn.emailLabel, '✓ 이메일 인증 완료');
+  const emailReturn = getAuthCompletion(verified, true);
+  assert.equal(emailReturn.title, '이메일 인증 완료!');
+  assert.equal(emailReturn.emailVerified, true);
+  assert.equal(isSignupEmailReturn('#access_token=fake-do-not-share&type=signup'), true);
+  assert.equal(isSignupEmailReturn('#type=signup'), false);
+  assert.equal(isSignupEmailReturn('#type=recovery&access_token=fake'), false);
+  assert.equal(isSignupEmailReturn(''), false);
 });
