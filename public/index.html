@@ -37,9 +37,9 @@
           <label for="email">이메일<input id="email" type="email" autocomplete="email" placeholder="이메일을 입력하세요." maxlength="254" required></label>
           <label for="password">비밀번호<input id="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요." minlength="6" required></label>
           <button type="submit" class="btn-primary">보호막 활성화 <span aria-hidden="true">›</span></button>
-          <button type="button" id="signup" class="btn-secondary">학습용 계정 만들기</button>
+          <a id="signup" href="/signup.html" class="btn-secondary signup-action-link">학습용 계정 만들기 <span aria-hidden="true">↗</span></a>
         </form>
-        <p class="form-hint">인증된 사용자만 자료실에 접근할 수 있습니다.<br>이메일 확인이 필요한 경우 메일함을 확인하세요.</p>
+        <p class="form-hint">처음 방문하셨나요? 위의 <strong>학습용 계정 만들기</strong>에서 이메일 인증을 진행할 수 있습니다.<br>이미 가입했다면 로그인하세요.</p>
       </section>
       <section id="vault-panel" class="hidden" aria-label="로그인한 사용자 자료실">
         <div class="panel vault-account">
@@ -139,24 +139,6 @@
     const {error}=await supabase.auth.signInWithPassword({email,password});
     $('#password').value='';
     if(error)status('로그인 실패: '+error.message);
-  });
-  $('#signup').addEventListener('click',async()=>{
-    const email=$('#email').value.trim(),password=$('#password').value;
-    if(!email||!password){status('이메일과 비밀번호를 입력하세요.');return;}
-    const {data,error}=await supabase.auth.signUp({email,password,options:{emailRedirectTo:new URL('/',window.location.href).href}});
-    $('#password').value='';
-    if(error){
-      // Supabase built-in SMTP may reject non-team addresses or impose tight limits.
-      // Avoid repeating signup requests: an administrator can create a verified test account.
-      const tooMany=error.status===429||error.code==='over_email_send_rate_limit';
-      const notAuthorized=error.code==='email_address_not_authorized'
-        ||/email address not authorized/i.test(error.message??'');
-      if(tooMany)status('계정 생성 실패: Supabase 인증 메일 발송 횟수 제한(429). 가입 버튼을 반복해서 누르지 마세요. Supabase의 SMTP 발송 설정을 확인해 주세요.');
-      else if(notAuthorized)status('계정 생성 실패: 기본 메일 서버의 허용 주소가 아닙니다. Supabase 프로젝트에 사용자용 SMTP 메일 발송 설정이 필요합니다.');
-      else status('계정 생성 실패: '+error.message);
-    }
-    else if(!data.session)status('가입 요청이 접수되었습니다. 메일함과 스팸함에서 인증 메일을 확인하세요. 도착하지 않으면 발송 설정을 확인해야 합니다.');
-    else status('학습용 계정이 만들어졌습니다.');
   });
   $('#logout').addEventListener('click',async()=>{
     const {error}=await supabase.auth.signOut();
