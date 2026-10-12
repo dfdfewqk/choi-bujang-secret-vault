@@ -1,122 +1,69 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#07172b">
-  <meta name="description" content="BYTE BACK - 귀여운 괴물들의 정보 침공을 막는 3단계 인증 방어 자료실">
-  <title>MONSTER DATA DEFENSE | BYTE BACK</title>
-  <link rel="stylesheet" href="/monster-defense.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#06182f">
+<meta name="description" content="BYTE BACK 3단계: 괴물 침공으로부터 내 정보를 지키는 인증 방어 자료실">
+<title>MONSTER DATA DEFENSE | BYTE BACK</title>
+<link rel="stylesheet" href="/monster-defense.css">
 </head>
 <body>
-  <header class="site-header">
-    <a href="#mission" class="brand" aria-label="우리 반 공동 방어 - 첫 화면">
-      <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#8bf5ff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 6"/></svg></span>
-      <span class="brand-name">우리 반 공동 방어 <span class="brand-note">함께 지키는 안전한 디지털 공간</span></span>
-    </a>
-    <nav class="nav-links" aria-label="페이지 이동">
-      <a href="#mission">침공 상황</a>
-      <a href="#security">방어 시스템</a>
-      <a href="#auth">대원 인증</a>
-    </nav>
-  </header>
-
-  <main class="landing" id="mission">
-    <div class="main-grid">
-      <section class="battlefield" aria-label="괴물 침공을 막는 정보 보호막 일러스트">
-        <div class="visual-label">✦ BYTE BACK / DEFENSE LEVEL 03</div>
-        <div class="mission-title">괴물들의 정보 침공,<span>우리가 막아냅니다.</span></div>
-        <p class="mission-note">내 자료를 노리는 침입자들로부터<br>정보 보호막을 활성화하세요.</p>
-        <div class="city-glow" aria-hidden="true"></div>
-        <div class="watchtower" aria-hidden="true"></div>
-        <div class="tower-antenna" aria-hidden="true"></div>
-        <div class="base-platform" aria-hidden="true"></div>
-        <div class="data-stream" aria-hidden="true"></div>
-        <div class="spotlight a" aria-hidden="true"></div>
-        <div class="spotlight b" aria-hidden="true"></div>
-
-        <div class="monster-field" aria-hidden="true">
-          <img class="monster whale" src="https://aleph-omega.vercel.app/assets/defense-art/monsters/whale.webp" alt="" loading="eager" onerror="this.style.display='none'">
-          <img class="monster hanwoo" src="https://aleph-omega.vercel.app/assets/defense-art/monsters/hanwoo.webp" alt="" loading="eager" onerror="this.style.display='none'">
-          <img class="monster jjajang" src="https://aleph-omega.vercel.app/assets/defense-art/monsters/jjajang.webp" alt="" loading="lazy" onerror="this.style.display='none'">
-          <img class="monster budae" src="https://aleph-omega.vercel.app/assets/defense-art/monsters/budae.webp" alt="" loading="lazy" onerror="this.style.display='none'">
-          <img class="monster buckwheat" src="https://aleph-omega.vercel.app/assets/defense-art/monsters/buckwheat.webp" alt="" loading="lazy" onerror="this.style.display='none'">
-        </div>
-        <div class="holo-shield" aria-hidden="true">
-          <svg viewBox="0 0 310 350" fill="none">
-            <defs>
-              <linearGradient id="shield-fill" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#8affff" stop-opacity=".62"/><stop offset=".55" stop-color="#026bff" stop-opacity=".25"/><stop offset="1" stop-color="#0defff" stop-opacity=".5"/></linearGradient>
-              <linearGradient id="shield-stroke" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dcffff"/><stop offset=".5" stop-color="#33eafa"/><stop offset="1" stop-color="#0072fe"/></linearGradient>
-              <pattern id="shield-grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M0 0H20M0 0V20" stroke="#a5faff" stroke-opacity=".24" stroke-width=".7"/></pattern>
-            </defs>
-            <ellipse cx="155" cy="174" rx="146" ry="150" stroke="#2ce8ff" stroke-width="2.4" stroke-opacity=".7"/>
-            <ellipse cx="155" cy="174" rx="130" ry="137" stroke="#7fefff" stroke-width=".8" stroke-dasharray="4 9" stroke-opacity=".7"/>
-            <path d="M155 20C196 60 237 62 269 73V151C269 233 225 289 155 331C84 289 41 233 41 151V73C73 62 112 60 155 20Z" fill="url(#shield-fill)" stroke="url(#shield-stroke)" stroke-width="6"/>
-            <path d="M155 20C196 60 237 62 269 73V151C269 233 225 289 155 331C84 289 41 233 41 151V73C73 62 112 60 155 20Z" fill="url(#shield-grid)"/>
-            <path d="M155 51C190 82 221 85 239 91V150C239 219 202 263 155 296C108 263 71 219 71 150V91C92 84 120 81 155 51Z" stroke="#a5faff" stroke-opacity=".85" stroke-width="1.5"/>
-            <rect x="109" y="160" width="93" height="94" rx="14" fill="#48eafa" fill-opacity=".94" stroke="#dcffff" stroke-width="4"/>
-            <path d="M129 159V139C129 99 181 99 181 139V159" stroke="#dcffff" stroke-width="14" stroke-linecap="round"/>
-            <circle cx="155" cy="199" r="11" fill="#07517d"/><path d="M150 203L145 230H165L160 203Z" fill="#07517d"/>
-          </svg>
-        </div>
-        <div class="security-card one" aria-hidden="true">✓ 사용자 인증</div>
-        <div class="security-card two" aria-hidden="true">✓ DATA SAFE</div>
-        <div class="security-card three" aria-hidden="true">◇ 보안 확인</div>
-        <div class="water-reflection" aria-hidden="true"></div>
+<header class="site-header">
+  <div class="brand"><span class="brand-emblem" aria-hidden="true">⬡</span><strong>우리 반 공동 방어</strong><span class="brand-caption">BYTE BACK · LEVEL 03</span></div>
+</header>
+<main class="landing">
+  <div class="main-grid">
+    <section class="battlefield" aria-label="괴물들의 정보 침공을 막아내는 푸른 방어막">
+      <img class="scene-image" src="/assets/monster-shield-scene.avif" alt="서울의 야경을 배경으로 고래와 음식 괴물들이 푸른 데이터 방어막에 막혀 있는 모습" width="750" height="660" decoding="async" fetchpriority="high">
+      <div class="scene-vignette" aria-hidden="true"></div>
+      <div class="shield-glow" aria-hidden="true"></div>
+      <div class="data-trail" aria-hidden="true"></div>
+      <div class="holo holo-a" aria-hidden="true">✓ <span>SECURE</span></div>
+      <div class="holo holo-b" aria-hidden="true">⬡ <span>DATA SAFE</span></div>
+      <div class="holo holo-c" aria-hidden="true">✓</div>
+      <div class="scene-label">BYTE BACK // 괴물 침공 방어 작전</div>
+    </section>
+    <section class="command" aria-label="3단계 방어 인증">
+      <div class="alarm-label" aria-hidden="true"><span class="alarm-dot"></span> INVASION ALERT</div>
+      <h1 class="hero-heading">MONSTER<br>DATA DEFENSE</h1>
+      <p class="hero-subtitle">괴물 침공으로부터 내 정보를 지키는 방어 시스템</p>
+      <div class="status-row" aria-label="방어 작전 상태">
+        <span class="status-chip alert">침입 경보</span>
+        <span class="status-chip safe">방어망 활성화</span>
+        <span class="status-chip level">보안 단계 3</span>
+      </div>
+      <section id="login-panel" class="panel">
+        <h2><span class="form-shield" aria-hidden="true">⬡</span> 방어 인증</h2>
+        <form id="login-form">
+          <label for="email">이메일<input id="email" type="email" autocomplete="email" placeholder="이메일을 입력하세요." maxlength="254" required></label>
+          <label for="password">비밀번호<input id="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요." minlength="6" required></label>
+          <button type="submit" class="btn-primary">보호막 활성화 <span aria-hidden="true">›</span></button>
+          <button type="button" id="signup" class="btn-secondary">학습용 계정 만들기</button>
+        </form>
+        <p class="form-hint">인증된 사용자만 자료실에 접근할 수 있습니다.<br>이메일 확인이 필요한 경우 메일함을 확인하세요.</p>
       </section>
-
-      <section class="command" id="auth" aria-label="방어 인증 로그인">
-        <div class="warning">⚠ INVASION ALERT</div>
-        <h1 class="hero-heading">MONSTER<br>DATA DEFENSE</h1>
-        <p class="hero-subtitle">괴물 침공으로부터 내 정보를 지키는 방어 시스템</p>
-        <div class="status-row">
-          <span class="status-chip alert">♨ 침입 경보</span>
-          <span class="status-chip">⬡ 방어망 활성화</span>
-          <span class="status-chip gold">★ 보안 단계: 3</span>
+      <section id="vault-panel" class="hidden" aria-label="로그인한 사용자 자료실">
+        <div class="panel vault-account">
+          <h2>방어 자료실</h2>
+          <p id="auth-status"></p>
+          <button id="logout" class="btn-secondary">로그아웃</button>
         </div>
-        <section id="login-panel" class="panel">
-          <h2>방어 인증</h2>
-          <form id="login-form">
-            <label for="email">이메일
-              <input id="email" type="email" autocomplete="email" placeholder="이메일을 입력하세요." required maxlength="254">
-            </label>
-            <label for="password">비밀번호
-              <input id="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요." required minlength="6">
-            </label>
-            <button type="submit" class="btn-primary">⬡ 보호막 활성화　→</button>
-            <button type="button" id="signup" class="btn-secondary">✦ 학습용 계정 만들기</button>
-          </form>
-          <p class="form-hint">♙ 인증된 사용자만 자료실에 접근할 수 있습니다.<br>이메일 인증이 필요한 경우 메일함을 확인하세요.</p>
-        </section>
-        <section id="vault-panel" class="hidden" aria-label="방어 자료실">
-          <div class="panel">
-            <h2>✓ 방어 자료실 접속 완료</h2>
-            <p id="auth-status"></p>
-            <button id="logout" class="btn-secondary">로그아웃</button>
-          </div>
-          <form id="create-form" class="panel">
-            <h2 id="editor-label">메모 추가</h2>
-            <label for="title">제목 <input id="title" placeholder="가상 메모 제목" required maxlength="120"></label>
-            <label for="body">내용 <textarea id="body" placeholder="가상 메모 내용" required maxlength="5000"></textarea></label>
-            <button type="submit" id="save" class="btn-primary">자료 저장</button>
-            <button type="button" id="cancel" class="secondary hidden">수정 취소</button>
-          </form>
-          <div class="panel">
-            <h2>방어 자료 목록</h2>
-            <ul id="notes" aria-live="polite"></ul>
-          </div>
-        </section>
-        <p id="status" role="status" aria-live="polite"></p>
-        <div class="notice">BYTE BACK 3단계 실습용 시스템입니다. 로그인 사용자 간 개별 메모 소유자 권한 문제는 4단계에서 보완합니다. 실제 개인정보는 저장하지 마세요.</div>
+        <form id="create-form" class="panel">
+          <h2 id="editor-label">메모 추가</h2>
+          <label for="title">제목<input id="title" placeholder="가상 메모 제목" maxlength="120" required></label>
+          <label for="body">내용<textarea id="body" placeholder="가상 메모 내용" maxlength="5000" required></textarea></label>
+          <button type="submit" id="save" class="btn-primary">자료 저장</button>
+          <button type="button" id="cancel" class="btn-secondary hidden">수정 취소</button>
+        </form>
+        <div class="panel vault-list"><h2>방어 자료 목록</h2><ul id="notes" aria-live="polite"></ul></div>
       </section>
-    </div>
-    <footer class="defense-footer" id="security">
-      <div class="feature"><span class="feature-icon" aria-hidden="true">♧</span><span><strong>내 정보는 우리가 지켜요</strong><small>안전한 학습, 즐거운 디지털 공간</small></span></div>
-      <div class="feature"><span class="feature-icon" aria-hidden="true">⬡</span><span><strong>인증 기반 방어 시스템</strong><small>서버에서 로그인 토큰을 검증합니다</small></span></div>
-      <div class="feature"><span class="feature-icon" aria-hidden="true">▥</span><span><strong>가상 메모 자료실</strong><small>3단계 방어 훈련과 기록 관리</small></span></div>
-    </footer>
-  </main>
-  <script type="module">
+      <p id="status" role="status" aria-live="polite"></p>
+      <p class="safety-note">학습용 가상 자료실입니다. 4단계에서 개인 메모별 접근 권한을 보완합니다. 실제 개인정보를 저장하지 마세요.</p>
+    </section>
+  </div>
+</main>
+<script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
   const SUPABASE_URL = 'https://bcwzllejypavwgsfqfbm.supabase.co';
   // Publishable SDK key is public. Never put SUPABASE_SECRET_KEY here.
