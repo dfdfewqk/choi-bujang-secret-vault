@@ -1,6 +1,6 @@
 # BYTE BACK · 4단계 개발 브랜치 (로그인해도 내 자료만 보이게 합니다)
 
-> **상태 (SQL 승인 대기):** 3단계 운영 서비스는 그대로 유지합니다. 4단계 API의 소유자 검사는 `stage4-owner-isolation` 브랜치에 구현했습니다. A/B 2개 계정의 이메일 인증과 로그인을 확인했고, B의 개인 메모 **1건이 이미 정상 저장**되어 있습니다. 원본 메모 **4건은 아직 소유자가 지정되지 않았으므로 A 목록에 표시되지 않습니다.** **기존 4건을 A에게 귀속시키는 DB 변경과 RLS/GRANT 적용은 사용자 승인 전까지 실행하지 않습니다.** 실제 교차 시험·운영 병합·제출도 아직 남아 있습니다.
+> **상태 (2026-10-12 DB 반영 완료, 브라우저 최종 확인 대기):** 사용자 승인 후 기존 원본 4건의 `owner_id`를 첫 A 계정으로 지정했습니다. B가 직접 저장한 메모 1건은 그대로 보존했습니다. **A 4건/B 1건, 총 5건**이고 데이터 본문·제목·식별자 변경은 없었습니다. `vault_training_notes`에 RLS 소유자 제한 정책 4개와 최소 권한을 적용했고, A/B 역할 모의 접근 테스트에서 타인 메모 조회·수정·삭제 차단이 확인되었습니다. **3단계 운영 사이트는 아직 유지합니다.** A/B 실제 브라우저 확인, 운영 병합과 최종 제출이 남아 있습니다.
 
 ## 이번 브랜치의 기능 (5줄)
 
@@ -8,16 +8,16 @@
 2. `src/verify-login.mjs` 계약을 유지하고, 로그인 토큰에서 **서버가 검증한 userId**만 사용합니다.
 3. 목록 GET은 `owner_id = userId` 필터, 개별 GET·PUT·DELETE는 `note_uuid`와 `owner_id` 동시 조건으로 제한합니다.
 4. 메모 POST는 인증된 소유자로 저장하고, PUT은 제목/본문만 수정하며 요청 본문 `owner_id`를 거부합니다.
-5. DB 소유자 지정·RLS는 검토용 SQL만 저장했습니다. 사용자 승인 전에는 실행하지 않으며 3단계 운영 주소를 바꾸지 않습니다.
+5. 사용자 승인으로 DB 소유자 지정과 RLS 정책 적용이 끝났습니다. 3단계 운영 주소와 다른 Supabase 테이블은 변경하지 않았습니다.
 
 ## 사이트에서 직접 가입할 수 있도록 설정하기
 
 - 로그인 화면의 `학습용 계정 만들기`는 `/signup.html`로 이동합니다. 이메일·비밀번호·비밀번호 확인을 별도 페이지에서 입력하고, 제출 시 Supabase Auth `signUp`을 호출합니다. 가입 후 인증 메일 안내와 로그인 복귀 링크를 제공합니다. 기존 로그인·자료실 화면은 유지합니다.
 - 확인 메일의 반환 주소는 프런트엔드에서 `emailRedirectTo: new URL('/', window.location.href).href`로 지정합니다. Supabase Auth URL Configuration의 Redirect URLs에 실제 가입 사이트 URL을 등록해야 합니다. 운영 URL: `https://choi-bujang-secret-vault-six-jet.vercel.app/**`. 미리보기 도메인을 이용한 가입은 그 주소도 추가로 허용해야 합니다.
-- **실제 발송 차단 원인:** Supabase 로그의 `/signup` HTTP 429 및 `over_email_send_rate_limit`. 기본 Supabase SMTP는 시간당 약 2건으로 제한되며 프로젝트 팀 이메일 외 주소로 발송이 제한됩니다. 앱 코드만으로 해결되지 않습니다.
-- 정상적인 회원가입을 위해 프로젝트 관리자 화면 `Authentication → SMTP Settings`에 **별도의 정상적인 SMTP 제공자**를 설정해야 합니다. 인증메일 확인을 프로젝트 전체에서 끄거나, 가입 API에서 사용자 이메일을 임의로 검증 처리하지 않습니다. 이 Supabase 프로젝트의 다른 다이어리 앱도 같은 Auth 설정을 사용하므로 담당자 확인이 필요합니다.
-- 단기 개인 학습용 발송에 발신자가 소유한 네이버 메일 SMTP를 사용할 수도 있지만, 공개 서비스에는 별도 메일 발송 계정/도메인을 가진 전용 SMTP 제공자를 권장합니다. 네이버 메일 공식 정보는 `smtp.naver.com`, 포트 `587`(TLS), 2단계 인증 및 외부 앱 비밀번호 필요. 비밀번호는 공식 네이버 및 Supabase 화면에만 입력하고 GitHub/대화에 공유하지 않습니다.
-- B를 사이트에서 가입하고 실제 메일 인증·로그인한 뒤에야 `supabase/step4_seed_review.sql` 및 `supabase/step4_rls_review.sql`를 사용자 승인 후 진행합니다.
+- **과거 발송 차단 원인:** Supabase 기본 SMTP에서 `/signup` HTTP 429 및 `over_email_send_rate_limit` 발생. 이후 관리자가 Gmail 커스텀 SMTP를 연결하고 실제 인증 메일을 수신해 두 번째 계정 인증까지 완료했습니다.
+- 현재 학습용 발송에 Gmail 커스텀 SMTP를 사용 중입니다. 다른 앱과 인증 설정을 공유하므로 별도 승인 없이 Supabase 전역 SMTP·Site URL·이메일 확인 강제 설정을 바꾸지 않습니다.
+- Gmail 개인 SMTP는 제한된 학습용 발송에 사용하며, 공개 서비스로 전환할 때는 전용 메일 발송 서비스 및 발송량 제한을 검토합니다. SMTP 앱 비밀번호를 저장소·대화·제출 자료에 포함하지 않습니다.
+- A/B 두 계정 이메일 인증·로그인 확인 후 사용자가 2026-10-12에 승인했으며, 메모 소유자 보정과 RLS 정책 적용·검증까지 완료했습니다.
 
 ## 로그인 및 이메일 인증 완료 상태 표시 (2026-10-12)
 
@@ -28,16 +28,16 @@
 - 인증 이후 `localhost`로 이동하는 문제는 Supabase Dashboard의 **Authentication → URL Configuration → Redirect URLs**에 올바른 Vercel URL이 등록되어야 근본 해결됩니다. 이 프로젝트는 다른 앱도 사용하므로 전역 `Site URL`을 임의로 바꾸지 않습니다.
 - 완료 상태 표시 단위 테스트는 `test/step4-api.test.mjs`에서 검증합니다. A/B 실제 접근 차단, RLS·GRANT 적용 및 운영 승인은 별도 검증 작업입니다.
 
-## 4단계 적용 전 확인 사항
+## 4단계 실제 DB 적용 결과와 남은 테스트
 
-- **현재 DB (2026-10-12 실측):** 인증·로그인 완료 사용자 2명(A/B), 미지정 원본 메모 4건과 **B 계정 소유 메모 1건**, 총 5건. RLS ON·정책 0개. 아직 A에게 4건이 귀속되지 않아서 Stage 4 브랜치 A 목록에는 보이지 않음
-- **A/B 데이터 초안:** `supabase/step4_seed_review.sql`. 기존 4건에만 `owner_id=A`를 부여하고 **B가 직접 만든 메모 1건은 어떤 필드도 변경하지 않습니다. 추가 INSERT/DELETE는 없습니다.** 이메일·비밀번호 없이 두 계정의 생성 순서로 A/B를 매칭하고, 실행 당시 정확히 **Auth 2명·기존 미지정 4건·B 소유 1건**이 아니면 전체 중단합니다. 사용자 승인 전 **실행하지 않음**
-- **권한 초안:** `supabase/step4_rls_review.sql`. `PUBLIC`/`anon`/`authenticated`의 기존 테이블 권한을 회수하고 `authenticated`에는 SELECT·INSERT·UPDATE·DELETE만 GRANT, 정책 4개로 `auth.uid() = owner_id` 검사. 사용자가 검토·승인할 때까지 **실행하지 않음**
-- **권한 확인:** `supabase/step4_verify_permissions.sql`은 데이터 변경 없는 조회 쿼리. `information_schema.role_table_grants`, `has_table_privilege`, `pg_policies` 점검
+- **현재 DB (2026-10-12 실측):** A의 원본 메모 4건, B의 기존 메모 1건, 총 5건. 미지정 0건, **RLS ON·정책 4개**, `anon`은 직접 CRUD 불가, `authenticated`는 본인 소유 CRUD만 허용. 원본 5건의 메모 내용 및 식별자 해시가 변경 전후 동일함
+- **A/B 데이터 적용 완료:** `supabase/step4_seed_review.sql`의 승인된 트랜잭션으로 미지정 원본 4건의 소유자만 A로 변경했습니다. B가 직접 만든 메모는 미변경이며 추가 INSERT/DELETE는 실행하지 않았습니다. 실행 전 정확히 Auth 2명·미지정 4건·B 소유 1건을 검사했습니다.
+- **RLS 정책 적용 완료:** `supabase/step4_rls_review.sql`의 권한 변경을 Supabase 마이그레이션 `byteback_step4_rls_own_notes_only`로 적용. `PUBLIC`/`anon`/`authenticated`의 기존 테이블 권한을 회수하고 `authenticated`에는 SELECT·INSERT·UPDATE·DELETE만 GRANT했습니다. 정책 4개가 `auth.uid() = owner_id`를 검사하며 `service_role`의 기존 권한은 유지했습니다.
+- **권한 검증 완료:** `supabase/step4_verify_permissions.sql`로 실제 RLS, Grants 및 소유자별 건수를 확인했습니다. `supabase/step4_verify_rls_ab.sql` 방식으로 A/B 역할·JWT 사용자 식별자 모의 전환 후 각각 조회 가능 수 4/1, 타인 메모 읽기 및 UPDATE/DELETE 0건을 확인했습니다. 테스트 트랜잭션은 ROLLBACK했습니다.
 - **중요:** 서버는 `service_role`을 사용하므로 RLS를 우회할 수 있습니다. 새 API의 원자적 `.eq('owner_id',verified.userId)` 검사를 제거하면 안 됩니다.
 - **테스트:** `node --test test/step4-api.test.mjs` (A/B 목록·개별 조회·타인 수정/삭제·소유자 변경 시도·비로그인·심판/학생 구분 로컬 모의시험). 이 테스트가 통과해도 실제 A/B JWT·운영 DB·심판 공격 통과를 증명하지는 않습니다.
 - **배포/제출:** `npm run build -- --local`로 정적 파일, `npm run bundle`은 실 배포 확인과 `bundle-notes.json`이 준비된 뒤 실행. 운영 병합 후 `scripts/verify-step4-live.mjs` 및 stage4-live GitHub Action이 /api/notes 비로그인 거부, /aleph.json step=4, nosniff를 확인
-- **A/B 수동 점검:** 두 실습 계정에서 각자 GET·POST·PUT·DELETE 성공 / 상대방의 개별 GET·PUT·DELETE 404를 확인한 뒤에만 운영 반영
+- **남은 A/B 브라우저 점검:** 현재 4단계 Preview에서 기존 계정 A로 로그인하면 원본 4건, B로 로그인하면 B가 작성한 1건만 보이는지 각각 확인. 두 계정의 실제 토큰으로 타인 개별 URL을 조회·수정·삭제하는 실험과 운영 반영은 아직 미완료. 비밀번호와 토큰을 대화·이슈에 보내지 말 것
 
 ## 이전 3단계 구현 기록
 
