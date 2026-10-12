@@ -176,7 +176,7 @@ test('no authorization, invalid identities and invalid bodies never reach notes 
   const db = samples();
   const originalCount = db.accessCount;
   for (const params of [
-    { auth: undefined },
+    { auth: '' },
     { auth: null },
     { userId: null },
     { userId: 'invalid-user' },
