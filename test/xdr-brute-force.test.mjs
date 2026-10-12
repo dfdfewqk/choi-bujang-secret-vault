@@ -72,8 +72,10 @@ test('response creates only short-lived source deny rules with evidence ids', as
   const now = new Date('2026-09-27T16:30:00Z');
   const plan = planResponses(fixture.alerts, { now });
   assert.equal(plan.reviewed, 28);
-  assert.equal(plan.denyRules.length, 10);
+  assert.equal(plan.denyRules.length, 9); // 10 blocked alerts share 9 distinct source IPs
   assert.equal(plan.suppressedNormalSourceBlocks, 0);
+  assert.deepEqual(plan.denyRules.find(x => x.sourceIp === '203.0.113.10')?.evidenceAlertIds,
+    ['bf-01','bf-02']);
   assert.equal(plan.alertLogLines.length, 19);
   const suspiciousIps = new Set(fixture.alerts.slice(0,10).map(a=>a.data.srcip));
   const normalIps = new Set(fixture.alerts.slice(19).map(a=>a.data.srcip));
@@ -133,7 +135,7 @@ test('response writes only ignored safe logs and ephemeral deny-rule cache', asy
     const alerts=await readFile(join(root,'xdr','alerts.log'),'utf8');
     const rules=JSON.parse(await readFile(join(root,'xdr','brute-force','deny-rules.runtime.json'),'utf8'));
     assert.equal(alerts.trim().split('\n').length,plan.alertLogLines.length);
-    assert.equal(rules.rules.length,10);
+    assert.equal(rules.rules.length,9);
     assert.doesNotMatch(alerts,/user01|password=|srcip|Bearer /u);
   } finally { await rm(root,{recursive:true,force:true}); }
 });
