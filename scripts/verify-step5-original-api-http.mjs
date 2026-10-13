@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const config = JSON.parse(await readFile('aleph.config.json', 'utf8'));
-assert.equal(config.step, 5);
+assert.ok(config.step >= 5);
 const url = new URL(config.originalApiUrl);
 assert.equal(url.protocol, 'https:');
 assert.equal(url.pathname, '/rest/v1/vault_training_notes');

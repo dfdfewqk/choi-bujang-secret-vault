@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3 || config.step === 4 || config.step === 5) {
+  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -87,7 +87,7 @@ export async function runAttackChecks(config) {
           : 'FAIL: HTTP ' + home.status + ', security header missing or unexpected',
       });
     }
-    if (config.step === 5) {
+    if (config.step === 5 || config.step === 6) {
       // Never mistake a missing apikey 401 for proof that a *valid* public-key
       // client is blocked. The owner must review/apply the table-only REVOKE.
       // The judge checks the original PostgREST URL with anon key / test JWT.
@@ -112,6 +112,23 @@ export async function runAttackChecks(config) {
         expected: 'Original Supabase notes Data API denies anon and test-account JWT direct CRUD',
         observed: 'NOT_TESTED: DB role grants revoked and simulated SELECT denied; live public-key/JWT HTTP challenge remains',
       });
+    }
+    if (config.step === 6) {
+      // Local request fixtures only, not proof of the real class engine or judge.
+      const { decide, RULE_IDS } = await import('./decider.mjs');
+      const { checkDecider } = await import('../scripts/decider-test.mjs');
+      const results = await checkDecider({ decide, ruleIds: RULE_IDS });
+      for (const check of results) {
+        const normal = check.name === '등록 기기의 정상 요청';
+        attempts.push({
+          attackId: normal ? 'stage6_registered_device_allowed' : 'stage6_unregistered_device_denied',
+          expected: normal ? 'Registered local fixture returns allow'
+            : 'Unregistered local fixture returns deny/device_not_registered',
+          observed: check.passed
+            ? 'PASS: local fixture only; live device and judge were not tested'
+            : 'FAIL: local fixture did not match expected policy',
+        });
+      }
     }
     return attempts;
   }
