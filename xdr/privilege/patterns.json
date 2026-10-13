@@ -1,0 +1,35 @@
+{
+  "schema": "byteback.xdr.privilege.patterns.v1",
+  "mitre": [
+    "T1068",
+    "T1078",
+    "T1098.007"
+  ],
+  "sources": [
+    "https://attack.mitre.org/techniques/T1068/",
+    "https://attack.mitre.org/techniques/T1078/",
+    "https://attack.mitre.org/techniques/T1098/007/"
+  ],
+  "patterns": [
+    {
+      "name": "관리자 그룹 비정상 추가",
+      "condition": "T1078·수준 10 이상, administrators 그룹 편입 및 원격·다계정·관리자 명령·빠른 재편입 추가 정황",
+      "evidence": "MITRE ATT&CK T1078 및 T1098.007: 탈취된 계정의 그룹 소속 변경으로 관리 권한이 확대될 수 있다."
+    },
+    {
+      "name": "낯선 관리자 명령",
+      "condition": "T1068 또는 T1078·수준 10 이상, 새 관리자로 즉시 명령·처음 보는 주소와 수업 외 시간·다른 계정 권한 남용",
+      "evidence": "MITRE ATT&CK T1078와 T1068: 권한 상승 후 기존 계정의 관리자급 접근 남용을 함께 조사해야 한다."
+    },
+    {
+      "name": "관리자 세션 권한 이상 변화",
+      "condition": "T1068·수준 10 이상, 관리자 세션으로 변화하면서 처음 보는 원격 주소에서 요청",
+      "evidence": "MITRE ATT&CK T1068: 권한 상승 이벤트 이후 새 관리자 세션의 생성과 원격 접근을 관찰한다."
+    },
+    {
+      "name": "추가 검토가 필요한 권한 이벤트",
+      "condition": "T1068 또는 T1078·수준 5 이상, 단발 권한 창·비관리자 그룹·실패한 관리자 명령 등",
+      "evidence": "MITRE ATT&CK T1078·T1068: 정상 계정 관리나 실패 이벤트도 유사 로그를 남기므로 검토가 필요하다."
+    }
+  ]
+}
