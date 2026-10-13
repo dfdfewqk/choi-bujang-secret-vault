@@ -15,6 +15,18 @@ export async function decide(request) {
       schema:'aleph.decision.v1',requestId:request.requestId,
       decision:'deny',reasonCode:'resource_not_allowed',ruleIds:['resource_zone'],
     };
+    // S08_OTHER_ZONE_ALLOWED: canonical note UUID only identifies the note;
+    // aleph.decision.v1 has no verified owner-to-subject binding. Never infer
+    // authorization from a valid UUID, a client-provided role, or the path.
+    // The existing demo fixture remains available to preserve stage 6/7 tests.
+    // Real own-note GET remains handled by the separate server API, which
+    // atomically filters note_uuid and stored owner_id using verified.userId.
+    if (resource.action === 'GET'
+        && resource.resourceId !== 'note:collection'
+        && resource.resourceId !== 'note:fixture-demo') return {
+      schema:'aleph.decision.v1',requestId:request.requestId,
+      decision:'deny',reasonCode:'resource_not_allowed',ruleIds:['resource_zone'],
+    };
     // "judge_fixture" is a synthetic exercise source, not evidence of a real
     // geolocation or a trusted HTTP header. Real signals.source "none" is unknown.
     // Missing/incomplete signals never become fabricated "usual" values.

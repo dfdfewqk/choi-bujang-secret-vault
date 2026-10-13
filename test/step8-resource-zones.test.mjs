@@ -29,8 +29,16 @@ test('Stage 6 and 7 are retained',async()=>{
  assert.equal((await decide(suspicious)).decision,'step_up');
  assert.equal((await decide({...suspicious,stepUp:{verified:true,authAgeSeconds:60}})).decision,'allow');
 });
-test('Explicit own-note-shaped methods allow; unknown routes, query selectors and role spoofing deny',async()=>{
- for(const method of ['GET','PUT','DELETE'])assert.equal((await decide(note(method))).decision,'allow');
+test('Unverified UUID reads fail closed; other existing methods, routes, query and role guards persist',async()=>{
+ for(const method of ['PUT','DELETE'])assert.equal((await decide(note(method))).decision,'allow');
+ for (const subjectId of ['learner_fixture','other_pseudonymous_subject']) {
+   const foreignGet=await decide({...note('GET'),subjectId});
+   assert.equal(foreignGet.decision,'deny');
+   assert.equal(foreignGet.reasonCode,'resource_not_allowed');
+ }
+ // The pure v1 decider has no owner proof and intentionally does not claim
+ // to authorize even same-owner UUID reads. Actual API retains that check.
+
  for(const req of [
    note('GET','export'),note('GET','download'),note('PATCH'),
    {...note(),route:'GET /other/:id'}, {...note(),path:'/notes/'+A+'/export'},
@@ -64,4 +72,14 @@ test('No query may enable export or replace a path ID in server note API',async(
    if(u===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=u;
    if(k===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=k;
  }
+});
+
+test('Allowed collection/demo fixture and server-side actual owner-read behavior stay separate',async()=>{
+ assert.equal((await decide(fixture({
+   service:'notes',method:'GET',path:'/notes',route:'GET /notes'
+ }))).decision,'allow');
+ const fixtureNormal=fixtureRequests().normal;
+ assert.equal((await decide(fixtureNormal)).decision,'allow');
+ // Stage 4 tests assert same-owner GET 200 and cross-owner GET 404 at the
+ // server API's verified.userId + owner_id predicate; no untrusted shortcut.
 });

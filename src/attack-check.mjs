@@ -159,6 +159,19 @@ export async function runAttackChecks(config) {
           observed:result.decision==='deny'&&result.reasonCode==='resource_not_allowed'
             ?'PASS: synthetic request denied':'FAIL: unexpected synthetic decision'});
       }
+      const readWithoutOwnerProof=await decide({
+        ...normal,service:'notes',method:'GET',
+        path:'/notes/11111111-1111-4111-8111-111111111111',
+        route:'GET /notes/:id',
+      });
+      attempts.push({
+        attackId:'stage8_unverified_note_read_denied',
+        expected:'Synthetic specific note GET has no verified owner and is denied',
+        observed:readWithoutOwnerProof.decision==='deny'
+          && readWithoutOwnerProof.reasonCode==='resource_not_allowed'
+          ?'PASS: policy rejected unverified single-note GET'
+          :'FAIL: unverified note read allowed',
+      });
       attempts.push({attackId:'stage8_live_cross_owner',
         expected:'Real authenticated B cannot fetch or modify A notes',
         observed:'NOT_TESTED: live signed accounts not used; synthetic server ownership tests run separately'});
