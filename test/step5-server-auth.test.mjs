@@ -126,8 +126,9 @@ test('login failure is returned without leaking password or issuing session',asy
 
 test('same-origin browser facade handles login, token retrieval and logout',async()=>{
   const previous={window:globalThis.window,location:globalThis.location,
-    history:globalThis.history,localStorage:globalThis.localStorage,fetch:globalThis.fetch};
-  const backing=new Map();
+    history:globalThis.history,localStorage:globalThis.localStorage,
+    sessionStorage:globalThis.sessionStorage,fetch:globalThis.fetch};
+  const backing=new Map(), shared=new Map();
   const calls=[];
   const session={access_token:'synthetic.jwt.access',refresh_token:'test-refresh-token',
     expires_at:2000000000,user:{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -136,11 +137,13 @@ test('same-origin browser facade handles login, token retrieval and logout',asyn
     globalThis.window={location:{hash:''},setInterval:()=>1,addEventListener:()=>{}};
     globalThis.location={hash:'',pathname:'/',search:''};
     globalThis.history={state:null,replaceState:()=>{}};
-    globalThis.localStorage={
-      getItem:key=>backing.get(key)??null,
-      setItem:(key,value)=>backing.set(key,value),
-      removeItem:key=>backing.delete(key),
-    };
+    const makeStorage=map=>({
+      getItem:key=>map.get(key)??null,
+      setItem:(key,value)=>map.set(key,value),
+      removeItem:key=>map.delete(key),
+    });
+    globalThis.localStorage=makeStorage(shared);
+    globalThis.sessionStorage=makeStorage(backing);
     globalThis.fetch=async (path,options)=>{
       assert.equal(path,'/api/auth');
       const payload=JSON.parse(options.body);
@@ -160,6 +163,7 @@ test('same-origin browser facade handles login, token retrieval and logout',asyn
     assert.equal(signedIn.data.session.access_token,session.access_token);
     assert.equal((await client.auth.getSession()).data.session.user.email,session.user.email);
     assert.ok(backing.has('byteback-server-auth-v1'));
+    assert.equal(shared.has('byteback-server-auth-v1'),false);
     assert.ok(events.includes('SIGNED_IN'));
     assert.equal((await client.auth.signOut()).error,null);
     assert.equal((await client.auth.getSession()).data.session,null);
