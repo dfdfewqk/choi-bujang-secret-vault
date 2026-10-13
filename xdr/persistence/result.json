@@ -1,0 +1,155 @@
+{
+  "schema": "aleph.xdr.result.v1",
+  "moduleKey": "persistence",
+  "decisions": [
+    {
+      "alertId": "ps-01",
+      "action": "block",
+      "confidence": 0.96,
+      "reason": "미서명 서비스 등록·변경"
+    },
+    {
+      "alertId": "ps-02",
+      "action": "block",
+      "confidence": 0.94,
+      "reason": "낯선 예약 작업의 임시 파일 실행"
+    },
+    {
+      "alertId": "ps-03",
+      "action": "block",
+      "confidence": 0.91,
+      "reason": "미등록 시작 폴더 및 예약 작업 연결"
+    },
+    {
+      "alertId": "ps-04",
+      "action": "block",
+      "confidence": 0.96,
+      "reason": "미서명 서비스 등록·변경"
+    },
+    {
+      "alertId": "ps-05",
+      "action": "block",
+      "confidence": 0.94,
+      "reason": "낯선 예약 작업의 임시 파일 실행"
+    },
+    {
+      "alertId": "ps-06",
+      "action": "block",
+      "confidence": 0.96,
+      "reason": "미서명 서비스 등록·변경"
+    },
+    {
+      "alertId": "ps-07",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "미등록 시작 폴더 및 예약 작업 연결"
+    },
+    {
+      "alertId": "ps-08",
+      "action": "block",
+      "confidence": 0.96,
+      "reason": "미서명 서비스 등록·변경"
+    },
+    {
+      "alertId": "ps-09",
+      "action": "alert",
+      "confidence": 0.61,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-10",
+      "action": "alert",
+      "confidence": 0.61,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-11",
+      "action": "alert",
+      "confidence": 0.61,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-12",
+      "action": "alert",
+      "confidence": 0.61,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-13",
+      "action": "alert",
+      "confidence": 0.73,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-14",
+      "action": "alert",
+      "confidence": 0.61,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-15",
+      "action": "alert",
+      "confidence": 0.61,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-16",
+      "action": "alert",
+      "confidence": 0.61,
+      "reason": "확인이 필요한 지속성 관련 변경"
+    },
+    {
+      "alertId": "ps-17",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    },
+    {
+      "alertId": "ps-18",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    },
+    {
+      "alertId": "ps-19",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    },
+    {
+      "alertId": "ps-20",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    },
+    {
+      "alertId": "ps-21",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    },
+    {
+      "alertId": "ps-22",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    },
+    {
+      "alertId": "ps-23",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    },
+    {
+      "alertId": "ps-24",
+      "action": "record",
+      "confidence": 0.08,
+      "reason": "지속성 침해 증거 없음"
+    }
+  ],
+  "counts": {
+    "block": 8,
+    "alert": 8,
+    "record": 8
+  }
+}

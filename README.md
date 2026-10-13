@@ -1,3 +1,14 @@
+## 보너스 XDR-04 저장점 — 지속성 탐지
+
+- Wazuh 가상 경보 원본 `xdr/fixtures/persistence.json` 24건(수정 없음).
+- `xdr/persistence/read-alerts.mjs`는 비밀값 제거 후 5가지 값만 24줄로 읽습니다.
+- MITRE T1543·T1053 및 시작 폴더 T1547.001에 근거한 독립 `decide.mjs`와 분리된 `respond.mjs`를 사용합니다.
+- 결과: block 8 / alert 8 / record 8, 정상 차단 0, 15분 만료 임시 거부 규칙 7개(시험 경보 기준).
+- `npm run xdr:run -- persistence`; `node --test test/xdr-persistence.test.mjs`.
+- 기존 `src/decider.mjs` 수정 없음. 검증된 출발 IP가 있을 때만 앞단 거부를 제안하며 실제 운영 차단이 아님.
+
+---
+
 ## Stage 8 S08 repeated failure: fail-closed object-read policy
 
 - The previous `src/decider.mjs` returned `allow` for any syntactically valid `GET /notes/:uuid` or `GET /api/notes/:uuid` from a registered device. The signed SDP-v1 contract carries `subjectId`, but **no authenticated note owner relation**, so that decision cannot distinguish owner A from other user B. A UUID or valid route is not an authorization credential.
