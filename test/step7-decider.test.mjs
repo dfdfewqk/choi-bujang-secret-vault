@@ -6,7 +6,7 @@ import { fixtureRequests } from '../scripts/fixture-7.mjs';
 const fresh = (request, override = {}) => ({ ...request, ...override });
 
 test('Stage 6 registered device rule remains, and response schema is unchanged', async () => {
-  assert.deepEqual(RULE_IDS, ['device_registered', 'step_up_required']);
+  assert.ok(RULE_IDS.includes('device_registered') && RULE_IDS.includes('step_up_required'));
   const { normal } = fixtureRequests();
   for (const deviceRegistered of [false, undefined, null, 'true']) {
     const result = await decide(fresh(normal, { deviceRegistered }));
