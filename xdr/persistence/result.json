@@ -35,7 +35,7 @@
     {
       "alertId": "ps-06",
       "action": "block",
-      "confidence": 0.95,
+      "confidence": 0.96,
       "reason": "미서명 서비스 등록·변경"
     },
     {
