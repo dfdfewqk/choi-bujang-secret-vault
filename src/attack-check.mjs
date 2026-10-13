@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6) {
+  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -113,20 +113,33 @@ export async function runAttackChecks(config) {
         observed: 'NOT_TESTED: DB role grants revoked and simulated SELECT denied; live public-key/JWT HTTP challenge remains',
       });
     }
-    if (config.step === 6) {
+    if (config.step === 6 || config.step === 7) {
       // Local request fixtures only, not proof of the real class engine or judge.
       const { decide, RULE_IDS } = await import('./decider.mjs');
       const { checkDecider } = await import('../scripts/decider-test.mjs');
       const results = await checkDecider({ decide, ruleIds: RULE_IDS });
       for (const check of results) {
-        const normal = check.name === '등록 기기의 정상 요청';
+        const ids = {
+          '등록 기기의 정상 요청': 'stage6_registered_device_allowed',
+          '미등록 기기의 가상 요청': 'stage6_unregistered_device_denied',
+          '복합 이상 접속': 'stage7_composite_step_up',
+          '다시 확인한 복합 이상 접속': 'stage7_recently_verified_allow',
+        };
+        const id = ids[check.name];
+        if (!id) throw new Error('Unknown fixture result');
         attempts.push({
-          attackId: normal ? 'stage6_registered_device_allowed' : 'stage6_unregistered_device_denied',
-          expected: normal ? 'Registered local fixture returns allow'
-            : 'Unregistered local fixture returns deny/device_not_registered',
+          attackId: id,
+          expected: 'Local policy decision for ' + check.name,
           observed: check.passed
-            ? 'PASS: local fixture only; live device and judge were not tested'
-            : 'FAIL: local fixture did not match expected policy',
+            ? 'PASS: local synthetic fixture matched; not a live engine test'
+            : 'FAIL: local synthetic fixture did not match',
+        });
+      }
+      if (config.step === 7) {
+        attempts.push({
+          attackId: 'stage7_live_relogin_block',
+          expected: 'Real engine withholds note responses until fresh re-login is verified',
+          observed: 'NOT_TESTED: engine re-login and pre-verification note response not measured',
         });
       }
     }

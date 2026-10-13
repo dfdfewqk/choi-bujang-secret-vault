@@ -1,3 +1,35 @@
+# BYTE BACK · 7단계 저장점 — 평소와 다른 접속은 다시 확인합니다
+
+> **현재 단계:** 기존 6단계 `device_registered` 규칙을 보존하고 7단계 `step_up_required` 복합 이상 접속 조건을 추가합니다. 2026-10-13 기준 이전 6단계 코드는 커밋 `12dcedbfd07bf6ce768d5e19a27ea346d576fe17`로 Vercel production READY 확인됨. 아래 6단계 '운영 미확인' 표기는 그 당시 기록입니다. **7단계 신규 배포 및 심판 결과는 배포/검사 후 따로 확인해야 합니다.**
+
+## 현재 유지 기능 (5줄)
+1. 기존 브라우저 UI와 같은 출처 `/api/auth`를 통한 로그인·가입·세션 처리를 유지합니다.
+2. 개인 메모는 `/api/notes` 서버 함수의 인증 및 `owner_id` 검사로 분리합니다.
+3. 원본 메모 테이블의 브라우저 직접 접근 회수와 기존 A/B 소유자 격리를 유지합니다.
+4. `deviceRegistered !== true`이면 즉시 `deny/device_not_registered`로 거부합니다.
+5. 정상 등록 기기는 `allow`, 검증된 **복합 가상 이상 사건**만 `step_up/step_up_required`로 추가 확인하고 XDR-01·02는 그대로 유지합니다.
+
+## 7단계 가상 이상 접속 판정과 입력 계약
+
+- `docs/DECIDER_REQUEST.md`의 **운영 엔진이 전달하는 값만** 사용: `subjectId`, `deviceId`, `deviceRegistered`, `method`, `service`, `route`, `signals`, `recentEvents`, `stepUp`. 브라우저 지오로케이션/헤더, 임의 `role` 또는 `identity` 객체는 신뢰하지 않습니다.
+- `signals.source === 'judge_fixture'`는 **가상 심판 사건** 출처로만 취급합니다. 실제 트래픽에서 `source:'none'`, `region:'unknown'`인 것은 실측 위치나 안전한 평상시 신호가 아닙니다. 신호 누락·불명확 상황은 평소 시각/네트워크/행동으로 채우지 않으며, 추가 이상 위험을 검증할 수 없다면 기존 **등록 기기 규칙만 적용**합니다.
+- 합성 재확인 조합: 등록 기기이고, `service:'notes'` + `method:'GET'` + `signals.source:'judge_fixture'` + 00~05시 정수 시간 + `network:'unusual'` + 최근 300초 이내 `recentEvents.kind:'risk_signal'` 및 `count>=10`이 동시에 성립할 때 `step_up/step_up_required`를 반환합니다. `risk_signal`은 테스트 fixture의 다량 위험 신호 표식일 뿐, **실제 읽은 자료 건수의 증거가 아닙니다.** 지역 단독으로 차단하지 않습니다.
+- `stepUp.verified === true`이고 `authAgeSeconds`가 정수 0~120초인 **엔진 검증값**이 들어온 새 가상 요청만 이 조합에서 `allow`할 수 있습니다. 이 필드를 클라이언트가 스스로 보냈다고 인정하지 않으며, 챌린지 제공·세션 갱신·자료 응답 차단은 실제 반 엔진의 별도 검증 책임입니다. 실제 재로그인 전후 자료 차단은 독립 시험이 없으므로 **미실행**입니다.
+
+## 재실행·제출
+```bash
+npm ci
+npm run decider:test
+npm run fixture:7
+node --test test/step7-decider.test.mjs
+```
+- `npm run decider:test`: 등록 기기 정상 허용, 미등록 기기 거부, 복합 이상 접속 추가 확인, 엔진 재확인 가상 요청 허용을 출력합니다.
+- `npm run fixture:7`: **정상 사건 allow / 복합 이상 사건 step_up** 예상 결과.
+- 기존 CI 회귀 검사 (2~6단계 및 XDR-01·02)와 `npm run bundle`은 GitHub Actions `.github/workflows/stage7-checks.yml`에서 실행합니다. 번들에는 합성 검사와 실측 미실행을 구분하며 기기 개인키·토큰·실명·메모 본문은 들어가지 않습니다.
+- 실제 7단계 운영 화면 및 심판 결과는 각각 배포 상태와 공식 심판 판정으로만 확정합니다.
+
+---
+
 # BYTE BACK · 6단계 저장점 — 등록한 기기만 자료실에 들어옵니다
 
 > **현재 상태:** 1~5단계와 XDR-01·02는 유지하고 6단계 `device_registered` 판정 규칙만 추가했습니다. 아래 5단계 '배포 대기' 문구는 과거 기록이며, 2026-10-13 인수인계 기준으로 5단계 운영 배포는 완료되었습니다. **6단계 운영 배포 및 실제 심판 결과는 별도 확인 대상**입니다.

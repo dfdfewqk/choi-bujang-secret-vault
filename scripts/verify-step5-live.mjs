@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const config = JSON.parse(await readFile(resolve(root,'aleph.config.json'),'utf8'));
-if(config.step !== 5)throw new Error('Expected stage 5 config');
+if(config.step < 5)throw new Error('Expected stage 5 or later config');
 const origin=new URL(config.publicAppUrl);
 if(origin.protocol!=='https:')throw new Error('Expected HTTPS origin');
 const get=async path=>fetch(new URL(path,origin),{
@@ -28,7 +28,7 @@ if(data.status!==404){
 }
 const manifest=await get('/aleph.json');
 const m=await manifest.json();
-if(!manifest.ok || m.step!==5 || m.schema!=='aleph.defense.deployment.v1'
+if(!manifest.ok || m.step!==config.step || m.schema!=='aleph.defense.deployment.v1'
    || m.repoUrl!==config.repoUrl)throw new Error('Stage 5 deployment manifest mismatch');
 const checkApi=async path=>{
   const response=await get(path);
@@ -55,4 +55,4 @@ const result={
 };
 await mkdir(resolve(root,'artifacts'),{recursive:true});
 await writeFile(resolve(root,'artifacts','stage5-live-check.json'),JSON.stringify(result,null,2)+'\n');
-console.log('STAGE5 LIVE PASS: home nosniff; public notes zero; aleph step 5; list and item anonymous JSON denied');
+console.log('STAGE5 LIVE PASS: home nosniff; public notes zero; aleph step '+config.step+'; list and item anonymous JSON denied');
