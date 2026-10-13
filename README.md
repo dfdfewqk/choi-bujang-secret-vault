@@ -1,3 +1,26 @@
+# BYTE BACK · 8단계 저장점 — 자료마다 갈 수 있는 구역을 나눕니다
+
+> 기준: 7단계 `main` `85da97af485f6bb43c70a88efb7c3037ad6a3d85` (운영 배포 READY). 이전 README '7단계 배포 미확인'은 과거 기록입니다. 8단계 심판 판정은 미확인.
+
+## 현재 기능 (5줄)
+1. 기존 로그인/가입/세션과 개인 메모 CRUD를 유지합니다.
+2. `src/resource-zones.mjs`가 내부 `note:<UUID>` 및 예약 `announcement:<UUID>`를 구분합니다.
+3. 기존 등록 기기 거부와 복합 이상 `step_up` 조건을 보존합니다.
+4. 미확인 경로·메서드·쿼리·강사 공지 접근은 `deny/resource_not_allowed`로 거부합니다.
+5. API의 검증된 사용자-`owner_id` 일치 조건과 XDR-01·02를 유지합니다.
+
+## 재현
+```bash
+npm ci
+npm run decider:test
+npm run fixture:7
+node --test test/step8-resource-zones.test.mjs test/step4-api.test.mjs
+```
+
+정상 메모 읽기/수정은 기존 서버의 소유권 검증을 거칩니다. B의 A 메모 요청은 404이고 다른 자원 구역은 거부됩니다. `docs/RESOURCE_ZONES.md` 참조. 판정기 계약에는 검증된 강사 권한과 소유자 매핑이 없으므로 강사 공지를 실제로 제공하거나 강사 수정에 성공했다고 주장하지 않습니다. 실제 A/B JWT 심판 재검증 및 새 이유 코드 등록 여부는 미확인입니다. 메뉴, 운영 주소, DB를 바꾸지 않습니다. `npm run bundle`은 커밋과 무시된 `bundle-notes.json`을 준비한 CI에서 실행합니다.
+
+---
+
 # BYTE BACK · 7단계 저장점 — 평소와 다른 접속은 다시 확인합니다
 
 > **현재 단계:** 기존 6단계 `device_registered` 규칙을 보존하고 7단계 `step_up_required` 복합 이상 접속 조건을 추가합니다. 2026-10-13 기준 이전 6단계 코드는 커밋 `12dcedbfd07bf6ce768d5e19a27ea346d576fe17`로 Vercel production READY 확인됨. 아래 6단계 '운영 미확인' 표기는 그 당시 기록입니다. **7단계 신규 배포 및 심판 결과는 배포/검사 후 따로 확인해야 합니다.**

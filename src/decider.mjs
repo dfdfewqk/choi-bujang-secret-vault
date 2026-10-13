@@ -1,6 +1,7 @@
+import { classifyRequestResource } from './resource-zones.mjs';
 // ALEPH v1: only the class engine supplies verified identity/device/request facts.
 // Do not read client headers, browser location claims, raw credentials or tokens.
-export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required']);
+export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required', 'resource_zone']);
 
 export async function decide(request) {
   let decision = 'deny';
@@ -8,6 +9,12 @@ export async function decide(request) {
   let ruleIds = ['device_registered'];
 
   if (request?.deviceRegistered === true) {
+    // v1 has no verified owner/instructor role. Unknown or notice routes deny.
+    const resource=classifyRequestResource(request);
+    if(!resource||resource.zone!=='note')return {
+      schema:'aleph.decision.v1',requestId:request.requestId,
+      decision:'deny',reasonCode:'resource_not_allowed',ruleIds:['resource_zone'],
+    };
     // "judge_fixture" is a synthetic exercise source, not evidence of a real
     // geolocation or a trusted HTTP header. Real signals.source "none" is unknown.
     // Missing/incomplete signals never become fabricated "usual" values.
@@ -36,10 +43,11 @@ export async function decide(request) {
     if (highRisk && !recentlyVerified) {
       decision = 'step_up';
       reasonCode = 'step_up_required';
-      ruleIds = ['device_registered', 'step_up_required'];
+      ruleIds = ['device_registered', 'step_up_required', 'resource_zone'];
     } else {
       decision = 'allow';
       reasonCode = 'approved';
+      ruleIds = ['device_registered', 'resource_zone'];
     }
   }
 

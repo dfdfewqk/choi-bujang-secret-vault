@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import config from '../aleph.config.json' with { type: 'json' };
 import { createLoginVerifier } from './verify-login.mjs';
+import { noteResourceId } from './resource-zones.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 let cachedVerifier;
@@ -67,9 +68,14 @@ export async function handleNotes(request, response, {
   if (!verified?.userId || !UUID.test(verified.userId)) {
     return response.status(401).json({ error: 'UNAUTHORIZED' });
   }
-  if (item && (typeof itemId !== 'string' || !UUID.test(itemId))) {
-    return response.status(400).json({ error: 'INVALID_NOTE_ID' });
-  }
+  // Query strings never select a different zone/action. The sole allowed
+  // item query is the path UUID passed by the existing Vercel rewrite.
+  const query=request.query;
+  if(query&&(typeof query!=='object'||Object.keys(query).some(key=>
+      !item||key!=='id'||query[key]!==itemId)))
+    return response.status(400).json({error:'INVALID_RESOURCE_QUERY'});
+  if(item&&!noteResourceId(itemId))
+    return response.status(400).json({error:'INVALID_NOTE_ID'});
 
   try {
     const db = databaseFactory();
