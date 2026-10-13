@@ -165,11 +165,11 @@ export async function runAttackChecks(config) {
         route:'GET /api/notes/:id',
       });
       attempts.push({
-        attackId:'stage8_canonical_note_route_allowed',
-        expected:'SDP accepts valid registered-device note route; final API separately verifies actual owner',
-        observed:canonicalNote.decision==='allow'
-          ?'PASS: local canonical route reaches owner-controlled API; not an end-to-end live judge test'
-          :'FAIL: legitimate canonical GET stopped before owner verification',
+        attackId:'stage8_unverified_note_get_denied',
+        expected:'SDP without owner proof cannot allow a specific note UUID read; API verifies actual owner separately',
+        observed:canonicalNote.decision==='deny'&&canonicalNote.reasonCode==='resource_not_allowed'
+          ?'PASS: local SDP denies an unverified note UUID read; authenticated API retains owner check'
+          :'FAIL: SDP allowed a note UUID read without owner evidence',
       });
       attempts.push({attackId:'stage8_live_cross_owner',
         expected:'Real authenticated B cannot fetch or modify A notes',
