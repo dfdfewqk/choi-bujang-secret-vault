@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7 && config.step !== 8) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7) {
+  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7 || config.step === 8) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -113,7 +113,7 @@ export async function runAttackChecks(config) {
         observed: 'NOT_TESTED: DB role grants revoked and simulated SELECT denied; live public-key/JWT HTTP challenge remains',
       });
     }
-    if (config.step === 6 || config.step === 7) {
+    if (config.step === 6 || config.step === 7 || config.step === 8) {
       // Local request fixtures only, not proof of the real class engine or judge.
       const { decide, RULE_IDS } = await import('./decider.mjs');
       const { checkDecider } = await import('../scripts/decider-test.mjs');
@@ -142,6 +142,26 @@ export async function runAttackChecks(config) {
           observed: 'NOT_TESTED: engine re-login and pre-verification note response not measured',
         });
       }
+    }
+    if(config.step===8){
+      const {decide}=await import('./decider.mjs');
+      const {fixtureRequests}=await import('../scripts/fixture-7.mjs');
+      const {normal}=fixtureRequests();
+      for(const {id,req} of [
+        {id:'stage8_unknown_route_denied',req:{...normal,path:'/notes/export'}},
+        {id:'stage8_announcement_edit_denied',req:{...normal,service:'announcements',
+          method:'PUT',path:'/announcements/11111111-1111-4111-8111-111111111111',
+          route:'PUT /announcements/:id'}},
+      ]){
+        const result=await decide(req);
+        attempts.push({attackId:id,
+          expected:'Synthetic unknown resource or announcement edit is denied',
+          observed:result.decision==='deny'&&result.reasonCode==='resource_not_allowed'
+            ?'PASS: synthetic request denied':'FAIL: unexpected synthetic decision'});
+      }
+      attempts.push({attackId:'stage8_live_cross_owner',
+        expected:'Real authenticated B cannot fetch or modify A notes',
+        observed:'NOT_TESTED: live signed accounts not used; synthetic server ownership tests run separately'});
     }
     return attempts;
   }
