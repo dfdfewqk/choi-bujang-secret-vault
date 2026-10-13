@@ -15,7 +15,7 @@ function validIp(value){
 function validAlertId(v){return typeof v==='string'&&/^kc-[0-9]{2,3}$/u.test(v);}
 function clearNormalEvent(alert,decision){
  return decision.action==='record'&&Number.isInteger(alert?.rule?.level)
-   &&alert.rule.level<=3&&!Array.isArray(alert?.rule?.mitre)===false
+   &&alert.rule.level<=3&&Array.isArray(alert?.rule?.mitre)
    &&!alert.rule.mitre.includes('T1190');
 }
 export function planResponses(alerts,{now=new Date(),ttlMs=TTL_MS}={}){
