@@ -49,3 +49,7 @@ node scripts/xdr-run.mjs brute-force
 - `xdr/alerts.log` 기록과 판정기 연결은 `respond.mjs` 같은 다른 파일에서 합니다. `decide.mjs` 는 판단 결과만 돌려줍니다.
 
 인터넷을 끈 상태에서 `npm run xdr:run -- <moduleKey>` 를 돌려도 같은 결과가 나오면 심판에서도 같은 결과가 나옵니다.
+
+## XDR-03 Log4Shell known-cve 구현
+
+`node xdr/known-cve/read-alerts.mjs`는 가상 경보 24건의 안전한 다섯 필드만 출력합니다. `npm run xdr:run -- known-cve`는 독립 `decide.mjs`를 실행해 `result.json`을 만듭니다. `respond.mjs`는 별도로 15분 만료되는 IP 거부 제안을 남기며 실제 검증된 원본 IP가 있을 때만 ZTNA 앞단에서 적용 가능합니다. `xdr/alerts.log` 및 `xdr/known-cve/deny-rules.runtime.json`은 Git 추적 제외입니다. 가상 경보의 정상 기록은 자동 차단 대상이 아닙니다. 공식 심판의 실제 점수는 아직 미확인입니다.

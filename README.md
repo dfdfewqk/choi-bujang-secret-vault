@@ -1,3 +1,17 @@
+## 보너스 XDR-03 저장점 — 알려진 취약점 악용 탐지
+
+- 원본: `xdr/fixtures/known-cve.json`의 수업용 Wazuh 경보 **24건** (수정 없음).
+- **읽기:** `xdr/known-cve/read-alerts.mjs`는 시각·출발 주소·계정·규칙 수준·설명 다섯 필드만 안전하게 표시하며 원문 URL/머리글·비밀값은 출력하지 않습니다 (24건 → 24행).
+- **근거:** `xdr/known-cve/patterns.json`에 Log4Shell CVE-2021-44228, MITRE ATT&CK T1190의 원격 조회 악용 및 모호한 점검 흔적 패턴과 한 줄 근거를 기록했습니다.
+- **독립 판단:** `xdr/known-cve/decide.mjs`는 import·파일·네트워크 없이 `decide(alert)` 하나로 경보를 분류합니다. 0.85 이상=block, 0.5 이상=alert, 미만=record. 패턴 이름은 `reason`으로 반환합니다.
+- **연결/알림:** `xdr/known-cve/respond.mjs`는 block 후보에만 **15분 만료 + 근거 경보 ID**가 붙은 임시 ZTNA 거부 규칙을 제안하고, 기존 `src/decider.mjs` 규칙은 수정하지 않습니다. 출발 주소는 반드시 외부 엔진이 검증한 값만 사용하며, 같은 주소에서 정상 이벤트가 보이면 주소 전체 차단을 보류합니다. `xdr/alerts.log` 및 임시 규칙 파일은 Git에서 제외합니다.
+- **실행:** `npm run xdr:run -- known-cve` (두 번 검증); `node --test test/xdr-known-cve.test.mjs`.
+- **결과:** `xdr/known-cve/result.json` — block **8**, alert **8**, record **8**; 정상 이벤트 block **0**; 임시 거부 규칙 **7개**. GitHub Actions 자동검사 성공 및 결과 저장점 커밋 확인.
+- **적용 범위:** 이는 인터넷 없이 가상 경보를 탐지·분류하는 수업용 기능입니다. 실제 Log4j 실행 여부나 운영 ZTNA 엔진에서의 네트워크 차단·Log4j 보안 패치 완료를 뜻하지 않습니다.
+- 이전 1~8단계와 XDR-01·02는 모두 보존합니다. 운영 자료실 주소, DB, 로그인 UI, 기기 등록·복합 이상 판정기 규칙은 그대로입니다.
+
+---
+
 ## 8단계 BOLA 종합 보완 — 중복 메모 ID/소유권 확인
 
 - 공개 API는 메모 소유자를 검증된 JWT에서 결정하고, 서버에서 정규 UUIDv4를 생성합니다. `POST /api/notes` 요청에 `id` 또는 `note_uuid`를 넣는 경우 JSON 400 `CLIENT_NOTE_ID_NOT_ALLOWED`로 거부합니다.

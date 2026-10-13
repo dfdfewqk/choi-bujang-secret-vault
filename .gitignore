@@ -13,3 +13,5 @@ private-*.sql
 xdr/alerts.log
 xdr/brute-force/deny-rules.runtime.json
 xdr/web-injection/deny-rules.runtime.json
+
+xdr/known-cve/deny-rules.runtime.json

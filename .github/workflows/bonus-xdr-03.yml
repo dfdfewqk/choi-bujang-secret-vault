@@ -1,0 +1,93 @@
+name: Bonus XDR-03 known CVE check and savepoint
+on:
+  push:
+    branches: [bonus-xdr-03-known-cve]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Preserve existing stages and XDR 01-02
+        run: |
+          npm run test:r5
+          npm run test:package
+          node --test test/step2.test.mjs test/step2-api.test.mjs test/step3-api.test.mjs test/step4-api.test.mjs test/step5-api.test.mjs test/step5-server-auth.test.mjs test/step7-decider.test.mjs test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs test/tab-session-isolation.test.mjs
+          node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs test/xdr-known-cve.test.mjs
+          npm run decider:test
+          npm run fixture:7
+      - name: Safely project all Wazuh fixture rows
+        run: |
+          node xdr/known-cve/read-alerts.mjs > /tmp/xdr-03-sanitized.txt
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          const src=JSON.parse(await readFile('xdr/fixtures/known-cve.json','utf8'));
+          const lines=(await readFile('/tmp/xdr-03-sanitized.txt','utf8')).trim().split('\n');
+          assert.equal(src.alerts.length,24);
+          assert.equal(lines.length-1,src.alerts.length);
+          for(const row of lines.slice(1))assert.equal(Object.keys(JSON.parse(row)).length,5);
+          console.log('known-cve original='+src.alerts.length+'; sanitized='+(lines.length-1));
+          NODE
+      - name: First XDR-03 classification
+        run: npm run xdr:run -- known-cve
+      - name: Rerun and refresh result.json
+        run: npm run xdr:run -- known-cve
+      - name: Validate counts and normal event safety
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          const src=JSON.parse(await readFile('xdr/fixtures/known-cve.json','utf8'));
+          const result=JSON.parse(await readFile('xdr/known-cve/result.json','utf8'));
+          const tmp=JSON.parse(await readFile('xdr/known-cve/deny-rules.runtime.json','utf8'));
+          const log=await readFile('xdr/alerts.log','utf8');
+          assert.equal(src.alerts.length,24);
+          assert.deepEqual(result.counts,{block:8,alert:8,record:8});
+          assert.equal(result.decisions.length,24);
+          for(let i=16;i<24;i++)assert.notEqual(result.decisions[i].action,'block',src.alerts[i].id);
+          assert.equal(tmp.rules.length,7);
+          for(const rule of tmp.rules){
+            assert.equal(rule.effect,'deny');
+            assert.ok(Date.parse(rule.expiresAt)>Date.parse(rule.createdAt));
+            assert.ok(rule.evidenceAlertIds?.length>0);
+          }
+          assert.doesNotMatch(log,/password=|Bearer\s+|sb_secret_|srcuser|srcip|jndi:/iu);
+          console.log('XDR-03 counts: block='+result.counts.block+', alert='+result.counts.alert+
+            ', record='+result.counts.record+'; normal blocked=0; temporary denies='+tmp.rules.length);
+          NODE
+      - name: Stage only safe XDR-03 result.json
+        run: |
+          git add -- xdr/known-cve/result.json
+          files="$(git diff --cached --name-only)"
+          echo "$files"
+          test -z "$files" || test "$files" = "xdr/known-cve/result.json"
+      - name: Commit bonus xdr-03 checkpoint
+        if: github.event_name == 'push' && github.ref == 'refs/heads/bonus-xdr-03-known-cve'
+        run: |
+          if git diff --cached --quiet; then
+            echo "XDR-03 result already committed."
+          else
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "보너스 xdr-03 저장점: 알려진 CVE 경보 24건 분류 및 정상 차단 검증"
+            git push origin HEAD:bonus-xdr-03-known-cve
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bonus-xdr-03-verification
+          path: xdr/known-cve/result.json
+          if-no-files-found: error
+          retention-days: 90
