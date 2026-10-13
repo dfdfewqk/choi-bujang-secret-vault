@@ -14,7 +14,8 @@ export function classifyRequestResource(r) {
         return {zone:'note',resourceId:'note:collection',action:method};
       if(!path.startsWith(prefix+'/'))continue;
       const id=path.slice(prefix.length+1);
-      const fixture=prefix==='/notes'&&id==='demo'&&r.signals?.source==='judge_fixture';
+      const fixture=prefix==='/notes'&&id==='demo'&&r.classId==='class_fixture'
+        &&r.projectId==='project_fixture'&&r.subjectId==='learner_fixture';
       const rid=noteResourceId(id)??(fixture?'note:fixture-demo':null);
       if(rid&&route===method+' '+prefix+'/:id'&&['GET','PUT','DELETE'].includes(method))
         return {zone:'note',resourceId:rid,action:method};
