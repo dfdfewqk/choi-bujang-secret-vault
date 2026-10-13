@@ -102,15 +102,16 @@ export async function handleNotes(request, response, {
     if (!item && method === 'POST') {
       const data = validateNote(request.body);
       if (!data) return response.status(400).json({ error: 'INVALID_NOTE' });
-      const given = request.body?.id;
-      if (given !== undefined && (typeof given !== 'string' || !UUID.test(given))) {
-        return response.status(400).json({ error: 'INVALID_NOTE_ID' });
-      }
-      // Owner identity is assigned exclusively from the verified token.
+      // Both the owner and the externally addressable ID are server-assigned.
+      // Reusing a victim's UUID must not create a second object with that ID.
       if (Object.hasOwn(request.body ?? {}, 'owner_id')) {
         return response.status(400).json({ error: 'OWNER_ID_NOT_ALLOWED' });
       }
-      const newId = given ?? randomUUID();
+      if (Object.hasOwn(request.body ?? {}, 'id')
+          || Object.hasOwn(request.body ?? {}, 'note_uuid')) {
+        return response.status(400).json({ error: 'CLIENT_NOTE_ID_NOT_ALLOWED' });
+      }
+      const newId = randomUUID();
       const { error } = await table.insert({
         note_uuid: newId, title: data.title, content: data.content, owner_id: verified.userId,
       });
