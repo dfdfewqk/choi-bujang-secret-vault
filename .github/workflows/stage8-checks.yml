@@ -27,13 +27,13 @@ jobs:
           npm run test:r5
           npm run test:package
           node --test test/step2.test.mjs test/step2-api.test.mjs test/step3-api.test.mjs test/step4-api.test.mjs test/step5-api.test.mjs test/step5-server-auth.test.mjs test/step7-decider.test.mjs
-          node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs
+          node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs test/xdr-known-cve.test.mjs test/xdr-persistence.test.mjs
           node --test test/tab-session-isolation.test.mjs
       - name: Local stage 6-8 decisions and resource isolation
         run: |
           npm run decider:test
           npm run fixture:7
-          node --test test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs test/step4-api.test.mjs
+          node --test test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs test/step4-api.test.mjs test/step8-signed-jwt-end-to-end.test.mjs
       - name: Clean checkout for bundle
         run: |
           git status --short
@@ -53,6 +53,9 @@ jobs:
           NODE
       - name: Generate bundle after commit
         run: npm run bundle
+      - name: Report production SHA separately from code tests
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: node scripts/verify-stage8-deployment.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: stage8-resource-zones-submission
