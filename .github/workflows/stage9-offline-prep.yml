@@ -1,0 +1,22 @@
+name: Stage 9 Offline Preparation (no deploy)
+on:
+  push:
+    branches: [prep-stage9-to12-offline-20261013]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline_verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run detect:test
+      - run: node --test test/step9-detect.test.mjs
+      - run: npm run decider:test
+      - run: node --test test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs test/step8-signed-jwt-end-to-end.test.mjs
