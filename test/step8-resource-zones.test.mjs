@@ -37,7 +37,7 @@ test('Explicit own-note-shaped methods allow; unknown routes, query selectors an
    {...note(),queryLength:8}, {...note(),subjectId:''}, {...note(),deviceId:'bad'},
    notice(),notice('GET'),notice('DELETE'),
    {...notice(),role:'instructor',identity:{role:'instructor'},headers:{'x-role':'instructor'}},
-   {...note('GET','demo'),signals:{source:'none'}},
+   {...note('GET','demo'),classId:'unrelated_class',signals:{source:'none'}},
  ]){
    const r=await decide(req);
    assert.equal(r.decision,'deny');
