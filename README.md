@@ -1,3 +1,15 @@
+## 보너스 XDR-06 저장점 — 외부 자료 반출 탐지
+
+- 원본: `xdr/fixtures/exfiltration.json`의 가상 Wazuh 경보 **30건**(수정 없음).
+- 읽기: `xdr/exfiltration/read-alerts.mjs`는 시각·출발지·계정·수준·설명 5필드만 표시하며 비밀값을 제거합니다.
+- 독립 판단: `xdr/exfiltration/decide.mjs`, MITRE ATT&CK T1041·T1048; 확신도 0.85 이상 차단, 0.5 이상 알림, 미만 기록. import·파일·네트워크 접근 없음.
+- 별도 연결: `respond.mjs`는 목적지 IP 기준 15분 만료·근거 경보 번호의 **로컬 임시 거부 제안**만 만들며 기존 `src/decider.mjs`는 수정하지 않습니다. 신뢰할 수 있는 전송 계층에서 확인한 목적지에만 적용할 수 있습니다.
+- 재실행: `node --test test/xdr-exfiltration.test.mjs`, `npm run xdr:run -- exfiltration`(2회).
+- 수업용 경보 기대 결과: **block 10 / alert 10 / record 10**, 정상 차단 0, 임시 목적지 거부 8개. 실제 방화벽 적용이나 심판 최종 점수는 아닙니다.
+- `xdr/alerts.log`·`xdr/exfiltration/deny-rules.runtime.json`은 Git에서 제외합니다.
+
+---
+
 ## 8단계 종합 원인 감사·검증 저장점
 
 8단계 `S08_OTHER_ZONE_ALLOWED` 반복 문제에 대해 **운영 배포 버전·심판 ES256 인증·시험 A/B 소유권·실제 메모 API·DB 권한·경로·기존 기능 테스트**를 함께 검토했습니다. 아래는 코드 측에서 재현·검증한 범위이며 심판 최종 결과를 주장하지 않습니다.

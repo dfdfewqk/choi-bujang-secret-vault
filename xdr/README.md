@@ -57,3 +57,7 @@ node scripts/xdr-run.mjs brute-force
 ## XDR-04 persistence
 
 `npm run xdr:run -- persistence` 실행. 비밀값 없는 경보 읽기, 독립 분류, 만료되는 임시 ZTNA 거부 제안을 분리했습니다.
+
+## XDR-06 exfiltration
+
+`node xdr/exfiltration/read-alerts.mjs`는 30개 가상 경보의 안전한 다섯 필드만 출력합니다. `npm run xdr:run -- exfiltration`은 오프라인 독립 판정과 별도 임시 목적지 거부 제안·안전한 알림 기록을 실행합니다. 기존 ZTNA 규칙은 수정하지 않으며 실제 네트워크 차단을 뜻하지 않습니다.

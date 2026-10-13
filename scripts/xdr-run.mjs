@@ -55,7 +55,7 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   const outDir = join(root, 'xdr', moduleKey);
   await mkdir(outDir, { recursive: true });
   await writeFile(join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`, 'utf8');
-  if (moduleKey === 'brute-force' || moduleKey === 'web-injection' || moduleKey === 'known-cve' || moduleKey === 'persistence') {
+  if (moduleKey === 'brute-force' || moduleKey === 'web-injection' || moduleKey === 'known-cve' || moduleKey === 'persistence' || moduleKey === 'exfiltration') {
     // The original runner remains usable with a standalone decide.mjs (e.g.
     // in isolated judge and package tests). Only attach this optional
     // responder when the local bonus module is present.
