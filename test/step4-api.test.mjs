@@ -29,6 +29,14 @@ function database(start = []) {
   let accessCount = 0;
   return {
     rows, calls, get accessCount() { return accessCount; },
+    auth: { admin: { listUsers: async () => ({ data: { users: [
+      { id:A, created_at:'2026-10-01T00:00:00Z',
+        email_confirmed_at:'2026-10-01T00:10:00Z',
+        last_sign_in_at:'2026-10-01T01:00:00Z' },
+      { id:B, created_at:'2026-10-02T00:00:00Z',
+        email_confirmed_at:'2026-10-02T00:10:00Z',
+        last_sign_in_at:'2026-10-02T01:00:00Z' },
+    ] }, error:null }) } },
     from(tableName) {
       assert.equal(tableName, 'vault_training_notes');
       accessCount++;
@@ -85,7 +93,11 @@ async function request({ db, method = 'GET', id = null, body = null, userId = A,
     await handleNotes({ method, body, headers: { authorization: auth } }, res, {
       itemId: id,
       databaseFactory: () => db,
-      verifyAuthorization: async () => userId ? { kind, userId } : null,
+      verifyAuthorization: async () => !userId ? null : kind==='judge'
+        ? { kind:'judge', userId:'99999999-9999-4999-8999-999999999999',
+            identity:userId===A?'a':userId===B?'b':'unknown',
+            runId:'11111111-1111-4111-8111-111111111111' }
+        : { kind:'student', userId },
     });
   } finally {
     if (priorUrl === undefined) delete process.env.SUPABASE_URL;

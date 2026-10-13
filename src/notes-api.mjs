@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import config from '../aleph.config.json' with { type: 'json' };
 import { createLoginVerifier } from './verify-login.mjs';
 import { noteResourceId } from './resource-zones.mjs';
+import { verifiedOwnerId } from './verified-owner.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 let cachedVerifier;
@@ -79,6 +80,14 @@ export async function handleNotes(request, response, {
 
   try {
     const db = databaseFactory();
+    // A signed judge token has a run-specific sub, not a Supabase user UUID.
+    // Bind only the signature-verified A/B identity to its existing exercise
+    // owner. The browser never chooses this mapping.
+    const boundOwner = await verifiedOwnerId(verified, db);
+    if (!boundOwner) {
+      return response.status(403).json({ error: 'OWNER_BINDING_UNAVAILABLE' });
+    }
+    verified = { ...verified, userId: boundOwner };
     const table = db.from('vault_training_notes');
     if (!item && method === 'GET') {
       // Stage 4: never include unowned legacy notes or another user's rows.
