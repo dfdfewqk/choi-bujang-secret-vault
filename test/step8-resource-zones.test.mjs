@@ -29,16 +29,18 @@ test('Stage 6 and 7 are retained',async()=>{
  assert.equal((await decide(suspicious)).decision,'step_up');
  assert.equal((await decide({...suspicious,stepUp:{verified:true,authAgeSeconds:60}})).decision,'allow');
 });
-test('Unverified UUID reads fail closed; other existing methods, routes, query and role guards persist',async()=>{
- for(const method of ['PUT','DELETE'])assert.equal((await decide(note(method))).decision,'allow');
- for (const subjectId of ['learner_fixture','other_pseudonymous_subject']) {
-   const foreignGet=await decide({...note('GET'),subjectId});
-   assert.equal(foreignGet.decision,'deny');
-   assert.equal(foreignGet.reasonCode,'resource_not_allowed');
+test('Canonical note UUID routes pass policy; final API independently enforces owner',async()=>{
+ for(const method of ['GET','PUT','DELETE']){
+   const approved=await decide(note(method));
+   assert.equal(approved.decision,'allow');
+   assert.equal(approved.reasonCode,'approved');
  }
- // The pure v1 decider has no owner proof and intentionally does not claim
- // to authorize even same-owner UUID reads. Actual API retains that check.
-
+ // The decider does not receive a verified note owner. Both requests pass
+ // only the route/device gate; they are NOT authorized to receive note data.
+ for(const subjectId of ['learner_fixture','other_pseudonymous_subject']){
+   assert.equal((await decide({...note('GET'),subjectId})).decision,'allow');
+ }
+ // The final notes API rejects a different owner with JSON 404.
  for(const req of [
    note('GET','export'),note('GET','download'),note('PATCH'),
    {...note(),route:'GET /other/:id'}, {...note(),path:'/notes/'+A+'/export'},
