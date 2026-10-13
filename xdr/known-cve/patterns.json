@@ -1,0 +1,29 @@
+{
+  "schema": "byteback.xdr.known-cve.patterns.v1",
+  "mitre": "T1190",
+  "cve": "CVE-2021-44228",
+  "source": [
+    "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+    "https://attack.mitre.org/techniques/T1190/"
+  ],
+  "patterns": [
+    {
+      "id": "log4shell_header_lookup",
+      "name": "로그4셸 머리글 원격 조회 악용",
+      "condition": "MITRE T1190·Wazuh 경보 수준 10 이상과 HTTP 머리글/useragent에 JNDI 원격 조회 구문이 동시에 확인됨",
+      "evidence": "CVE-2021-44228 (Log4Shell): 취약한 Log4j가 기록하는 외부 입력의 JNDI 조회 형태는 알려진 원격 코드 실행 악용 징후다."
+    },
+    {
+      "id": "log4shell_query_lookup",
+      "name": "로그4셸 요청 인자 원격 조회 악용",
+      "condition": "MITRE T1190·Wazuh 경보 수준 10 이상과 URL/인자에 JNDI 원격 조회 구문이 동시에 확인됨",
+      "evidence": "CVE-2021-44228 및 MITRE ATT&CK T1190: 외부 웹 입력에 삽입된 JNDI 원격 조회 구문은 알려진 Log4j 취약점 악용 형태다."
+    },
+    {
+      "id": "uncertain_cve_probe",
+      "name": "취약점 명칭·점검 도구·미완성 조회 흔적",
+      "condition": "CVE-2021-44228나 JNDI 표기, 로그 라이브러리 또는 취약점 점검 흔적은 있지만 실행 가능한 원격 조회 구문과 강한 정황이 함께 확인되지 않음",
+      "evidence": "MITRE ATT&CK T1190: 취약점 이름 검색·점검 단어·일부분만 있는 입력은 실제 악용과 정상 연구 활동을 구별하기 어려우므로 알림으로만 검토한다."
+    }
+  ]
+}
