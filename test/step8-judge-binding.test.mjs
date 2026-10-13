@@ -1,166 +1,158 @@
-// All identities, JWT principal objects and notes below are synthetic.
+// Synthetic identities only: no real Auth tokens, private notes or secrets.
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
-import { verifiedOwnerId } from '../src/verified-owner.mjs';
-import { handleNotes } from '../src/notes-api.mjs';
-import { decide } from '../src/decider.mjs';
-import { fixtureRequests } from '../scripts/fixture-7.mjs';
+import {test} from 'node:test';
+import {ownerForJudge,verifiedOwnerId} from '../src/verified-owner.mjs';
+import {handleNotes} from '../src/notes-api.mjs';
+import {decide} from '../src/decider.mjs';
+import {fixtureRequests} from '../scripts/fixture-7.mjs';
 
-const A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const NOTE='11111111-1111-4111-8111-111111111111';
+const STUDENT_A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const STUDENT_B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const STUDENT_NOTE='11111111-1111-4111-8111-111111111111';
 const RUN='22222222-2222-4222-8222-222222222222';
-const principal=identity=>({kind:'judge',identity,runId:RUN,userId:RUN});
-const users=[
- {id:A,created_at:'2026-01-01T00:00:00Z',email_confirmed_at:'yes',last_sign_in_at:'yes'},
- {id:B,created_at:'2026-01-02T00:00:00Z',email_confirmed_at:'yes',last_sign_in_at:'yes'},
-];
-function fakeDb(profiles=users){
- let lookupCount=0,readCount=0;
- const db={
-  auth:{admin:{async listUsers(opts){
-    assert.deepEqual(opts,{page:1,perPage:3});
-    lookupCount++;
-    return {data:{users:profiles},error:null};
-  }}},
-  from(table){
-    assert.equal(table,'vault_training_notes');
-    const clauses={};
-    const chain={
-      select(){return chain;},
-      eq(key,value){clauses[key]=value;return chain;},
-      async maybeSingle(){
-        readCount++;
-        const present=clauses.note_uuid===NOTE && clauses.owner_id===A;
-        return {data:present?{note_uuid:NOTE,title:'Example',content:'Synthetic'}:null,error:null};
-      }
-    };
-    return chain;
-  }
- };
- return {db,lookupCount:()=>lookupCount,readCount:()=>readCount};
+const SUB='99999999-9999-4999-8999-999999999999';
+const SECRET='UNIT_TEST_PLACEHOLDER_2026';
+const judge=(identity,runId=RUN)=>({kind:'judge',userId:SUB,runId,identity});
+const student=userId=>({kind:'student',userId});
+
+function database(){
+ const rows=[{note_uuid:STUDENT_NOTE,owner_id:STUDENT_A,
+   title:'Student A',content:'Synthetic sample'}];
+ const calls=[];
+ return {rows,calls,from(name){
+  assert.equal(name,'vault_training_notes');
+  const eqs={};let op='select',updated;
+  const matches=row=>Object.entries(eqs).every(([k,v])=>row[k]===v);
+  const q={
+   select(){return q;},order(){return q;},eq(k,v){eqs[k]=v;return q;},
+   async maybeSingle(){
+    calls.push({op,filters:{...eqs}});
+    const i=rows.findIndex(matches);
+    if(i<0)return {data:null,error:null};
+    if(op==='update')Object.assign(rows[i],updated);
+    return {data:{...rows[i]},error:null};
+   },
+   async limit(n){
+    calls.push({op:'list',filters:{...eqs}});
+    return {data:rows.filter(matches).slice(0,n).map(x=>({...x})),error:null};
+   },
+   async insert(v){calls.push({op:'insert',input:{...v}});rows.push({...v});return {error:null};},
+   update(v){op='update';updated={...v};return q;},
+   delete(){op='delete';return q;},
+   then(resolve,reject){
+    calls.push({op,filters:{...eqs}});
+    const data=[];
+    for(let i=rows.length-1;i>=0;i--)if(op==='delete'&&matches(rows[i])){
+      data.push({note_uuid:rows.splice(i,1)[0].note_uuid});
+    }
+    return Promise.resolve({data,error:null}).then(resolve,reject);
+   }
+  };return q;
+ }};
 }
 function response(){
- return {statusCode:0,body:null,setHeader(){return this;},
-  status(n){this.statusCode=n;return this;},
-  json(v){this.body=v;return this;}};
+ return {code:0,body:null,setHeader(){return this;},
+  status(n){this.code=n;return this;},json(v){this.body=v;return this;}};
 }
-async function callWith({db,verified,query={id:NOTE},headers={}}){
- const url=process.env.SUPABASE_URL,key=process.env.SUPABASE_SECRET_KEY;
- process.env.SUPABASE_URL='https://placeholder.invalid';
- process.env.SUPABASE_SECRET_KEY='UNIT_TEST_PLACEHOLDER';
+async function invoke({db,verified,id=null,method='GET',body={},headers={}}){
+ const oldUrl=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
+ process.env.SUPABASE_URL='https://fixture.invalid';
+ process.env.SUPABASE_SECRET_KEY=SECRET;
  const res=response();
  try{
-  await handleNotes({method:'GET',
-    headers:{authorization:'Bearer mock.signature.value',...headers},query},res,{
-      itemId:NOTE,verifyAuthorization:async()=>verified,databaseFactory:()=>db,
-    });
- } finally{
-  if(url===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=url;
-  if(key===undefined)delete process.env.SUPABASE_SECRET_KEY;
-  else process.env.SUPABASE_SECRET_KEY=key;
+  await handleNotes({
+   method,body,query:id?{id}:undefined,
+   headers:{authorization:'Bearer fixture.token.notreal',...headers},
+  },res,{
+   itemId:id,verifyAuthorization:async()=>verified,
+   databaseFactory:()=>db,
+  });
+ }finally{
+  if(oldUrl===undefined)delete process.env.SUPABASE_URL;
+  else process.env.SUPABASE_URL=oldUrl;
+  if(oldKey===undefined)delete process.env.SUPABASE_SECRET_KEY;
+  else process.env.SUPABASE_SECRET_KEY=oldKey;
  }
  return res;
 }
-test('trusted signed-judge A/B mapping differs from ephemeral JWT sub',async()=>{
- const {db}=fakeDb();
- assert.equal(await verifiedOwnerId(principal('a'),db),A);
- assert.equal(await verifiedOwnerId(principal('b'),db),B);
- assert.notEqual(principal('a').userId,A);
- assert.equal(await verifiedOwnerId({kind:'student',userId:A},db),A);
+test('a signed judge run A/B receives separate pseudonymous owners, not student users',async()=>{
+ const a=ownerForJudge(judge('a'),SECRET);
+ const b=ownerForJudge(judge('b'),SECRET);
+ const another=ownerForJudge(judge('a','33333333-3333-4333-8333-333333333333'),SECRET);
+ assert.match(a,/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u);
+ assert.notEqual(a,b);
+ assert.notEqual(a,another);
+ assert.notEqual(a,STUDENT_A);
+ assert.notEqual(b,STUDENT_B);
+ assert.equal(ownerForJudge(judge('a'),SECRET),a);
+ assert.equal(ownerForJudge({...judge('a'),identity:'admin'},SECRET),null);
+ assert.equal(ownerForJudge({...judge('a'),runId:null},SECRET),null);
+ assert.equal(await verifiedOwnerId(student(STUDENT_A),database()),STUDENT_A);
 });
-test('specific A note: signed judge A gets 200, signed judge B gets 404',async()=>{
- const {db,lookupCount}=fakeDb();
- const own=await callWith({db,verified:principal('a')});
- assert.equal(own.statusCode,200);
- assert.equal(own.body.id,NOTE);
- const foreign=await callWith({db,verified:principal('b')});
- assert.equal(foreign.statusCode,404);
- assert.deepEqual(foreign.body,{error:'NOT_FOUND'});
- assert.equal(lookupCount(),2);
+test('student remains on own userId; judge cannot read student A sample',async()=>{
+ const db=database();
+ assert.equal((await invoke({db,verified:student(STUDENT_A),id:STUDENT_NOTE})).code,200);
+ assert.equal((await invoke({db,verified:student(STUDENT_B),id:STUDENT_NOTE})).code,404);
+ for(const name of ['a','b']){
+  const foreign=await invoke({db,verified:judge(name),id:STUDENT_NOTE});
+  assert.equal(foreign.code,404);
+  assert.deepEqual(foreign.body,{error:'NOT_FOUND'});
+ }
 });
-test('student tokens use unchanged ownership binding',async()=>{
- const {db,lookupCount}=fakeDb();
- assert.equal((await callWith({db,verified:{kind:'student',userId:A}})).statusCode,200);
- assert.equal((await callWith({db,verified:{kind:'student',userId:B}})).statusCode,404);
- assert.equal(lookupCount(),0);
+test('judge A creates own note; judge B, student A and other runs all receive 404',async()=>{
+ const db=database();
+ const create=await invoke({db,verified:judge('a'),method:'POST',
+  body:{title:'Judge A',body:'Synthetic judge-created note'}});
+ assert.equal(create.code,201);
+ const id=create.body.id;
+ assert.equal(db.rows.find(x=>x.note_uuid===id).owner_id,ownerForJudge(judge('a'),SECRET));
+ const own=await invoke({db,verified:judge('a'),id});
+ assert.equal(own.code,200);
+ assert.equal(own.body.id,id);
+ for(const verified of [judge('b'),student(STUDENT_A),
+    judge('a','33333333-3333-4333-8333-333333333333')]){
+  assert.equal((await invoke({db,verified,id})).code,404);
+ }
+ const list=await invoke({db,verified:judge('b')});
+ assert.equal(list.code,200);
+ assert.deepEqual(list.body.notes,[]);
+ const forbidden=await invoke({db,verified:judge('b'),id,method:'PUT',
+  body:{title:'Other',body:'Overwrite'}});
+ assert.equal(forbidden.code,404);
+ assert.equal((await invoke({db,verified:judge('b'),id,method:'DELETE'})).code,404);
+ assert.equal((await invoke({db,verified:judge('a'),id,method:'DELETE'})).code,200);
+ assert.equal((await invoke({db,verified:judge('a'),id})).code,404);
 });
-test('unsigned browser role cannot supply trusted owner binding',async()=>{
- const {db,readCount}=fakeDb();
+test('spoofed role and malformed judge claims cannot choose real student ownership',async()=>{
+ const db=database(),baseline=db.rows.length;
  for(const verified of [
-   {...principal('a'),identity:'admin'},
-   {...principal('b'),identity:'A'},
-   {...principal('a'),runId:undefined},
-   {...principal('a'),kind:'guest'},
- ]) {
-  const result=await callWith({db,verified,headers:{'x-role':'instructor'}});
-  assert.equal(result.statusCode,403);
-  assert.equal(result.body.error,'OWNER_BINDING_UNAVAILABLE');
- }
- assert.equal(readCount(),0);
-});
-test('unknown A/B registry fails closed without revealing notes',async()=>{
- for(const entries of [
-    [],[users[0]],[...users, {...users[1],id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc'}],
-    [{...users[0],email_confirmed_at:null},users[1]],
-    [{...users[0],id:B},users[1]],
+  {...judge('a'),identity:'admin'},
+  {...judge('b'),runId:undefined},
+  {...judge('a'),kind:'guest'},
  ]){
-  const {db,readCount}=fakeDb(entries);
-  const res=await callWith({db,verified:principal('a')});
-  assert.equal(res.statusCode,403);
-  assert.equal(readCount(),0);
+  const res=await invoke({db,verified,id:STUDENT_NOTE,headers:{'x-role':'instructor'}});
+  assert.equal(res.code,403);
+  assert.equal(res.body.error,'OWNER_BINDING_UNAVAILABLE');
  }
+ assert.equal(db.rows.length,baseline);
 });
-
-test('S08 SDP fails closed without owner; final JWT-bound API allows A and denies B',async()=>{
-  const {normal}=fixtureRequests();
-  const canonical={
-    ...normal,service:'notes',method:'GET',
-    path:'/api/notes/'+NOTE,route:'GET /api/notes/:id',
-  };
-  const first=await decide(canonical);
-  // No owner claim is available to the pure policy, so it must fail closed.
-  assert.equal(first.decision,'deny');
-  assert.deepEqual(first.ruleIds,['resource_zone']);
-  const {db}=fakeDb();
-  const a=await callWith({db,verified:principal('a')});
-  const b=await callWith({db,verified:principal('b')});
-  assert.equal(a.statusCode,200);
-  assert.equal(b.statusCode,404);
-  assert.deepEqual(b.body,{error:'NOT_FOUND'});
-  // The same resource is never accessible without passing both gates.
-  assert.equal((await decide({...canonical,deviceRegistered:false})).decision,'deny');
-  assert.equal((await decide({...canonical,path:'/api/notes/export'})).decision,'deny');
-  assert.equal((await decide({...canonical,service:'announcements'})).decision,'deny');
-});
-
-test('S08 BOLA: forged external note ID is rejected before an insert',async()=>{
- const {db,readCount}=fakeDb();
- const oldUrl=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
- process.env.SUPABASE_URL='https://stub.supabase.co';
- process.env.SUPABASE_SECRET_KEY='TEST_PLACEHOLDER';
- try{
-  for(const key of ['id','note_uuid']){
-   const res=response();
-   await handleNotes({
-     method:'POST',headers:{authorization:'Bearer synthetic.notreal.jwt'},
-     body:{[key]:NOTE,title:'clone',body:'clone'}
-   },res,{databaseFactory:()=>db,verifyAuthorization:async()=>principal('b')});
-   assert.equal(res.statusCode,400);
-   assert.equal(res.body.error,'CLIENT_NOTE_ID_NOT_ALLOWED');
-  }
-  assert.equal(readCount(),0);
- }finally{
-  if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;
-  if(oldKey===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=oldKey;
+test('judge cannot clone someone else’s object ID',async()=>{
+ const db=database();
+ for(const key of ['id','note_uuid']){
+  const res=await invoke({db,verified:judge('b'),method:'POST',
+   body:{title:'clone',body:'clone',[key]:STUDENT_NOTE}});
+  assert.equal(res.code,400);
+  assert.equal(res.body.error,'CLIENT_NOTE_ID_NOT_ALLOWED');
  }
+ assert.equal(db.rows.length,1);
 });
-test('Equal signup timestamps cannot choose a judge A/B owner by UUID sort order',async()=>{
- const profiles=users.map(u=>({...u,created_at:users[0].created_at}));
- const {db,readCount}=fakeDb(profiles);
- assert.equal(await verifiedOwnerId(principal('a'),db),null);
- assert.equal(await verifiedOwnerId(principal('b'),db),null);
- const result=await callWith({db,verified:principal('a')});
- assert.equal(result.statusCode,403);
- assert.equal(readCount(),0);
+test('pure SDP remains independent of Auth JWT owner check and denies unproved UUID read',async()=>{
+ const {normal}=fixtureRequests();
+ const canonical={...normal,path:'/api/notes/'+STUDENT_NOTE,
+   route:'GET /api/notes/:id',method:'GET',service:'notes'};
+ const res=await decide(canonical);
+ assert.equal(res.decision,'deny');
+ assert.deepEqual(res.ruleIds,['resource_zone']);
+ assert.equal((await decide(normal)).decision,'allow');
+ assert.equal((await decide({...canonical,deviceRegistered:false})).decision,'deny');
 });
