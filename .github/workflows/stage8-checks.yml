@@ -33,7 +33,7 @@ jobs:
         run: |
           npm run decider:test
           npm run fixture:7
-          node --test test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs
+          node --test test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs test/step4-api.test.mjs
       - name: Clean checkout for bundle
         run: |
           git status --short
