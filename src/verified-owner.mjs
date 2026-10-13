@@ -23,8 +23,11 @@ export async function verifiedOwnerId(principal, db) {
         && Boolean(user?.email_confirmed_at)
         && Boolean(user?.last_sign_in_at))) return null;
     const sorted=[...users].sort((a,b)=>
-      Date.parse(a.created_at)-Date.parse(b.created_at) || a.id.localeCompare(b.id));
-    if (sorted[0].id===sorted[1].id) return null;
+      Date.parse(a.created_at)-Date.parse(b.created_at));
+    // Equal timestamps do not establish A/B signup order.
+    // Do not silently turn UUID sorting into an authorization grant.
+    if (sorted[0].id===sorted[1].id
+        || Date.parse(sorted[0].created_at)===Date.parse(sorted[1].created_at)) return null;
     return sorted[principal.identity==='a'?0:1].id;
   } catch {
     return null;
