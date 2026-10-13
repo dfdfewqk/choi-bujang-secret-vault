@@ -1,3 +1,14 @@
+## 8단계 S08_OTHER_ZONE_ALLOWED 재제출 보완
+
+> 심판 1차: `72c29e6c37d6` · 36/100 · 타인 메모 단건 GET 구역 규칙 실패. 기존 UUID 경로 검사만으로 임의 요청자에게 `allow`한 문제를 해결했습니다.
+
+- `src/decider.mjs`: 검증된 소유권 관계가 없는 **개별 UUID 메모 GET은 fail-closed `deny/resource_not_allowed`**. 6/7단계 가상 `/notes/demo`와 GET 목록은 그대로 유지합니다.
+- 실제 운영 `/api/notes/:id`는 기존 서명 검증 및 DB `note_uuid` + `owner_id = verified.userId`로 **본인 조회 200 / 타인 조회 404**를 계속 처리합니다. 이 서버 API는 이번 변경에서 건드리지 않았습니다.
+- 제약: `aleph.decision.v1`에는 요청자의 검증된 소유권·강사 역할 매핑이 없습니다. 그래서 현 판정기만으로는 **자기 UUID 단건 GET도 허용할 근거가 없습니다.** 이 기능을 엔진 판정기에 안전하게 열려면 엔진이 검증된 소유 관계를 전달하는 새 계약이 필요합니다. 이번 보완은 타인 읽기 방지를 우선하고, **판정기 경유 본인 UUID GET까지 성공한다고 주장하지 않습니다.**
+- 검증: `npm run decider:test`, `npm run fixture:7`, `node --test test/step8-resource-zones.test.mjs test/step4-api.test.mjs`; 성공한 3개 심판 공격도 기존대로 유지될지 재제출로 확인해야 합니다.
+
+---
+
 # BYTE BACK · 8단계 저장점 — 자료마다 갈 수 있는 구역을 나눕니다
 
 > 기준: 7단계 `main` `85da97af485f6bb43c70a88efb7c3037ad6a3d85` (운영 배포 READY). 이전 README '7단계 배포 미확인'은 과거 기록입니다. 8단계 심판 판정은 미확인.
