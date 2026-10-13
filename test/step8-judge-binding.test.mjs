@@ -112,15 +112,16 @@ test('unknown A/B registry fails closed without revealing notes',async()=>{
  }
 });
 
-test('S08 end-to-end: identical canonical note gate, A gets own data and B receives 404',async()=>{
+test('S08 SDP fails closed without owner; final JWT-bound API allows A and denies B',async()=>{
   const {normal}=fixtureRequests();
   const canonical={
     ...normal,service:'notes',method:'GET',
     path:'/api/notes/'+NOTE,route:'GET /api/notes/:id',
   };
   const first=await decide(canonical);
-  assert.equal(first.decision,'allow');
-  assert.deepEqual(first.ruleIds,['device_registered','resource_zone']);
+  // No owner claim is available to the pure policy, so it must fail closed.
+  assert.equal(first.decision,'deny');
+  assert.deepEqual(first.ruleIds,['resource_zone']);
   const {db}=fakeDb();
   const a=await callWith({db,verified:principal('a')});
   const b=await callWith({db,verified:principal('b')});

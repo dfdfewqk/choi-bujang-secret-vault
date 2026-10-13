@@ -29,18 +29,25 @@ test('Stage 6 and 7 are retained',async()=>{
  assert.equal((await decide(suspicious)).decision,'step_up');
  assert.equal((await decide({...suspicious,stepUp:{verified:true,authAgeSeconds:60}})).decision,'allow');
 });
-test('Canonical note UUID routes pass policy; final API independently enforces owner',async()=>{
- for(const method of ['GET','PUT','DELETE']){
-   const approved=await decide(note(method));
-   assert.equal(approved.decision,'allow');
-   assert.equal(approved.reasonCode,'approved');
+test('Stage 8 fails closed for note reads lacking a verified owner binding',async()=>{
+ for(const method of ['PUT','DELETE']){
+   const existing=await decide(note(method));
+   assert.equal(existing.decision,'allow');
+   assert.equal(existing.reasonCode,'approved');
  }
- // The decider does not receive a verified note owner. Both requests pass
- // only the route/device gate; they are NOT authorized to receive note data.
+ // The signed SDP-v1 shape has no note owner proof. Both subjects must be
+ // denied instead of granting arbitrary note UUID reads; the authenticated
+ // REST API independently allows only the real owner.
  for(const subjectId of ['learner_fixture','other_pseudonymous_subject']){
-   assert.equal((await decide({...note('GET'),subjectId})).decision,'allow');
+   for(const prefix of ['/notes','/api/notes']){
+     const req={...note('GET'),subjectId,path:prefix+'/'+A,
+       route:'GET '+prefix+'/:id'};
+     const decision=await decide(req);
+     assert.equal(decision.decision,'deny');
+     assert.equal(decision.reasonCode,'resource_not_allowed');
+   }
  }
- // The final notes API rejects a different owner with JSON 404.
+ // The final notes API can serve the actual verified owner with HTTP 200.
  for(const req of [
    note('GET','export'),note('GET','download'),note('PATCH'),
    {...note(),route:'GET /other/:id'}, {...note(),path:'/notes/'+A+'/export'},

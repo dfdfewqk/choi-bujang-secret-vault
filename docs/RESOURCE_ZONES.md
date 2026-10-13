@@ -1,3 +1,12 @@
+## Stage 8 S08 repeated failure: fail-closed object-read policy
+
+- The previous `src/decider.mjs` returned `allow` for any syntactically valid `GET /notes/:uuid` or `GET /api/notes/:uuid` from a registered device. The signed SDP-v1 contract carries `subjectId`, but **no authenticated note owner relation**, so that decision cannot distinguish owner A from other user B. A UUID or valid route is not an authorization credential.
+- The Stage-8 resource rule now **denies a specific UUID GET** unless an actual verified owner-proof contract is introduced. Existing Stage-6/7 synthetic `/notes/demo` and notes collection routes still work. Unregistered devices, announcements edits, unrecognized routes and step-up behavior remain unchanged.
+- Crucially, the final REST `/api/notes/:id` retains the existing verified JWT + `note_uuid` AND `owner_id` predicate, allowing a real owner to read their note while giving another owner JSON `404`. The standalone SDP decision and the authenticated REST endpoint are independent gates; this change does not assert that the real engine now delivers owner proof.
+- Updated tests must **not** treat cross-subject UUID GET `allow` as success. Offline checks confirm SDP deny, own-note API 200 and cross-owner API 404. Actual judge success still requires official submission; never substitute synthetic tests for the judge.
+
+---
+
 ## 객체 ID 전역 고유성 및 클라이언트 지정 차단
 
 - 객체 권한 검사는 A/B를 나누는 것만으로 끝나지 않습니다. **외부 메모 ID가 서로 다른 소유자에게 중복 발급되지 않아야** API 경로와 자료의 관계가 명확해집니다.

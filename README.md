@@ -1,3 +1,12 @@
+## Stage 8 S08 repeated failure: fail-closed object-read policy
+
+- The previous `src/decider.mjs` returned `allow` for any syntactically valid `GET /notes/:uuid` or `GET /api/notes/:uuid` from a registered device. The signed SDP-v1 contract carries `subjectId`, but **no authenticated note owner relation**, so that decision cannot distinguish owner A from other user B. A UUID or valid route is not an authorization credential.
+- The Stage-8 resource rule now **denies a specific UUID GET** unless an actual verified owner-proof contract is introduced. Existing Stage-6/7 synthetic `/notes/demo` and notes collection routes still work. Unregistered devices, announcements edits, unrecognized routes and step-up behavior remain unchanged.
+- Crucially, the final REST `/api/notes/:id` retains the existing verified JWT + `note_uuid` AND `owner_id` predicate, allowing a real owner to read their note while giving another owner JSON `404`. The standalone SDP decision and the authenticated REST endpoint are independent gates; this change does not assert that the real engine now delivers owner proof.
+- Updated tests must **not** treat cross-subject UUID GET `allow` as success. Offline checks confirm SDP deny, own-note API 200 and cross-owner API 404. Actual judge success still requires official submission; never substitute synthetic tests for the judge.
+
+---
+
 ## 보너스 XDR-03 저장점 — 알려진 취약점 악용 탐지
 
 - 원본: `xdr/fixtures/known-cve.json`의 수업용 Wazuh 경보 **24건** (수정 없음).
