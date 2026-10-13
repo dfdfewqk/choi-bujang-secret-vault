@@ -34,7 +34,7 @@ jobs:
       - name: Test Stage 5 browser/API boundary and review-only SQL
         run: node --test test/step5-api.test.mjs
       - name: Test optional 10-point server Auth and zero browser Supabase keys
-        run: node --test test/step5-server-auth.test.mjs
+        run: node --test test/step5-server-auth.test.mjs test/tab-session-isolation.test.mjs
       - name: Stage 5 HTTPS original API with server-side public key
         run: node scripts/verify-step5-original-api-http.mjs
       - name: Confirm workspace clean before bundling
