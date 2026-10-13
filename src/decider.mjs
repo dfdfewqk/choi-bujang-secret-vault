@@ -21,6 +21,20 @@ export async function decide(request) {
     // For a valid note GET, the *final API* still checks JWT principal and
     // note_uuid + stored owner_id before sending any content. A decider allow
     // is never authorization to bypass that final server-side owner filter.
+    // SDP v1 supplies a verified subject and a path, but deliberately does
+    // NOT supply an authenticated subject-to-object-owner relationship.
+    // A well-formed note UUID is only an identifier, never access permission.
+    // The API still allows the owner after its own JWT + owner_id check.
+    // Do not grant read permission based on UUID formatting or pseudo-identity.
+    if (resource.action === 'GET' && resource.resourceId.startsWith('note:')
+        && resource.resourceId !== 'note:collection'
+        && resource.resourceId !== 'note:fixture-demo') {
+      return {
+        schema: 'aleph.decision.v1', requestId: request.requestId,
+        decision: 'deny', reasonCode: 'resource_not_allowed',
+        ruleIds: ['resource_zone'],
+      };
+    }
     // "judge_fixture" is a synthetic exercise source, not evidence of a real
     // geolocation or a trusted HTTP header. Real signals.source "none" is unknown.
     // Missing/incomplete signals never become fabricated "usual" values.
