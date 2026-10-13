@@ -1,3 +1,14 @@
+## 8단계 BOLA 종합 보완 — 중복 메모 ID/소유권 확인
+
+- 공개 API는 메모 소유자를 검증된 JWT에서 결정하고, 서버에서 정규 UUIDv4를 생성합니다. `POST /api/notes` 요청에 `id` 또는 `note_uuid`를 넣는 경우 JSON 400 `CLIENT_NOTE_ID_NOT_ALLOWED`로 거부합니다.
+- 이유: 과거에는 B가 A의 UUID를 자신의 새 메모에 붙일 수 있었고, DB `note_uuid`에 고유 제약이 없었습니다. 각 행의 owner_id는 달랐지만 외부 자료 ID가 중복되어 객체 식별 및 접근 검사에 혼선을 줄 수 있었습니다.
+- 데이터베이스 `note_uuid`에 UNIQUE 제약을 추가해 애플리케이션을 우회한 삽입에서도 중복을 방지합니다. 기존 메모 5건은 중복이 없음을 적용 전 확인했습니다. 메모 본문/소유자/로그인은 바꾸지 않습니다.
+- 심판 A/B 서명 신원을 기존 계정에 연결할 때 가입 시각이 동일하면 임의로 UUID 순위를 써서 권한을 부여하지 않고 403으로 거부합니다.
+- 이 변경은 **확인된 별도의 보안 허점**을 개선하는 것이며 반복된 `S08_OTHER_ZONE_ALLOWED` 판정의 유일한 원인이라고 확정한 것이 아닙니다.
+- 확인 명령: `node --test test/step3-api.test.mjs test/step4-api.test.mjs test/step8-judge-binding.test.mjs test/step8-resource-zones.test.mjs`, `npm run decider:test`. 공식 심판 채점과 실계정 JWT/HTTP 결과는 별개입니다.
+
+---
+
 ## S08_OTHER_ZONE_ALLOWED 재검토 — 두 단계 권한 확인
 
 - 심판 36/100 반복을 확인했고, 이전의 '단건 GET 전체 거부' 수정은 정상 사용자 조회까지 막는 결함이 있었습니다. 아래 기존 기록은 작업 이력이며 지금의 정책이 아닙니다.
