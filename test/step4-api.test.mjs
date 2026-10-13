@@ -214,15 +214,22 @@ test('no authorization, invalid identities and invalid bodies never reach notes 
   assert.equal(invalid.statusCode, 400);
 });
 
-test('judge and student verified user IDs obey identical ownership predicates', async () => {
+test('judge test identities cannot read actual students; judge owns only run-created notes', async () => {
   const db = samples();
-  const judge = await request({ db, userId: B, kind: 'judge', id: A_NOTE });
-  assert.equal(judge.statusCode, 404);
-  const own = await request({ db, userId: B, kind: 'judge', id: B_NOTE });
-  assert.equal(own.statusCode, 200);
-  const attempt = await request({ db, userId: A, kind: 'student', id: B_NOTE, method: 'DELETE' });
-  assert.equal(attempt.statusCode, 404);
-  assert.ok(db.rows.some(n => n.note_uuid === B_NOTE));
+  const judgeA=await request({db,userId:A,kind:'judge',id:A_NOTE});
+  const judgeB=await request({db,userId:B,kind:'judge',id:B_NOTE});
+  assert.equal(judgeA.statusCode,404);
+  assert.equal(judgeB.statusCode,404);
+  const made=await request({db,userId:B,kind:'judge',method:'POST',
+    body:{title:'Judge B note',body:'Test fixture only'}});
+  assert.equal(made.statusCode,201);
+  const own=await request({db,userId:B,kind:'judge',id:made.body.id});
+  assert.equal(own.statusCode,200);
+  assert.equal(own.body.body,'Test fixture only');
+  assert.equal((await request({db,userId:A,kind:'judge',id:made.body.id})).statusCode,404);
+  assert.equal((await request({db,userId:B,kind:'student',id:made.body.id})).statusCode,404);
+  assert.equal((await request({db,userId:A,kind:'student',id:A_NOTE})).statusCode,200);
+  assert.equal((await request({db,userId:B,kind:'student',id:B_NOTE})).statusCode,200);
 });
 
 test('the stage 4 manifest keeps all API routes and original judge trust configuration', async () => {
