@@ -186,6 +186,14 @@ test('POST binds owner from verified identity and rejects forged owner_id on cre
   assert.equal(created.statusCode, 201);
   assert.match(created.body.id, /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/u);
   assert.equal(db.rows[0].owner_id, A);
+  // IDs must be selected by the canonical URL, never through a body field.
+  for(const field of ['id','note_uuid']){
+    const spoof=await request({db,userId:A,method:'PUT',id:created.body.id,
+      body:{title:'spoof',body:'spoof',[field]:B_NOTE}});
+    assert.equal(spoof.statusCode,400);
+    assert.equal(spoof.body.error,'CLIENT_NOTE_ID_NOT_ALLOWED');
+    assert.equal(db.rows[0].title,'A new');
+  }
   const move = await request({ db, userId: A, method: 'PUT', id: created.body.id,
     body: { title: 'changed', body: 'changed', owner_id: B } });
   assert.equal(move.statusCode, 400);
