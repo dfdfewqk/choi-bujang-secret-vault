@@ -173,6 +173,14 @@ test('POST binds owner from verified identity and rejects forged owner_id on cre
   assert.equal(malicious.statusCode, 400);
   assert.deepEqual(malicious.body, { error: 'OWNER_ID_NOT_ALLOWED' });
   assert.equal(db.rows.length, 0);
+  // A user cannot clone another user's external UUID under their own owner.
+  for (const forgedKey of ['id','note_uuid']) {
+    const duplicate = await request({ db, userId: B, method:'POST',
+      body: { [forgedKey]: A_NOTE, title:'clone', body:'fake' } });
+    assert.equal(duplicate.statusCode,400);
+    assert.deepEqual(duplicate.body,{error:'CLIENT_NOTE_ID_NOT_ALLOWED'});
+    assert.equal(db.rows.length,0);
+  }
   const created = await request({ db, userId: A, method: 'POST',
     body: { title: 'A new', body: 'Own notes', userId: B, role: 'admin' } });
   assert.equal(created.statusCode, 201);

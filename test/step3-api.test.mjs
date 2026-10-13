@@ -91,23 +91,24 @@ test('personal list excludes other users and unassigned notes',async()=>{
 
 test('create, fetch, edit, delete and 404 after deletion with validated server owner',async()=>{
   const store=database([]);
-  const created=await exercise({method:'POST',body:{id:ID,title:'First',body:'sample'},db:store.db});
+  const created=await exercise({method:'POST',body:{title:'First',body:'sample'},db:store.db});
   assert.equal(created.statusCode,201);
-  assert.deepEqual(created.body,{id:ID});
+  assert.match(created.body.id,/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u);
+  const actualId=created.body.id;
   assert.equal(store.rows[0].owner_id,A);
   assert.equal(store.rows[0].sort_order,undefined);
-  const found=await exercise({id:ID,db:store.db});
+  const found=await exercise({id:actualId,db:store.db});
   assert.equal(found.statusCode,200);
-  assert.deepEqual(found.body,{id:ID,title:'First',body:'sample'});
-  const edited=await exercise({method:'PUT',id:ID,body:{title:'Second',body:'changed'},db:store.db});
+  assert.deepEqual(found.body,{id:actualId,title:'First',body:'sample'});
+  const edited=await exercise({method:'PUT',id:actualId,body:{title:'Second',body:'changed'},db:store.db});
   assert.equal(edited.statusCode,200);
   assert.equal(edited.body.body,'changed');
   // Stage 4 prevents verified B from reading A's private note by ID.
-  const fromB=await exercise({id:ID,user:B,db:store.db});
+  const fromB=await exercise({id:actualId,user:B,db:store.db});
   assert.equal(fromB.statusCode,404);
-  const gone=await exercise({method:'DELETE',id:ID,db:store.db});
+  const gone=await exercise({method:'DELETE',id:actualId,db:store.db});
   assert.equal(gone.statusCode,200);
-  const missing=await exercise({id:ID,db:store.db});
+  const missing=await exercise({id:actualId,db:store.db});
   assert.equal(missing.statusCode,404);
   assert.deepEqual(missing.body,{error:'NOT_FOUND'});
 });

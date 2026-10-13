@@ -132,3 +132,34 @@ test('S08 end-to-end: identical canonical note gate, A gets own data and B recei
   assert.equal((await decide({...canonical,path:'/api/notes/export'})).decision,'deny');
   assert.equal((await decide({...canonical,service:'announcements'})).decision,'deny');
 });
+
+test('S08 BOLA: forged external note ID is rejected before an insert',async()=>{
+ const {db,readCount}=fakeDb();
+ const oldUrl=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
+ process.env.SUPABASE_URL='https://stub.supabase.co';
+ process.env.SUPABASE_SECRET_KEY='TEST_PLACEHOLDER';
+ try{
+  for(const key of ['id','note_uuid']){
+   const res=response();
+   await handleNotes({
+     method:'POST',headers:{authorization:'Bearer synthetic.notreal.jwt'},
+     body:{[key]:NOTE,title:'clone',body:'clone'}
+   },res,{databaseFactory:()=>db,verifyAuthorization:async()=>principal('b')});
+   assert.equal(res.statusCode,400);
+   assert.equal(res.body.error,'CLIENT_NOTE_ID_NOT_ALLOWED');
+  }
+  assert.equal(readCount(),0);
+ }finally{
+  if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;
+  if(oldKey===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=oldKey;
+ }
+});
+test('Equal signup timestamps cannot choose a judge A/B owner by UUID sort order',async()=>{
+ const profiles=users.map(u=>({...u,created_at:users[0].created_at}));
+ const {db,readCount}=fakeDb(profiles);
+ assert.equal(await verifiedOwnerId(principal('a'),db),null);
+ assert.equal(await verifiedOwnerId(principal('b'),db),null);
+ const result=await callWith({db,verified:principal('a')});
+ assert.equal(result.statusCode,403);
+ assert.equal(readCount(),0);
+});
