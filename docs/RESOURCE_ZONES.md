@@ -1,61 +1,41 @@
-## S08 재수정: 서명된 심판 신원은 실제 학생 계정이 아닙니다
+# 8단계 구역 권한 통합 점검 — 최신 사실 기준
 
-- 이전 구현은 심판 JWT의 a/b 표기를 **가입 순서만으로 기존 Supabase 학생 계정**에 매핑했습니다. 서명된 시험용 a/b는 실제 학생 A/B와 동일한 주체임을 증명하지 않으므로 이런 접근 권한 상속을 폐지했습니다.
-- 이제 심판 JWT에 서명·발급자·대상·만료·run ID·a/b가 검증된 경우에만 서버가 **서명된 run ID + a/b를 비밀키 기반 HMAC으로 별도 테스트 소유자 UUID에 바인딩**합니다. 학생 계정은 검증된 Supabase `sub` 소유자로 그대로 동작합니다. 시험 A/B는 서로도, 기존 학생 사용자와도 다른 소유자 공간을 갖습니다.
-- 같은 시험 A가 POST한 메모는 A만 GET/PUT/DELETE 가능하고 시험 B, 다른 시험 run, 실제 학생은 해당 메모를 조회할 수 없습니다. 기존 학생이 만든 메모도 심판용 JWT로 직접 열 수 없습니다. owner_id/UUID 조건은 기존과 동일한 PostgREST 한 쿼리에서 검사합니다.
-- 심판용 테스트 자료는 기존 `vault_training_notes` 테이블의 별도 UUID 소유자 행에만 기록됩니다. DB 기존 데이터나 RLS/그랜트는 변경하지 않았으며 `owner_id`에 FK가 없는 것을 사전 확인했습니다. 런타임 키가 변경되면 예전 시험 소유자 UUID를 다시 도출할 수 없으므로 심판 run 도중 키 변경은 피해야 합니다.
-- 판정기의 `aleph.decision.v1` 계약에는 소유자 필드가 없어, 소유권이 증명되지 않은 일반 메모 UUID GET은 거부하고 기존 6·7단계 /notes/demo 및 메모 모음 검사를 유지합니다.
-- **공식 심판의 S08_OTHER_ZONE_ALLOWED 재채점 결과는 아직 없음.** 이 변경은 검증 없이 실제 학생 계정 접근을 허용하던 구체적인 신원 연결 결함을 수정한 것입니다. 운영 심판 로그 접근은 별도 검증이 필요합니다.
+## 확정된 기준과 결과
 
----
+| 경계 | 보안 규칙 | 확인 |
+|---|---|---|
+| 정상 학생 메모 | 서명 검증된 Supabase 사용자 UUID = 데이터베이스 owner_id | 실제 서버 함수/DB 조건 확인, 모의 A/B 테스트 |
+| 심판의 시험용 A/B | ES256/issuer/audience/만료/run 검증 뒤 runId+A/B 별도 HMAC 소유자 | 실제 ES256 서명/검증 + 서버 메모 API 통합 테스트 |
+| 특정 메모 GET/PUT/DELETE | 같은 SQL 요청에서 note_uuid와 검증된 owner_id를 모두 조건으로 사용 | 소스와 통합 테스트 |
+| 메모 목록 | 검증된 owner_id만 반환, NULL/타인 행 제외 | 소스와 통합 테스트 |
+| 메모 생성 | 임의 owner_id/외부 UUID를 입력받지 않고 서버가 UUID 생성 | 소스와 통합 테스트 |
+| 메모 수정 | title/body만 변경 가능, owner_id/id/note_uuid 변경 요청 차단 | 소스와 통합 테스트 |
+| 강사 공지 | 검증된 강사 계약/공식 API 없음 → 학생 요청 기본 거부 | 정책과 API 존재 여부 검사 |
+| 원본 Supabase API | anon/authenticated 직접 테이블 접근 권한 폐지, service_role만 서버에서 사용 | 운영 DB 권한을 읽기 전용 확인 |
+| 6·7단계 SDP | 미등록 기기 거부, 이상 요청 재확인, 기존 /notes/demo 실습 유지 | 회귀 테스트 |
+| XDR-01~04 | 독립 감지 모듈, 8단계 코드 수정 대상 아님 | 회귀 테스트 |
 
-## Stage 8 S08 repeated failure: fail-closed object-read policy
+## 반복 36점의 원인 후보와 대응
 
-- The previous `src/decider.mjs` returned `allow` for any syntactically valid `GET /notes/:uuid` or `GET /api/notes/:uuid` from a registered device. The signed SDP-v1 contract carries `subjectId`, but **no authenticated note owner relation**, so that decision cannot distinguish owner A from other user B. A UUID or valid route is not an authorization credential.
-- The Stage-8 resource rule now **denies a specific UUID GET** unless an actual verified owner-proof contract is introduced. Existing Stage-6/7 synthetic `/notes/demo` and notes collection routes still work. Unregistered devices, announcements edits, unrecognized routes and step-up behavior remain unchanged.
-- Crucially, the final REST `/api/notes/:id` retains the existing verified JWT + `note_uuid` AND `owner_id` predicate, allowing a real owner to read their note while giving another owner JSON `404`. The standalone SDP decision and the authenticated REST endpoint are independent gates; this change does not assert that the real engine now delivers owner proof.
-- Updated tests must **not** treat cross-subject UUID GET `allow` as success. Offline checks confirm SDP deny, own-note API 200 and cross-owner API 404. Actual judge success still requires official submission; never substitute synthetic tests for the judge.
+1. **검사된 실제 배포가 최신 GitHub 코드가 아니었음 (확인).** 마지막으로 확인된 운영 배포 커밋은 `c36b634bb9dc`, 8단계 심판 신원 수정 GitHub 커밋은 `d949f9849a26`이었음. 배포 시도는 `Deployment rate limited — retry in 24 hours`로 실패한 상태였음. `scripts/verify-stage8-deployment.mjs`는 실제 운영 `/aleph.json`의 40자리 SHA를 Git HEAD와 대조해 CURRENT / STALE / UNVERIFIED로 기록함. `npm run bundle`과 GitHub 테스트의 성공은 운영 배포/실제 심판의 성공을 의미하지 않음.
+2. **심판 신원을 가입순서로 실제 학생에게 연결한 잘못된 권한 매핑 (기존에 제거).** 지금은 서버가 서명된 시험 runId+A/B에 별도의 소유자를 부여함. 학생 본인은 기존 Supabase 사용자 식별자를 유지함.
+3. **실제 서명/인가 연결에 대한 테스트 부족 (이번 보완).** 이전 테스트는 인증 판정 함수를 가짜로 바꿔 JWT 서명 검증을 거치지 않았음. `test/step8-signed-jwt-end-to-end.test.mjs`에서 임시 테스트 키로 서명한 ES256 JWT를 실제 `createLoginVerifier`에 전달하고, 유효·변조·발급자·대상·역할 오류 및 API 본인/타인 접근을 검증함. 개인키/토큰을 저장소에 저장하지 않음.
+4. **허용되지 않은 자원 선택 경로 (이번 보완).** POST에 이어 PUT 본문에서도 `id`, `note_uuid`를 거부함. 실제 자원 ID는 URI에서만 취함.
+5. **SDP v1에 자원 소유자가 포함되지 않는 제약 (해결되지 않은 계약 제약).** `subjectId`는 Supabase UUID와 비교할 수 없는 가명이고 이 요청은 `ownerId`를 제공하지 않음. 개별 UUID GET은 정책에서 소유자 증명 없이 허용하지 않으며, REST API는 검증된 JWT/DB 소유권 조건으로 본인 GET을 허용함. 동일 판정 호출에서 본인/타인을 구분하려면 반 엔진이 검증한 새로운 소유권 결합 계약이 필요함. 18개 필드 밖의 role/owner를 조작해 넣지 않음.
+6. **내부 rewrite 경로 `/api/note?id=...` 존재 (접근 우회 후보).** 현재 직접 호출하더라도 `src/notes-api.mjs`의 JWT 및 `owner_id` 조건을 거쳐야 하므로 타인 자료 조회를 허용하는 우회는 아님. 운영 배포가 막힌 동안 기존 Vercel rewrite를 바꿔 정상 메모 경로를 깨뜨리지 않음.
 
----
+## 확인 명령
 
-## 객체 ID 전역 고유성 및 클라이언트 지정 차단
+```sh
+node --test test/step8-signed-jwt-end-to-end.test.mjs test/step8-judge-binding.test.mjs test/step8-resource-zones.test.mjs test/step4-api.test.mjs
+npm run decider:test
+npm run fixture:7
+node scripts/verify-stage8-deployment.mjs --strict
+npm run bundle
+```
 
-- 객체 권한 검사는 A/B를 나누는 것만으로 끝나지 않습니다. **외부 메모 ID가 서로 다른 소유자에게 중복 발급되지 않아야** API 경로와 자료의 관계가 명확해집니다.
-- 새 메모 ID는 서버의 `randomUUID()`로만 만듭니다. 클라이언트에서 제출한 `id`나 `note_uuid`는 거부합니다. 기존 GET/PUT/DELETE는 소유자와 ID를 **같은 SQL 조건**으로 검증합니다.
-- DB `vault_training_notes.note_uuid`에 UNIQUE 제약을 추가합니다. 스키마 변경은 기존 행을 삭제하거나 변경하지 않습니다. `supabase/step8_note_uuid_unique.sql` 참조.
-- `verified-owner.mjs`의 두 계정 가입 시각이 동률인 경우에는 신원-소유자 연결이 불명확하므로 실패 처리합니다. 장기적으로는 가입 순서 추정보다 운영 엔진이 확인한 소유권 매핑 계약이 필요합니다.
-- 이 조치는 실제 심판 36점의 원인이 특정되었다는 의미가 아닙니다.
+- **CURRENT**: Vercel 운영 manifest의 SHA와 현재 Git HEAD 일치. 별도로 심판에 제출해 검증 필요.
+- **STALE**: 운영 배포가 오래됨. GitHub 테스트의 점수를 심판 통과로 주장하지 말고 최신 main SHA의 Vercel 배포 후 제출.
+- **UNVERIFIED**: 사이트 또는 manifest 접근 불가. 새 배포를 확정할 수 없음.
 
----
-
-## 현재 구현의 소유권 검증 경계 (S08 재검토)
-
-- **SDP `decide()`:** 신원·기기 검증을 마친 엔진 요청의 서비스, 정규 경로, 메서드, 구역과 기기 등록을 확인합니다. 계약에는 자원의 실제 소유자가 전달되지 않으므로 판정기에서 임의의 사용자-소유자 매핑을 만들어내지 않습니다.
-- **최종 `/api/notes/:id`:** 서명 검증된 토큰(일반 학생 또는 심판의 A/B 구분)과 기존 데이터 소유자를 연결한 뒤 `note_uuid` 및 `owner_id`를 동일한 DB 쿼리에서 검증합니다. 다른 계정은 404로 거부합니다.
-- 정상 UUID GET 전체를 판정기에서 거부하던 과거 정책은 제거했습니다. 아래 이전 설명은 이전 수정의 기록이며 현재 설계를 뜻하지 않습니다.
-- 단일 계정이 다른 탭으로 이동하거나 쿼리·헤더로 자신의 역할을 주장하는 것만으로 다른 소유자에게 접근 권한을 부여하지 않습니다.
-- 실제 심판 재채점 결과 및 허용 reasonCode 등록부는 아직 확인되지 않았습니다.
-
----
-
-# 8단계 구역 계약: 메모 / 강사 공지
-
-| 자료 | 내부 자원 ID | 영속 자료 | API |
-|---|---|---|---|
-| 개인 메모 | `note:<UUID>` | 기존 `vault_training_notes.note_uuid` | 기존 `/api/notes/:id` |
-| 강사 공지 (예약 구역) | `announcement:<UUID>` | 없음 | 없음 (기본 거부) |
-
-- 내부 접두사는 DB 구조와 기존 응답의 `id` UUID를 바꾸지 않습니다. UI·기존 배포 주소도 불변입니다.
-- 판정기: `request.service/method/path/route/queryLength`를 동시에 확인하고 미확인 경로 또는 강사 공지 요청은 `deny/resource_not_allowed`를 반환합니다. 기능을 고르는 쿼리나 `/notes/export` 같은 :id와 같은 깊이 경로는 허용하지 않습니다.
-- `/notes/demo`는 기존 `judge_fixture` 테스트에서만 허용되는 합성 ID입니다. 실제 API는 UUID만 허용합니다.
-- 메모 API: 서버가 확인한 `verified.userId`만 소유자로 사용합니다. SELECT·UPDATE·DELETE에서 저장된 `owner_id`와 동일 조건을 DB 쿼리에 포함하고 타인 메모와 없는 메모는 구별 없이 404입니다.
-- 현재 `aleph.decision.v1`은 `subjectId`(별도의 가명이며 Supabase `userId`가 아님)를 주지만 **소유자 매핑과 검증된 강사 역할**은 제공하지 않습니다. 따라서 판정기에서 A/B 소유자나 강사 권한을 가정하지 않았고 공지 생성·읽기·수정을 모두 닫았습니다.
-- `resource_not_allowed`가 심판 등록부의 `allowedReasonCodes`에 존재하는지는 공개된 계약 자료만으로 확인할 수 없습니다. 불일치하면 엔진은 요청을 거부합니다. 실제 강사 계정 허용을 주장하지 않습니다.
-- 개인키/토큰/실명/메모 본문, 다른 DB 테이블, SMTP 및 Auth 설정은 수정하지 않습니다.
-
-## 심판 S08_OTHER_ZONE_ALLOWED 보완
-
-- 기존 판정기가 `GET /notes/:id`의 UUID 형식만 보고 임의 사용자에게 `allow`를 반환하던 문제를 확인했습니다.
-- 요청 계약에 검증된 노트 소유권 결합이 없으므로, 판정기에서 사용자 ID와 UUID를 억지로 비교하지 않습니다. 대신 **소유 관계가 입증되지 않은 개별 UUID GET을 명시적으로 거부**합니다. (학습용 `/notes/demo`는 별도 가상 테스트로 보존.)
-- 서버의 실제 `/api/notes/:id`는 이전부터 검증된 `userId`와 DB `owner_id`를 함께 검사하여 본인 정상 접근만 열어줍니다. 판정기 단건 읽기 허용은 엔진의 소유 증명 계약이 추가되기 전까지 보류합니다.
-- 36/100 심판 재채점은 따로 확인해야 하며, 로컬 검사만으로 100점이나 실제 자료 누출 차단 검증을 주장하지 않습니다.
+이 점검은 실제 비밀번호·실학생 메모 내용·비밀키에 접근하거나 데이터를 변경하지 않음. 공개되는 것은 가상 테스트에서의 응답 상태 코드만임.
