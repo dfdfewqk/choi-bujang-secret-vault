@@ -15,18 +15,12 @@ export async function decide(request) {
       schema:'aleph.decision.v1',requestId:request.requestId,
       decision:'deny',reasonCode:'resource_not_allowed',ruleIds:['resource_zone'],
     };
-    // S08_OTHER_ZONE_ALLOWED: canonical note UUID only identifies the note;
-    // aleph.decision.v1 has no verified owner-to-subject binding. Never infer
-    // authorization from a valid UUID, a client-provided role, or the path.
-    // The existing demo fixture remains available to preserve stage 6/7 tests.
-    // Real own-note GET remains handled by the separate server API, which
-    // atomically filters note_uuid and stored owner_id using verified.userId.
-    if (resource.action === 'GET'
-        && resource.resourceId !== 'note:collection'
-        && resource.resourceId !== 'note:fixture-demo') return {
-      schema:'aleph.decision.v1',requestId:request.requestId,
-      decision:'deny',reasonCode:'resource_not_allowed',ruleIds:['resource_zone'],
-    };
+    // Authorization is two-stage: this SDP decision checks the engine-verified
+    // device, service, method, exact route and resource namespace only.
+    // It does not have a verified note-owner claim and must not invent one.
+    // For a valid note GET, the *final API* still checks JWT principal and
+    // note_uuid + stored owner_id before sending any content. A decider allow
+    // is never authorization to bypass that final server-side owner filter.
     // "judge_fixture" is a synthetic exercise source, not evidence of a real
     // geolocation or a trusted HTTP header. Real signals.source "none" is unknown.
     // Missing/incomplete signals never become fabricated "usual" values.
