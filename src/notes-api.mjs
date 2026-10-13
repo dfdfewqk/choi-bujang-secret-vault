@@ -80,9 +80,9 @@ export async function handleNotes(request, response, {
 
   try {
     const db = databaseFactory();
-    // A signed judge token has a run-specific sub, not a Supabase user UUID.
-    // Bind only the signature-verified A/B identity to its existing exercise
-    // owner. The browser never chooses this mapping.
+    // Do not map signed judge A/B aliases onto existing student owners.
+    // Each signed runId + A/B is isolated by the server's owner binder.
+    // Ordinary student JWTs keep their actual Supabase owner ID.
     const boundOwner = await verifiedOwnerId(verified, db);
     if (!boundOwner) {
       return response.status(403).json({ error: 'OWNER_BINDING_UNAVAILABLE' });
@@ -133,6 +133,11 @@ export async function handleNotes(request, response, {
       // Whitelist title/body; reject an attempted ownership transfer.
       if (Object.hasOwn(request.body ?? {}, 'owner_id')) {
         return response.status(400).json({ error: 'OWNER_ID_NOT_ALLOWED' });
+      }
+      // The path names the object. Body/query cannot choose a second one.
+      if (Object.hasOwn(request.body ?? {}, 'id')
+          || Object.hasOwn(request.body ?? {}, 'note_uuid')) {
+        return response.status(400).json({ error: 'CLIENT_NOTE_ID_NOT_ALLOWED' });
       }
       const { data, error } = await table.update(updated).eq('note_uuid', itemId).eq('owner_id', verified.userId)
         .select('note_uuid,title,content').maybeSingle();
