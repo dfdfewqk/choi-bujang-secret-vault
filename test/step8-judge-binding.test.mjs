@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { verifiedOwnerId } from '../src/verified-owner.mjs';
 import { handleNotes } from '../src/notes-api.mjs';
+import { decide } from '../src/decider.mjs';
+import { fixtureRequests } from '../scripts/fixture-7.mjs';
 
 const A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -108,4 +110,25 @@ test('unknown A/B registry fails closed without revealing notes',async()=>{
   assert.equal(res.statusCode,403);
   assert.equal(readCount(),0);
  }
+});
+
+test('S08 end-to-end: identical canonical note gate, A gets own data and B receives 404',async()=>{
+  const {normal}=fixtureRequests();
+  const canonical={
+    ...normal,service:'notes',method:'GET',
+    path:'/api/notes/'+NOTE,route:'GET /api/notes/:id',
+  };
+  const first=await decide(canonical);
+  assert.equal(first.decision,'allow');
+  assert.deepEqual(first.ruleIds,['device_registered','resource_zone']);
+  const {db}=fakeDb();
+  const a=await callWith({db,verified:principal('a')});
+  const b=await callWith({db,verified:principal('b')});
+  assert.equal(a.statusCode,200);
+  assert.equal(b.statusCode,404);
+  assert.deepEqual(b.body,{error:'NOT_FOUND'});
+  // The same resource is never accessible without passing both gates.
+  assert.equal((await decide({...canonical,deviceRegistered:false})).decision,'deny');
+  assert.equal((await decide({...canonical,path:'/api/notes/export'})).decision,'deny');
+  assert.equal((await decide({...canonical,service:'announcements'})).decision,'deny');
 });
