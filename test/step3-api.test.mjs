@@ -152,7 +152,7 @@ test('stage 5 keeps Vercel routing and notes while server-proxying Auth', async(
   assert.match(page,/createServerAuthClient/u);
   assert.doesNotMatch(page,/sb_secret_[A-Za-z0-9_-]{12,}/u);
   assert.doesNotMatch(page,/실습용 가상 과제 기록/u);
-  assert.ok([4,5].includes(config.step));
+  assert.ok(config.step >= 4);
   assert.deepEqual(config.allowedRoutes,[
     'GET /api/notes','POST /api/notes','GET /api/notes/:id',
     'PUT /api/notes/:id','DELETE /api/notes/:id',

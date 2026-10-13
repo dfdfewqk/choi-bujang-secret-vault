@@ -1,3 +1,24 @@
+# BYTE BACK · 6단계 저장점 — 등록한 기기만 자료실에 들어옵니다
+
+> **현재 상태:** 1~5단계와 XDR-01·02는 유지하고 6단계 `device_registered` 판정 규칙만 추가했습니다. 아래 5단계 '배포 대기' 문구는 과거 기록이며, 2026-10-13 인수인계 기준으로 5단계 운영 배포는 완료되었습니다. **6단계 운영 배포 및 실제 심판 결과는 별도 확인 대상**입니다.
+
+## 현재 기능 (5줄)
+1. 기존 Supabase Auth 서버 경유 로그인과 기존 브라우저 화면을 유지합니다.
+2. Vercel 메모 API에서 검증된 `owner_id`로 계정별 CRUD를 유지합니다.
+3. 비로그인·다른 계정 메모 차단 및 원본 DB의 직접 CRUD 권한 회수를 유지합니다.
+4. `src/decider.mjs`는 엔진이 확인한 `request.deviceRegistered === true`에 한해 `allow/approved`를 반환합니다.
+5. 미등록 또는 등록 값 누락은 `deny/device_not_registered`, XDR-01·02는 기존대로 가상 경보 분류에 사용합니다.
+
+## 판정 요청과 확인
+- `docs/DECIDER_REQUEST.md`: 사용자는 `request.subjectId`, 식별된 기기는 `request.deviceId`, 등록 여부는 `request.deviceRegistered`, 요청 동작과 경로는 `request.method`, `request.path`, `request.route`입니다. 기기 진위·사용자·경로 확인은 판정기 **앞단 엔진**이 수행합니다.
+- 적용 규칙은 `RULE_IDS=['device_registered']` 한 개이고, 사용하지 않는 `starter.deny`는 제거했습니다. `decide(request)` 함수 및 반환 객체 다섯 필드는 그대로입니다.
+- Node.js 22 이상에서 `npm ci` 후 **`npm run decider:test`** 실행. `통과 · 등록 기기의 정상 요청` 및 `통과 · 미등록 기기의 가상 요청`을 확인합니다. 별도 접속 프로그램 설치는 없습니다.
+- 등록 값이 없거나 `false`이면 `device_not_registered`로 거부됩니다. 이는 로컬 모의 검사이고 심판의 미등록 기기 공격이나 실제 로그인 실험은 아닙니다.
+- **6단계 제출:** 작업을 커밋한 깨끗한 Git 작업 트리, 정상 GitHub `origin`, 무시 파일 `bundle-notes.json` 및 공개 운영 URL 자기 점검이 있어야 `npm run bundle`이 실행됩니다. `.github/workflows/stage6-checks.yml`이 자동으로 확인하고 제출 JSON을 아티팩트로 보관합니다.
+- 인증서/CA/서명 키/기기 개인키/토큰 및 개인 메모 본문은 만들거나 제출하지 않습니다. 기존 사이트에서 로그인 화면이 열리는지 별도 확인합니다.
+
+---
+
 # BYTE BACK · 5단계 90점 → 100점 가점 보완 (배포 대기)
 
 > **현재 상태:** 기존 5단계 심판 결과는 **90/100점**이며, 남은 10점의 원인은 **브라우저 공개 Supabase 키**입니다. 코드에서는 3개 화면에서 키를 제거하고 로그인까지 서버 함수를 경유하도록 수정했습니다. GitHub 회귀 검사는 통과했지만 Vercel이 무료 API 배포 횟수 한도(HTTP 402)로 새 배포를 거부하여 **아직 100점이나 운영 반영을 주장하지 않습니다.** 예전에 제출한 미리보기는 이전 버전(90점)으로 계속 유지됩니다.

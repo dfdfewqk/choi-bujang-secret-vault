@@ -1,0 +1,78 @@
+name: Stage 6 registered-device decision and checkpoint bundle
+
+on:
+  push:
+    branches: [stage6-device-registered, main]
+    paths:
+      - 'src/decider.mjs'
+      - 'src/attack-check.mjs'
+      - 'aleph.config.json'
+      - 'test/**'
+      - 'README.md'
+      - '.github/workflows/stage6-checks.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Previous stage and XDR regression tests
+        run: |
+          npm run test:r5
+          npm run test:package
+          node --test test/step2.test.mjs test/step2-api.test.mjs test/step3-api.test.mjs test/step4-api.test.mjs test/step5-api.test.mjs test/step5-server-auth.test.mjs
+          node --test test/xdr-run.test.mjs test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs
+      - name: Stage 6 local decision tests
+        run: |
+          npm run decider:test
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { decide, RULE_IDS } from './src/decider.mjs';
+          assert.deepEqual(RULE_IDS,['device_registered']);
+          for (const value of [false, undefined, null, 'true']) {
+            const response = await decide({requestId:'missing-device',deviceRegistered:value});
+            assert.equal(response.decision,'deny');
+            assert.equal(response.reasonCode,'device_not_registered');
+          }
+          console.log('Stage6 missing/false device flags denied');
+          NODE
+      - name: Ensure repository clean before bundle
+        run: |
+          git status --short
+          test -z "$(git status --porcelain --untracked-files=all)"
+      - name: Prepare ignored checkpoint explanation
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          writeFileSync('bundle-notes.json',JSON.stringify({
+            explanation: [
+              '6단계: 확인된 deviceRegistered가 true인 경우 allow/approved로 판정하고 false와 누락은 deny/device_not_registered로 거부했습니다.',
+              '판정기 요청과 응답의 v1 계약, 기존 1~5단계 로그인 및 개인 메모 접근과 XDR-01·02를 보존했습니다.',
+              'npm run decider:test 및 회귀 검사와 공개 자료실 자기 점검을 실행합니다. 가상 기기 시험은 실제 심판 검증이 아닙니다.'
+            ].join('\n'),
+            blockedAt:'stage6_live_judge_verification_pending'
+          },null,2)+'\n');
+          NODE
+      - name: Generate Stage 6 submission JSON
+        run: npm run bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage6-device-registration-submission
+          path: artifacts/submission.json
+          if-no-files-found: error
+          retention-days: 90

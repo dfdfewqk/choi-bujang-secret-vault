@@ -38,7 +38,7 @@ test('stage 5 keeps note CRUD and browser Auth behind server functions', async (
 
 test('stage 5 original data API URL is the query-free notes endpoint', async () => {
   const config = JSON.parse(await load('aleph.config.json'));
-  assert.equal(config.step, 5);
+  assert.ok(config.step >= 5);
   assert.equal(config.originalApiUrl,
     'https://bcwzllejypavwgsfqfbm.supabase.co/rest/v1/vault_training_notes');
   const url = new URL(config.originalApiUrl);
@@ -73,7 +73,7 @@ test('stage 5 SQL proposes only notes-table role revocation and never deletes ro
 });
 
 test('stage 5 self-check labels original key/JWT access as untested until real SQL execution', async () => {
-  const config = JSON.parse(await load('aleph.config.json'));
+  const config = { ...JSON.parse(await load('aleph.config.json')), step: 5 };
   const oldFetch = globalThis.fetch;
   try {
     globalThis.fetch = async input => {
