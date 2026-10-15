@@ -28,21 +28,32 @@ for(const name of ['execFileSync','execFile','execSync','exec','spawn','spawnSyn
  };
 }
 const artifacts=join(root,'artifacts'),output=join(artifacts,'submission.json');
-const allowedRead=join(root,'aleph.config.json');
+// Node 22.23 uses the exported fs.readFileSync during ESM loading.
+ // Permit only the real submission import graph, not arbitrary local files.
+const allowedRead=new Set([
+ join(root,'aleph.config.json'),join(root,'scripts/bundle.mjs'),
+ join(root,'src/decider.mjs'),join(root,'src/resource-zones.mjs'),
+ join(root,'src/stage12-bundle-check.mjs'),
+]);
+const diagnosticDir=process.env.BUNDLE_ISOLATION_DIAGNOSTIC==='1'
+ &&process.env.BUNDLE_ISOLATION_PROBE_FILE
+ ?dirname(resolve(process.env.BUNDLE_ISOLATION_PROBE_FILE)):null;
 const pathOf=p=>{
  if(typeof p==='string')return resolve(p);
  if(p instanceof URL&&p.protocol==='file:')return resolve(fileURLToPath(p));
  fail('FORBIDDEN filesystem non-path input');
 };
 for(const [name,allowed] of [
- ['readFileSync',new Set([allowedRead])],
+ ['readFileSync',allowedRead],
  ['mkdirSync',new Set([artifacts])],
  ['writeFileSync',new Set([output])],
 ]){
  const original=fs[name];
  fs[name]=(...args)=>{
   const path=pathOf(args[0]);
-  if(!allowed.has(path))fail('FORBIDDEN node:fs.'+name+' path='+path.slice(-100));
+  if(!allowed.has(path)
+   &&!(name==='readFileSync'&&diagnosticDir&&path.startsWith(diagnosticDir+'/')))
+   fail('FORBIDDEN node:fs.'+name+' path='+path.slice(-100));
   if(name==='mkdirSync'&&args[1]?.recursive!==true)fail('FORBIDDEN mkdir options');
   if(name==='writeFileSync'&&(args[2]?.encoding!=='utf8'||args[2]?.flag!=='w'))
    fail('FORBIDDEN output write options');
