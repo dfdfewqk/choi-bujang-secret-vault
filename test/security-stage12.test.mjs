@@ -46,6 +46,14 @@ test('entire npm run bundle import closure stays within judge builtin allowlist'
   'scripts/bundle.mjs','src/decider.mjs','src/resource-zones.mjs','src/stage12-bundle-check.mjs'
  ].sort());
 });
+test('CI-only guard checks runtime imports, ESM named bindings and process execution',()=>{
+ const preload=readFileSync(new URL('./bundle-isolation-preload.mjs',import.meta.url),'utf8');
+ assert.match(preload,/registerHooks\(/u);
+ assert.match(preload,/syncBuiltinESMExports\(\)/u);
+ assert.match(preload,/child\[name\]=/u);
+ assert.match(preload,/FORBIDDEN file import/u);
+ assert.match(preload,/FORBIDDEN fetch/u);
+});
 test('TLS checks are independent of official submission execution',()=>{
  const bundle=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
  const monitor=readFileSync(new URL('../scripts/check-public-availability.mjs',import.meta.url),'utf8');
