@@ -1,0 +1,75 @@
+name: Stage 10 verified single-note restore and regression
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - 'api/restore.js'
+      - 'src/restore-api.mjs'
+      - 'src/restore-policy.mjs'
+      - 'supabase/step10_verified_restoration.sql'
+      - 'test/step10-restore.test.mjs'
+      - 'src/attack-check.mjs'
+      - 'aleph.config.json'
+      - '.github/workflows/stage10-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Check stage 10 owner-scoped recovery and policy verification
+        run: node --test test/step10-restore.test.mjs
+      - name: Run prior stage and attack regressions
+        run: |
+          npm run detect:test
+          npm run decider:test
+          npm run fixture:7
+          node --test test/step4-api.test.mjs test/step8-scoped-policy.test.mjs test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs test/step8-signed-jwt-end-to-end.test.mjs test/step9-detect.test.mjs
+          node --test test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs test/xdr-known-cve.test.mjs test/xdr-persistence.test.mjs test/xdr-exfiltration.test.mjs
+      - run: npm run build -- --local
+      - name: Confirm clean git index before bundling
+        run: test -z "$(git status --porcelain --untracked-files=all)"
+      - name: Write ignored stage-10 checkpoint explanation
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          writeFileSync('bundle-notes.json',JSON.stringify({
+            explanation:[
+              '10단계: 안전한 Git 정책 기준선을 확인하고 변경 범위를 사전에 비교합니다.',
+              '검증된 신규 메모 사본에서 서명된 시험 B 한 건만 owner·SHA-256 확인 후 복원하고, 감사 이력과 다른 자료는 보존합니다.',
+              '백업이 없거나 검사에 실패하면 복원을 중단합니다. 실제 시험 B 토큰 실측은 별도로 확인합니다.'
+            ].join('\n'),
+            blockedAt:'stage10_real_signed_b_judge_https_test_not_performed'
+          },null,2)+'\n');
+          NODE
+      - name: Create stage 10 submission bundle after commit
+        run: npm run bundle
+      - name: Validate stage 10 submission safely
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const b=JSON.parse(readFileSync('artifacts/submission.json','utf8'));
+          const stage10=b.attackAttempts.find(x=>x.attackId==='stage10_anonymous_restore_denied');
+          console.log(JSON.stringify({step:b.step,commit:b.commit,restoreRoute:b.restoreRoute,
+            totalChecks:b.attackAttempts.length,stage10Check:stage10?.observed},null,2));
+          if(b.step!==10||b.restoreRoute!=='/api/restore'||!stage10)process.exitCode=1;
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage10-submission
+          path: artifacts/submission.json
+          if-no-files-found: error
+          retention-days: 90

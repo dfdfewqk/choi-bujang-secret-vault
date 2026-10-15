@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7 && config.step !== 8 && config.step !== 9) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7 && config.step !== 8 && config.step !== 9 && config.step !== 10) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9) {
+  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -113,7 +113,7 @@ export async function runAttackChecks(config) {
         observed: 'NOT_TESTED: DB role grants revoked and simulated SELECT denied; live public-key/JWT HTTP challenge remains',
       });
     }
-    if (config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9) {
+    if (config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10) {
       // Local request fixtures only, not proof of the real class engine or judge.
       const { decide, RULE_IDS } = await import('./decider.mjs');
       const { checkDecider } = await import('../scripts/decider-test.mjs');
@@ -185,7 +185,7 @@ export async function runAttackChecks(config) {
         expected:'Real authenticated B cannot fetch or modify A notes',
         observed:'NOT_TESTED: live signed accounts not used; synthetic server ownership tests run separately'});
     }
-    if(config.step===9){
+    if(config.step>=9){
       const {detect}=await import('./detect.mjs');
       const start=Date.UTC(2026,9,1,0,0,0);
       const reads=(count,sub='learner_fixture',interval=2)=>Array.from(
@@ -207,6 +207,22 @@ export async function runAttackChecks(config) {
           observed:passed?'PASS: local synthetic detector matched (not live revocation)'
             :'FAIL: local synthetic detector differed from contract'});
       }
+    }
+    if(config.step===10){
+      // This is an unauthenticated public HTTP check only. No note bodies or
+      // real account credentials are used, so a real B restore remains untested.
+      const resp=await fetch(new URL('/api/restore',app),{
+        method:'GET',redirect:'error',signal:AbortSignal.timeout(10000)
+      });
+      let data=null;
+      try{data=await resp.json();}catch{}
+      attempts.push({
+        attackId:'stage10_anonymous_restore_denied',
+        expected:'GET /api/restore without bearer must return JSON 401',
+        observed:resp.status===401&&data?.error==='UNAUTHORIZED'
+          ?'PASS: production restore preview denies anonymous requests'
+          :'FAIL: restore preview did not deny anonymous requests (HTTP '+resp.status+')',
+      });
     }
     return attempts;
   }
