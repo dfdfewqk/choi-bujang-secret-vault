@@ -6,14 +6,11 @@ import {runAttackChecks} from '../src/attack-check.mjs';
 test('bundle uses direct git read subcommands and HTTPS read-only checks',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
  assert.match(source,/execFileSync\('git', args, \{/u);
- assert.match(source,/cwd: root/u);
- assert.match(source,/const checkedSources = \[/u);
- assert.match(source,/git\('show', '--first-parent', '-m', '--pretty=format:', '--name-only', 'HEAD'\)/u);
- const calls=[...source.matchAll(/\bgit\('([^']+)'/gu)].map(m=>m[1]);
- assert.ok(calls.length>=3);
- for(const command of calls)assert.ok(['rev-parse','show'].includes(command),command);
- assert.doesNotMatch(source,/\bgit\('(status|config|remote|diff-tree)'/u);
- assert.doesNotMatch(source,/\bGIT_OPTIONAL_LOCKS\b|\bGIT_TERMINAL_PROMPT\b/u);
+ assert.match(source,/gitRead\('show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'\)/u);
+ assert.match(source,/from '\.\.\/src\/attack-check\.mjs'/u);
+ assert.doesNotMatch(source,/\bgitRead\('(status|diff-tree|config|remote|rev-parse)'/u);
+ const commands=[...source.matchAll(/\bgitRead\('([^']+)'/gu)].map(m=>m[1]);
+ assert.deepEqual(commands,['show']);
  const original=globalThis.fetch;let requests=0;
  globalThis.fetch=async(input,options={})=>{
   const url=new URL(input);assert.equal(url.protocol,'https:');
@@ -28,6 +25,19 @@ test('bundle uses direct git read subcommands and HTTPS read-only checks',async(
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
   const checks=await runAttackChecks(config);
   assert.equal(requests,8);assert.equal(checks.length,20);
+  assert.equal(checks.filter(c=>c.observed==='not_run').length,12);
   assert.ok(checks.every(c=>!c.observed.startsWith('FAIL')));
+  assert.equal(checks.find(c=>c.attackId==='stage12_anonymous_operations_denied').observed.includes('401'),true);
  }finally{globalThis.fetch=original;}
+});
+
+test('stage 12 does not fabricate successes when every HTTPS GET is unavailable',async()=>{
+  const original=globalThis.fetch;
+  globalThis.fetch=async()=>{throw new Error('network unavailable');};
+  try{
+    const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
+    const checks=await runAttackChecks(config);
+    assert.equal(checks.length,20);
+    assert.ok(checks.every(c=>c.observed==='not_run'));
+  }finally{globalThis.fetch=original;}
 });

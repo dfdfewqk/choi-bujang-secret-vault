@@ -9,6 +9,8 @@ on:
       - 'src/**'
       - 'public/**'
       - 'test/step12-operations.test.mjs'
+      - 'scripts/bundle.mjs'
+      - 'test/bundle-isolation.test.mjs'
       - 'aleph.config.json'
       - '.github/workflows/stage12-checks.yml'
 permissions:
