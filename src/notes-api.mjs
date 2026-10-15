@@ -42,6 +42,7 @@ export async function handleNotes(request, response, {
   verifyAuthorization = null,
   databaseFactory = getDatabase,
   appVerification = verifyAppRequest,
+  onOwnerVerified = ()=>{},
 } = {}) {
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -89,6 +90,7 @@ export async function handleNotes(request, response, {
     if (!boundOwner) {
       return response.status(403).json({ error: 'OWNER_BINDING_UNAVAILABLE' });
     }
+    onOwnerVerified(boundOwner);
     if(config.step>=11){
       const app=await appVerification({request,owner:boundOwner,db,
         path:item?'/api/notes/'+itemId:'/api/notes'});

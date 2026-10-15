@@ -128,7 +128,7 @@ test('stage 11 bundle self-check supports current stage and keeps 20-item limit'
   globalThis.fetch=async(input)=>{
    const u=new URL(input);
    if(u.pathname==='/data.json')return new Response(null,{status:404});
-   if(u.pathname==='/aleph.json')return new Response(JSON.stringify({step:11}),{status:200});
+   if(u.pathname==='/aleph.json')return new Response(JSON.stringify({step:12}),{status:200});
    if(u.pathname.startsWith('/api/'))return new Response(JSON.stringify({error:'UNAUTHORIZED'}),{status:401,headers:{'Content-Type':'application/json'}});
    return new Response('<html></html>',{status:200,headers:{'X-Content-Type-Options':'nosniff'}});
   };

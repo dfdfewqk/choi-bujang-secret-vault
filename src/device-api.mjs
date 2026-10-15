@@ -4,7 +4,7 @@ import {createLoginVerifier} from './verify-login.mjs';
 import {verifiedOwnerId} from './verified-owner.mjs';
 import {publicDeviceKey} from './app-request.mjs';
 let verifier;
-export async function handleDevice(request,response,{verifyAuthorization,databaseFactory}={}){
+export async function handleDevice(request,response,{verifyAuthorization,databaseFactory,onOwnerVerified=()=>{}}={}){
  response.setHeader('Cache-Control','no-store');
  response.setHeader('Content-Type','application/json; charset=utf-8');
  response.setHeader('X-Content-Type-Options','nosniff');
@@ -18,6 +18,7 @@ export async function handleDevice(request,response,{verifyAuthorization,databas
   const db=databaseFactory?databaseFactory():createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SECRET_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
   const owner=await verifiedOwnerId(principal,db);
   if(!owner)return response.status(403).json({error:'OWNER_BINDING_UNAVAILABLE'});
+  onOwnerVerified(owner);
   let rpc,args;
   if(request.method==='POST'){
    if(!request.body||Object.keys(request.body).join(',')!=='publicKey')return response.status(400).json({error:'INVALID_DEVICE_REQUEST'});

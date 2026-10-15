@@ -1,6 +1,4 @@
-import { handleNotes } from '../src/notes-api.mjs';
-
-// This endpoint is the Vercel rewrite target for /api/notes/:id.
-export default function handler(request, response) {
-  return handleNotes(request, response, { itemId: request.query?.id ?? '' });
-}
+import {handleNotes} from '../src/notes-api.mjs';
+import {observeApi} from '../src/api-observation.mjs';
+export default function handler(req,res){return observeApi(req,res,{route:'notes.item',
+ handler:(request,response,options)=>handleNotes(request,response,{...options,itemId:request.query?.id??''})});}

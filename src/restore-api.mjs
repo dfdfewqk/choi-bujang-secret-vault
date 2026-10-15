@@ -50,7 +50,7 @@ function mapDbResponse(response,result,preview){
  return response.status(502).json({error:'RESTORE_UNAVAILABLE'});
 }
 export async function handleRestore(request,response,{
- verifyAuthorization=null,databaseFactory=getDb,policyCheck=comparePolicy
+ verifyAuthorization=null,databaseFactory=getDb,policyCheck=comparePolicy,onOwnerVerified=()=>{}
 }={}){
  response.setHeader('Cache-Control','no-store');
  response.setHeader('Content-Type','application/json; charset=utf-8');
@@ -87,6 +87,7 @@ export async function handleRestore(request,response,{
   const db=databaseFactory();
   const owner=await verifiedOwnerId(principal,db);
   if(!owner)return response.status(403).json({error:'OWNER_BINDING_UNAVAILABLE'});
+  onOwnerVerified(owner);
   if(method==='POST'){
    // Re-read protected metadata before mutation; SQL rechecks under lock.
    const {data:plan,error:previewError}=await db.rpc('byteback_preview_note_restore',
