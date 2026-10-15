@@ -1,3 +1,13 @@
+## 9단계 저장점 — 도플갱어 조회 폭주 탐지 (2026-10-15)
+
+- `aleph.config.json.step=9`, 기존 GitHub·Vercel·Supabase 설정은 유지합니다.
+- `src/detect.mjs`: `docs/DETECT_EVENTS.md`의 `at`, `method`, `identity.sub`만 사용. 같은 `sub`의 GET 사건이 어느 연속 10분 구간에서든 **120건을 초과**하면 정확히 `{action:'propose_revocation',reasonCode:'burst_read',subject:sub}`만 반환하며, 나머지는 `{action:'observe'}`만 반환합니다. 정확히 120건, 10분 밖의 느린 조회, 여러 사용자의 사건은 차단 제안하지 않습니다.
+- 시간 기준은 요청의 `at`이고 입력 순서와 무관하게 계산합니다. 네트워크·기기·지역·실명·토큰은 탐지 조건이나 로그에 사용하지 않습니다. **실제 권한 회수 API는 만들지 않았고 정상 기기를 변경하지 않습니다.**
+- 재현: `npm run detect:test`, `node --test test/step9-detect.test.mjs`, `npm run decider:test`, `node --test test/step8-scoped-policy.test.mjs`. `npm run bundle`은 저장점 커밋 이후 실행하고, GitHub Actions에 실습 결과를 첨부합니다.
+- 기존 8단계 전체 목록 거부·개별 메모 최종 소유권 검사·6~7단계 재인증·XDR-01~06을 유지합니다. 오프라인 테스트가 실제 심판 통과나 계정 회수 집행을 의미하지는 않습니다.
+
+---
+
 ## 8단계 48점 원인 교정 — 정확한 목록 경로 차단 (2026-10-15)
 
 공식 판정 실패 `S08_OTHER_ZONE_ALLOWED`는 판정기가 `GET /notes`를 허용한 사례로 확인됨. `src/decider.mjs`에서 `GET /notes`와 `GET /api/notes`를 거부하고, 개별 메모의 정상 GET/PUT/DELETE는 정확한 경로/등록 기기 뒤 최종 JWT·DB 소유권 검사에 맡김. 학생에게 검증된 강사 역할이 없어 공지 쓰기는 거부. `test/step8-scoped-policy.test.mjs`를 포함한 테스트로 확인하며 기존 6~7단계와 XDR 기능은 보존함. **아래 예전 8단계 메모 중 'UUID GET을 차단'한다는 설명은 이전 실패 버전에 대한 기록이며 최신 규칙이 아님.**
