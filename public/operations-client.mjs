@@ -1,5 +1,6 @@
 import {createServerAuthClient} from './auth-client.mjs';
 import {signedFetch} from './device-client.mjs';
+import {classifyAuditHeader} from './operations-health.mjs';
 const deferred=[
  ['4·8 / 타인 메모','다른 시험 계정에서 확인한 메모 ID로 서명 GET','타인 메모 404 · 알려진 타인 ID 필요'],
  ['5 / 원본 DB','브라우저 역할의 원본 DB 직접 조회','거부 · 역할별 운영 재시험 미실행'],
@@ -11,8 +12,23 @@ const deferred=[
  ['1~11 / 공식 통합','공식 총공세 41종 시험','공식 심판 결과 미연결'],
 ];
 export function mountOperations(root){
- const $=s=>root.querySelector(s),client=createServerAuthClient();let probes=[];
+ const $=s=>root.querySelector(s),client=createServerAuthClient();let probes=[],auditFailures=0;
  const say=s=>{$('#operations-state').textContent=s;};
+ function updateAuditHealth(headers){
+  const evidence=classifyAuditHeader(headers);
+  if(evidence.state==='failed')auditFailures++;
+  const line=$('#operations-audit-health');
+  line.dataset.state=auditFailures?'failed':evidence.state;
+  line.textContent=auditFailures
+   ? '경고: 이 화면에서 감사 기록 저장 실패 '+auditFailures+'건을 관측했습니다. 서버 기록을 확인하세요.'
+   : evidence.message;
+ }
+ function missingAuditHealth(){
+  if(auditFailures)return;
+  const line=$('#operations-audit-health');
+  line.dataset.state='unknown';
+  line.textContent='감사 기록 상태 미확인 · 서버 응답을 확인하지 못했습니다. 정상 감시로 판단하지 않습니다.';
+ }
  function row(values,result){const tr=document.createElement('tr');tr.dataset.result=result;for(const v of values){const td=document.createElement('td');td.textContent=String(v??'미제공');tr.append(td);}return tr;}
  function render(records=[]){
   const table=$('#operations-results');table.replaceChildren();
@@ -24,6 +40,7 @@ export function mountOperations(root){
  async function refresh(){
   try{
    const response=await signedFetch('/api/operations',{token:await token()});
+   updateAuditHealth(response.headers);
    if(!response.ok)throw Error('작전실 API HTTP '+response.status);
    const data=await response.json();if(data.schema!=='byteback.operations.v1')throw Error('작전실 응답 형식 오류');
    $('#operations-rules').textContent=data.rules.configured.join(', ');
@@ -35,7 +52,7 @@ export function mountOperations(root){
    $('#operations-campaign').textContent=data.officialCampaign.note+' 전체 '+data.officialCampaign.total+'종 · 실행/통과 수 미확인';
    $('#operations-record-count').textContent='서버 기록 '+data.totalObservations+'건 중 최근 '+data.observations.length+'건 · 스냅숏 '+data.measuredAt+' · 배포 '+(data.deploymentCommit??'미확인');
    render(data.observations);say('서버 기록을 읽었습니다. 공식 심판 통과를 뜻하지 않습니다.');
-  }catch(e){render();say(e.message);}
+  }catch(e){render();missingAuditHealth();say(e.message);}
  }
  async function runProbes(){
   $('#operations-probe').disabled=true;probes=[];
@@ -52,6 +69,8 @@ export function mountOperations(root){
    for(const c of cases){
     try{
      const response=await c.run();
+     if(c.request.includes('/api/')&&response.headers.get('X-Audit-Recorded')==='false')
+      updateAuditHealth(response.headers);
      // Never read/display note contents, even if an unexpected response allowed them.
      probes.push({...c,run:undefined,actual:response.status,match:response.status===c.expected,
       requestId:response.headers.get('X-Request-Id')??response.headers.get('x-vercel-id')??'서버 ID 미제공',

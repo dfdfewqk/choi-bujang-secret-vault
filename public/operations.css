@@ -5,3 +5,9 @@
 .ops-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.ops-cards section{border:1px solid #235165;border-radius:12px;padding:16px;background:#0b2439}
 .ops-cards p{overflow-wrap:anywhere}.ops-table-wrap{overflow-x:auto}.operations-root table{border-collapse:collapse;width:100%;font-size:13px;text-align:left}.operations-root th,.operations-root td{padding:12px;border-bottom:1px solid #25485d;vertical-align:top}.operations-root td{max-width:320px;overflow-wrap:anywhere}.operations-root th{color:#7ce0ed}.operations-root section{margin:20px 0}.ops-cards section{margin:0}.operations-root [data-result="mismatch"]{color:#ffc894}.operations-root [data-result="matched"]{color:#86e6bd}.operations-root [data-result="unexecuted"]{color:#b7cad4}
 @media(max-width:650px){.ops-cards{grid-template-columns:1fr}.operations-root{padding:16px}.operations-root h1{font-size:27px}}
+
+/* Evidence-based audit health: never label missing telemetry healthy. */
+.ops-audit-health{border:1px solid #527993;border-radius:8px;padding:11px 13px;background:#102c41;color:#d3e7f2;font-size:13px;line-height:1.7}
+.ops-audit-health[data-state="failed"]{border-color:#e39373;background:#422628;color:#ffe0d5}
+.ops-audit-health[data-state="verified"]{border-color:#48ad98;background:#173e37;color:#c5ffe6}
+.ops-audit-health[data-state="unknown"]{border-color:#c7a463;background:#3c331e;color:#ffe6b0}

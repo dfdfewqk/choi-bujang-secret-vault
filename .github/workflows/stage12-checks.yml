@@ -30,6 +30,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Fail on high-severity production dependency advisories
+        run: npm audit --omit=dev --audit-level=high
       - run: node --test test/*.test.mjs
       - run: npm run decider:test
       - run: npm run detect:test
@@ -40,6 +42,8 @@ jobs:
       - name: Zero-network bundle test without extra Node builtin imports
         run: node --import ./test/bundle-isolation-preload.mjs scripts/bundle.mjs
       - run: npm run bundle
+      - name: Independently verify public HTTPS and TLS expiry
+        run: node scripts/check-public-availability.mjs
       - name: Validate stage 12 summary
         run: |
           node --input-type=module <<'NODE'
