@@ -122,3 +122,21 @@ test('client enrollment/status/signing reaches guarded note API only after serve
   for(const [k,v] of [['SUPABASE_URL',previous.url],['SUPABASE_SECRET_KEY',previous.key]]){if(v===undefined)delete process.env[k];else process.env[k]=v;}
  }
 });
+test('stage 11 bundle self-check supports current stage and keeps 20-item limit',async()=>{
+ const prev=globalThis.fetch;
+ try{
+  globalThis.fetch=async(input)=>{
+   const u=new URL(input);
+   if(u.pathname==='/data.json')return new Response(null,{status:404});
+   if(u.pathname==='/aleph.json')return new Response(JSON.stringify({step:11}),{status:200});
+   if(u.pathname.startsWith('/api/'))return new Response(JSON.stringify({error:'UNAUTHORIZED'}),{status:401,headers:{'Content-Type':'application/json'}});
+   return new Response('<html></html>',{status:200,headers:{'X-Content-Type-Options':'nosniff'}});
+  };
+  const {runAttackChecks}=await import('../src/attack-check.mjs');
+  const config=JSON.parse(await readFile(new URL('../aleph.config.json',import.meta.url),'utf8'));
+  const results=await runAttackChecks(config);
+  assert.equal(results.length,20);
+  assert.equal(results.find(r=>r.attackId==='stage11_anonymous_device_denied').observed,'PASS: anonymous device status denied');
+  assert.ok(results.some(r=>r.attackId==='stage10_anonymous_restore_denied'));
+ }finally{globalThis.fetch=prev;}
+});
