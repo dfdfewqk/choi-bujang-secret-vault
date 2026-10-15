@@ -53,9 +53,9 @@ jobs:
               '9단계: 엔진이 확인한 사건의 at·method·identity.sub만 이용하고 다른 필드를 가정하지 않습니다.',
               '같은 가명 사용자 GET이 10분 안에 121건부터 propose_revocation/burst_read를 제안합니다. 120건, 정상과 서로 다른 사용자는 observe입니다.',
               '권한 회수는 엔진 담당이며 API·기기·기존 8단계 정책을 변경하지 않았습니다. 로컬 가상 사건 6개와 회귀 검사를 실행했습니다.'
-            ].join('\\n'),
+            ].join('\n'),
             blockedAt:null
-          },null,2)+'\\n');
+          },null,2)+'\n');
           NODE
       - name: Bundle official checkpoint after commit
         run: npm run bundle
