@@ -1,0 +1,15 @@
+{
+  "version": "stage9-safe-v1",
+  "sourceCommit": "94df01d95cd04f7c608cbce60c6fed9dcc38b86b",
+  "ruleIds": [
+    "device_registered",
+    "step_up_required",
+    "resource_zone"
+  ],
+  "normalNote": "allow",
+  "unregistered": "deny",
+  "unfamiliarBurst": "step_up",
+  "listRead": "deny",
+  "noticeWrite": "deny",
+  "objectRead": "allow"
+}
