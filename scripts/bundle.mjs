@@ -32,18 +32,13 @@ try {
   if (!changedFiles.length) fail('마지막 커밋에 바뀐 파일이 없습니다.');
   const config = JSON.parse(readFileSync(join(root, 'aleph.config.json'), 'utf8'));
   const repoUrl = normalizedRepo(config.repoUrl);
-  // Fresh judge checkouts do not contain bundle-notes.json: it is ignored.
-  // Keep custom local notes optional, never require untracked setup for submission.
-  let notes;
-  try {
-    notes = JSON.parse(readFileSync(join(root, 'bundle-notes.json'), 'utf8'));
-  } catch (error) {
-    if (error?.code !== 'ENOENT') throw error;
-    notes = {
-      explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 점검은 공개 HTTPS GET만 실행하고 인증·공식 41종 미검증 항목을 not_run으로 표시합니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 심판 통과를 주장하지 않습니다.',
-      blockedAt: 'official_41_tests_and_identity_revocation_not_verified',
-    };
-  }
+  // Submissions run on a fresh, restricted checkout. The ignored optional
+  // notes file is not part of Git and must not even be opened in this path.
+  // Keep truthful submission metadata in committed source instead.
+  const notes = {
+    explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 묶음 자체는 외부 네트워크·인증·공식 41종 시험을 실행하지 않아 not_run으로 기록합니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 통과를 주장하지 않습니다.',
+    blockedAt: 'official_41_tests_and_identity_revocation_not_verified',
+  };
   if (!Number.isInteger(config.step) || config.step < 1 || config.step > 12) fail('aleph.config.json의 step을 확인해 주세요.');
   if (config.step >= 3 && (!config.identityProvider || typeof config.identityProvider !== 'object'
       || ['issuer', 'audience', 'jwksUrl'].some((key) => typeof config.identityProvider[key] !== 'string'

@@ -16,7 +16,8 @@ test('bundle is Git-read-only and makes zero outbound requests',async()=>{
  const imports=[...source.matchAll(/from '([^']+)'/gu),...checker.matchAll(/from '([^']+)'/gu)].map(m=>m[1]);
  assert.ok(imports.every(p=>p.startsWith('../src/')||['node:child_process','node:fs','node:path'].includes(p)));
  assert.doesNotMatch(checker,/\bawait import\(|\bexecFileSync\b|\bspawn\b|\bcreateHash\b|\brandomUUID\b/u);
- assert.match(source,/if \(error\?\.code !== 'ENOENT'\) throw error/u);
+ assert.doesNotMatch(source,/readFileSync\(join\(root, 'bundle-notes\.json'\)/u);
+ assert.match(source,/const notes = \{/u);
  assert.match(source,/official_41_tests_and_identity_revocation_not_verified/u);
  assert.ok(readFileSync(new URL('../.gitignore',import.meta.url),'utf8').split(/\r?\n/u).includes('bundle-notes.json'));
  assert.doesNotMatch(checker,/\bfetch\s*\(|\bhttps?:\/\//u);
