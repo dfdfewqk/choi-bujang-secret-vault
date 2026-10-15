@@ -146,13 +146,17 @@ test('judge cannot clone someone else’s object ID',async()=>{
  }
  assert.equal(db.rows.length,1);
 });
-test('pure SDP remains independent of Auth JWT owner check and denies unproved UUID read',async()=>{
+test('pure SDP denies broad note lists and delegates UUID owner check to final API',async()=>{
  const {normal}=fixtureRequests();
  const canonical={...normal,path:'/api/notes/'+STUDENT_NOTE,
    route:'GET /api/notes/:id',method:'GET',service:'notes'};
  const res=await decide(canonical);
- assert.equal(res.decision,'deny');
- assert.deepEqual(res.ruleIds,['resource_zone']);
+ assert.equal(res.decision,'allow');
+ assert.deepEqual(res.ruleIds,['device_registered','resource_zone']);
+ const collection=await decide({...canonical,path:'/api/notes',
+   route:'GET /api/notes'});
+ assert.equal(collection.decision,'deny');
+ assert.equal(collection.reasonCode,'resource_not_allowed');
  assert.equal((await decide(normal)).decision,'allow');
  assert.equal((await decide({...canonical,deviceRegistered:false})).decision,'deny');
 });

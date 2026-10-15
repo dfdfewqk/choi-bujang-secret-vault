@@ -1,3 +1,9 @@
+## 8단계 48점 원인 교정 — 정확한 목록 경로 차단 (2026-10-15)
+
+공식 판정 실패 `S08_OTHER_ZONE_ALLOWED`는 판정기가 `GET /notes`를 허용한 사례로 확인됨. `src/decider.mjs`에서 `GET /notes`와 `GET /api/notes`를 거부하고, 개별 메모의 정상 GET/PUT/DELETE는 정확한 경로/등록 기기 뒤 최종 JWT·DB 소유권 검사에 맡김. 학생에게 검증된 강사 역할이 없어 공지 쓰기는 거부. `test/step8-scoped-policy.test.mjs`를 포함한 테스트로 확인하며 기존 6~7단계와 XDR 기능은 보존함. **아래 예전 8단계 메모 중 'UUID GET을 차단'한다는 설명은 이전 실패 버전에 대한 기록이며 최신 규칙이 아님.**
+
+---
+
 ## 보너스 XDR-06 저장점 — 외부 자료 반출 탐지
 
 - 원본: `xdr/fixtures/exfiltration.json`의 가상 Wazuh 경보 **30건**(수정 없음).

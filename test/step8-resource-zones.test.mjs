@@ -29,24 +29,29 @@ test('Stage 6 and 7 are retained',async()=>{
  assert.equal((await decide(suspicious)).decision,'step_up');
  assert.equal((await decide({...suspicious,stepUp:{verified:true,authAgeSeconds:60}})).decision,'allow');
 });
-test('Stage 8 fails closed for note reads lacking a verified owner binding',async()=>{
- for(const method of ['PUT','DELETE']){
-   const existing=await decide(note(method));
-   assert.equal(existing.decision,'allow');
-   assert.equal(existing.reasonCode,'approved');
- }
- // The signed SDP-v1 shape has no note owner proof. Both subjects must be
- // denied instead of granting arbitrary note UUID reads; the authenticated
- // REST API independently allows only the real owner.
- for(const subjectId of ['learner_fixture','other_pseudonymous_subject']){
-   for(const prefix of ['/notes','/api/notes']){
-     const req={...note('GET'),subjectId,path:prefix+'/'+A,
-       route:'GET '+prefix+'/:id'};
-     const decision=await decide(req);
-     assert.equal(decision.decision,'deny');
-     assert.equal(decision.reasonCode,'resource_not_allowed');
+test('Stage 8 denies all collection GETs but routes single-note actions to the owner-checked API',async()=>{
+ for(const prefix of ['/notes','/api/notes']){
+   for(const subjectId of ['learner_fixture','other_pseudonymous_subject']){
+     const list=fixture({service:'notes',method:'GET',subjectId,
+       path:prefix,route:'GET '+prefix});
+     const denied=await decide(list);
+     assert.equal(denied.decision,'deny',prefix);
+     assert.equal(denied.reasonCode,'resource_not_allowed');
+     assert.deepEqual(denied.ruleIds,['resource_zone']);
+     for(const method of ['GET','PUT','DELETE']){
+       const req=fixture({service:'notes',method,subjectId,
+         path:prefix+'/'+A,route:method+' '+prefix+'/:id'});
+       const approved=await decide(req);
+       assert.equal(approved.decision,'allow',prefix+' '+method);
+       assert.equal(approved.reasonCode,'approved');
+     }
+     const create=fixture({service:'notes',method:'POST',subjectId,
+       path:prefix,route:'POST '+prefix});
+     assert.equal((await decide(create)).decision,'allow');
    }
  }
+ // This pure policy does NOT assert the caller owns the UUID. The final API
+ // applies the verified token's owner_id in every single-object SQL operation.
  // The final notes API can serve the actual verified owner with HTTP 200.
  for(const req of [
    note('GET','export'),note('GET','download'),note('PATCH'),
@@ -83,12 +88,13 @@ test('No query may enable export or replace a path ID in server note API',async(
  }
 });
 
-test('Allowed collection/demo fixture and server-side actual owner-read behavior stay separate',async()=>{
- assert.equal((await decide(fixture({
-   service:'notes',method:'GET',path:'/notes',route:'GET /notes'
- }))).decision,'allow');
- const fixtureNormal=fixtureRequests().normal;
- assert.equal((await decide(fixtureNormal)).decision,'allow');
- // Stage 4 tests assert same-owner GET 200 and cross-owner GET 404 at the
- // server API's verified.userId + owner_id predicate; no untrusted shortcut.
+test('Collection read stays denied and Stage 6/7 fixture remains allowed',async()=>{
+ for(const prefix of ['/notes','/api/notes']){
+   assert.equal((await decide(fixture({
+     service:'notes',method:'GET',path:prefix,route:'GET '+prefix
+   }))).decision,'deny');
+ }
+ assert.equal((await decide(fixtureRequests().normal)).decision,'allow');
+ // Final REST API tests prove owner A 200 and cross-owner B 404; SDP does not
+ // mistake a verified-looking UUID for an owner proof.
 });

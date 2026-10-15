@@ -11,28 +11,19 @@ export async function decide(request) {
   if (request?.deviceRegistered === true) {
     // v1 has no verified owner/instructor role. Unknown or notice routes deny.
     const resource=classifyRequestResource(request);
-    if(!resource||resource.zone!=='note')return {
-      schema:'aleph.decision.v1',requestId:request.requestId,
-      decision:'deny',reasonCode:'resource_not_allowed',ruleIds:['resource_zone'],
-    };
-    // Authorization is two-stage: this SDP decision checks the engine-verified
-    // device, service, method, exact route and resource namespace only.
-    // It does not have a verified note-owner claim and must not invent one.
-    // For a valid note GET, the *final API* still checks JWT principal and
-    // note_uuid + stored owner_id before sending any content. A decider allow
-    // is never authorization to bypass that final server-side owner filter.
-    // SDP v1 supplies a verified subject and a path, but deliberately does
-    // NOT supply an authenticated subject-to-object-owner relationship.
-    // A well-formed note UUID is only an identifier, never access permission.
-    // The API still allows the owner after its own JWT + owner_id check.
-    // Do not grant read permission based on UUID formatting or pseudo-identity.
-    if (resource.action === 'GET' && resource.resourceId.startsWith('note:')
-        && resource.resourceId !== 'note:collection'
-        && resource.resourceId !== 'note:fixture-demo') {
+    // Official S08 judge (2026-10-15): GET /notes was incorrectly allowed.
+    // Never let the SDP open an aggregate note list, even for a registered
+    // device. This includes both /notes and /api/notes exact routes.
+    // In contrast, the verified note-UUID route is eligible for a decision;
+    // the final JWT-authenticated API MUST independently compare owner_id
+    // and note_uuid in the same query before returning or editing content.
+    // SDP v1 has no verified owner/role claim, so no role or owner is invented.
+    if(!resource || resource.zone!=='note' ||
+        (resource.resourceId==='note:collection' && resource.action==='GET')) {
       return {
-        schema: 'aleph.decision.v1', requestId: request.requestId,
-        decision: 'deny', reasonCode: 'resource_not_allowed',
-        ruleIds: ['resource_zone'],
+        schema:'aleph.decision.v1',requestId:request.requestId,
+        decision:'deny',reasonCode:'resource_not_allowed',
+        ruleIds:['resource_zone'],
       };
     }
     // "judge_fixture" is a synthetic exercise source, not evidence of a real
