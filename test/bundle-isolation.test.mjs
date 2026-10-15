@@ -7,9 +7,13 @@ test('bundle uses direct git read subcommands and HTTPS read-only checks',async(
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
  assert.match(source,/execFileSync\('git', args, \{/u);
  assert.match(source,/cwd: root/u);
+ assert.match(source,/const checkedSources = \[/u);
+ assert.match(source,/git\('show', '--first-parent', '-m', '--pretty=format:', '--name-only', 'HEAD'\)/u);
  const calls=[...source.matchAll(/\bgit\('([^']+)'/gu)].map(m=>m[1]);
- assert.ok(calls.length>=6);
- for(const command of calls)assert.ok(['status','rev-parse','config','remote','diff-tree','show'].includes(command),command);
+ assert.ok(calls.length>=3);
+ for(const command of calls)assert.ok(['rev-parse','show'].includes(command),command);
+ assert.doesNotMatch(source,/\bgit\('(status|config|remote|diff-tree)'/u);
+ assert.doesNotMatch(source,/\bGIT_OPTIONAL_LOCKS\b|\bGIT_TERMINAL_PROMPT\b/u);
  const original=globalThis.fetch;let requests=0;
  globalThis.fetch=async(input,options={})=>{
   const url=new URL(input);assert.equal(url.protocol,'https:');

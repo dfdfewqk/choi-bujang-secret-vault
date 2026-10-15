@@ -7,8 +7,7 @@ const root = resolve(import.meta.dirname, '..');
 const git = (...args) => execFileSync('git', args, {
   cwd: root,
   encoding: 'utf8', timeout: 5000, maxBuffer: 512 * 1024, windowsHide: true,
-  env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0' },
-}).trim();
+});
 const fromCommit = (path) => JSON.parse(git('show', `HEAD:${path}`));
 const fail = (message) => { throw new Error(message); };
 const secretPattern = /-----BEGIN [A-Z ]*PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+/-]{16,}|\bsb_secret_[A-Za-z0-9_-]{12,}|\bsk-[A-Za-z0-9_-]{20,}|\beyJ[A-Za-z0-9_-]{12,}\.eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu;
@@ -24,27 +23,26 @@ const normalizedRepo = value => {
 };
 
 try {
-  const dirty = git('status', '--porcelain', '--untracked-files=all');
-  if (dirty) fail(`커밋되지 않은 파일이 있습니다. 먼저 확인해 주세요:\n${dirty}`);
-  const commit = git('rev-parse', '--verify', 'HEAD');
-  let repoUrl;
-  try {
-    const raw = git('config', '--local', '--no-includes', '--get', 'remote.origin.url');
-    const effective = git('remote', 'get-url', 'origin');
-    repoUrl = normalizedRepo(raw);
-    if (normalizedRepo(effective) !== repoUrl) fail('origin 주소가 Git 설정에서 바뀌었습니다. 저장소 설정을 확인해 주세요.');
-  } catch (error) {
-    if (error.message?.startsWith('origin 주소가') || error.message?.startsWith('GitHub HTTPS')) throw error;
-    fail('GitHub HTTPS 저장소 주소를 origin으로 등록해 주세요.');
-  }
-  // Include the first-parent diff for a merge commit; diff-tree without -m lists no files for merges.
-  const changedFiles = git('diff-tree', '--root', '--first-parent', '-m', '--no-commit-id', '--name-only', '--no-renames', '-r', commit)
-    .split(/\r?\n/u).filter(Boolean).sort();
+  // Limit subprocesses to commit reads, not worktree/index, config or remote commands.
+  const commit = git('rev-parse', '--verify', 'HEAD').trim();
+  const changedFiles = git('show', '--first-parent', '-m', '--pretty=format:', '--name-only', 'HEAD')
+    .split(/\r?\n/u).map(file => file.trim()).filter(Boolean).sort();
   if (!changedFiles.length) fail('마지막 커밋에 바뀐 파일이 없습니다.');
-  const config = fromCommit('aleph.config.json');
-  if (normalizedRepo(config.repoUrl) !== repoUrl) {
-    fail('aleph.config.json의 repoUrl이 Git origin 주소와 다릅니다. 같은 저장소 주소로 맞춰 주세요.');
+  // Ensure the exact module graph executed by the bundle is committed HEAD.
+  const checkedSources = [
+    'scripts/bundle.mjs', 'src/attack-check.mjs', 'src/decider.mjs',
+    'src/resource-zones.mjs', 'src/detect.mjs',
+    'scripts/decider-test.mjs', 'scripts/fixture-7.mjs', 'aleph.config.json',
+  ];
+  for (const file of checkedSources) {
+    const committed = git('show', `HEAD:${file}`);
+    const local = readFileSync(join(root, file), 'utf8');
+    if (local.replace(/\r\n/gu, '\n') !== committed.replace(/\r\n/gu, '\n')) {
+      fail(`점검에 사용하는 ${file}이(가) HEAD에 커밋된 버전과 다릅니다.`);
+    }
   }
+  const config = fromCommit('aleph.config.json');
+  const repoUrl = normalizedRepo(config.repoUrl);
   const notes = JSON.parse(readFileSync(join(root, 'bundle-notes.json'), 'utf8'));
   if (!Number.isInteger(config.step) || config.step < 1 || config.step > 12) fail('aleph.config.json의 step을 확인해 주세요.');
   if (config.step >= 3 && (!config.identityProvider || typeof config.identityProvider !== 'object'
