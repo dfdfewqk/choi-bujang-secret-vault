@@ -16,7 +16,8 @@ globalThis.fetch = async (input, options = {}) => {
   const url = new URL(input);
   const method = options.method ?? 'GET';
   if (url.protocol !== 'https:' || url.username || url.password
-      || !['GET','HEAD'].includes(method) || options.body !== undefined) {
+      || !['GET','HEAD'].includes(method) || options.body !== undefined
+      || !['/', '/aleph.json', '/data.json'].includes(url.pathname)) {
     throw new Error('BUNDLE_ISOLATION: disallowed outbound request');
   }
   return actualFetch(input, options);

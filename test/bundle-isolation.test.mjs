@@ -22,20 +22,26 @@ test('bundle uses direct git read subcommands and HTTPS read-only checks',async(
  const original=globalThis.fetch;let requests=0;
  globalThis.fetch=async(input,options={})=>{
   const url=new URL(input);assert.equal(url.protocol,'https:');
+  assert.ok(['/', '/aleph.json', '/data.json'].includes(url.pathname),
+    'Protected APIs must not be probed by the submission');
   assert.ok(['GET','HEAD'].includes(options.method??'GET'));
   assert.equal(options.body,undefined);requests++;
   if(url.pathname==='/aleph.json')return Response.json({step:12});
   if(url.pathname==='/data.json')return new Response('',{status:404});
   if(url.pathname==='/')return new Response('',{headers:{'x-content-type-options':'nosniff'}});
-  return Response.json({error:'UNAUTHORIZED'},{status:401});
+  throw new Error('Unexpected HTTP request');
  };
  try{
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
   const checks=await runStage12PublicReadOnlyChecks(config);
-  assert.equal(requests,8);assert.equal(checks.length,20);
-  assert.equal(checks.filter(c=>c.observed==='not_run').length,12);
+  assert.equal(requests,3);assert.equal(checks.length,20);
+  assert.equal(checks.filter(c=>c.observed==='not_run').length,17);
   assert.ok(checks.every(c=>!c.observed.startsWith('FAIL')));
-  assert.equal(checks.find(c=>c.attackId==='stage12_anonymous_operations_denied').observed.includes('401'),true);
+  for (const id of ['anonymous_note_read_denied', 'anonymous_item_read_denied',
+    'stage10_anonymous_restore_denied', 'stage11_anonymous_device_denied',
+    'stage12_anonymous_operations_denied']) {
+    assert.equal(checks.find(c=>c.attackId===id).observed, 'not_run');
+  }
  }finally{globalThis.fetch=original;}
 });
 

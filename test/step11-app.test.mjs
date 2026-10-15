@@ -129,14 +129,14 @@ test('stage 11 bundle self-check supports current stage and keeps 20-item limit'
    const u=new URL(input);
    if(u.pathname==='/data.json')return new Response(null,{status:404});
    if(u.pathname==='/aleph.json')return new Response(JSON.stringify({step:12}),{status:200});
-   if(u.pathname.startsWith('/api/'))return new Response(JSON.stringify({error:'UNAUTHORIZED'}),{status:401,headers:{'Content-Type':'application/json'}});
+   if(u.pathname.startsWith('/api/'))throw new Error('Protected API must not be called by a submission self-check');
    return new Response('<html></html>',{status:200,headers:{'X-Content-Type-Options':'nosniff'}});
   };
   const {runAttackChecks}=await import('../src/attack-check.mjs');
   const config=JSON.parse(await readFile(new URL('../aleph.config.json',import.meta.url),'utf8'));
   const results=await runAttackChecks(config);
   assert.equal(results.length,20);
-  assert.equal(results.find(r=>r.attackId==='stage11_anonymous_device_denied').observed,'PASS: anonymous device status denied');
+  assert.equal(results.find(r=>r.attackId==='stage11_anonymous_device_denied').observed,'not_run');
   assert.ok(results.some(r=>r.attackId==='stage10_anonymous_restore_denied'));
  }finally{globalThis.fetch=prev;}
 });
