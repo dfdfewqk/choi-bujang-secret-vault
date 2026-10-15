@@ -40,12 +40,12 @@ function mapDbResponse(response,result,preview){
  if(preview&&status==='ready'){
   return response.status(200).json({status:'ready',id:result.id,
    backupHash:result.hash,backupCapturedAt:result.capturedAt,
-   deleted:result.deleted,changed:result.changed,policy:'verified'});
+   deleted:result.deleted,changed:result.changed,policy:'verified',backupVerified:true});
  }
  if(!preview&&status==='restored'&&result.ownerVerified===true){
   return response.status(200).json({restored:true,id:result.id,
    sha256:result.hash,ownerVerified:true,wasDeleted:result.wasDeleted,
-   policy:'verified'});
+   policy:'verified',backupVerified:true});
  }
  return response.status(502).json({error:'RESTORE_UNAVAILABLE'});
 }
@@ -87,6 +87,18 @@ export async function handleRestore(request,response,{
   const db=databaseFactory();
   const owner=await verifiedOwnerId(principal,db);
   if(!owner)return response.status(403).json({error:'OWNER_BINDING_UNAVAILABLE'});
+  if(method==='POST'){
+   // Re-read protected metadata before mutation; SQL rechecks under lock.
+   const {data:plan,error:previewError}=await db.rpc('byteback_preview_note_restore',
+     {p_owner:owner,p_note:target.id});
+   if(previewError)throw previewError;
+   if(plan?.status!=='ready')return mapDbResponse(response,plan,true);
+   if(!UUID.test(plan.id??'')||!/^[a-f0-9]{64}$/u.test(plan.hash??'')
+     ||(target.id&&plan.id!==target.id)){
+    return response.status(409).json({error:'BACKUP_INTEGRITY_FAILED'});
+   }
+   target.id=plan.id;
+  }
   const name=method==='GET'?'byteback_preview_note_restore':'byteback_restore_one_note';
   const {data,error}=await db.rpc(name,{p_owner:owner,p_note:target.id});
   if(error)throw error;

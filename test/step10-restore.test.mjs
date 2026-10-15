@@ -169,3 +169,18 @@ test('B sole backup may be selected without ID, no bulk restore',async()=>{
  assert.equal(r.statusCode,200);
  assert.equal(db.audit.length,1);
 });
+
+test('stored policy backup is re-read; missing or modified file blocks verification',async()=>{
+ for(const readBackup of [()=>{throw new Error('missing');},()=>'{"version":"tampered"}',()=>'{']){
+  assert.equal((await comparePolicy({readBackup})).status,'invalid_backup');
+ }
+});
+test('POST re-reads backup preview before restore and stops on failed preview',async()=>{
+ const db=dbFixture();
+ await invoke(db);
+ assert.deepEqual(db.calls.map(c=>c.name),['byteback_preview_note_restore','byteback_restore_one_note']);
+ db.calls.length=0;db.backup.corrupt=true;
+ const res=await invoke(db);
+ assert.equal(res.statusCode,409);
+ assert.deepEqual(db.calls.map(c=>c.name),['byteback_preview_note_restore']);
+});

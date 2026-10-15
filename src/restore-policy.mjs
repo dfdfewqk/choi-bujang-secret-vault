@@ -1,22 +1,24 @@
 // Verified pre-incident *policy facts* from Git commit 94df01d95cd0.
 // Safe policy source remains Git; HTTP does NOT overwrite live decider code.
 import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {decide,RULE_IDS} from './decider.mjs';
-const SNAPSHOT={
- version:'stage9-safe-v1',
- sourceCommit:'94df01d95cd04f7c608cbce60c6fed9dcc38b86b',
- ruleIds:['device_registered','step_up_required','resource_zone'],
- normalNote:'allow',unregistered:'deny',unfamiliarBurst:'step_up',
- listRead:'deny',noticeWrite:'deny',objectRead:'allow',
-};
+const BACKUP_URL=new URL('../backups/stage9-safe-policy.json',import.meta.url);
 const EXPECTED_SHA256='973ce57614be98d0e6f0f624af75147474fe33069104fed0efe8b1edc033b9f6';
 function clone(value){return JSON.parse(JSON.stringify(value));}
-export function safePolicySnapshot() {return clone(SNAPSHOT);}
-export function policySnapshotVerified(){
- return createHash('sha256').update(JSON.stringify(SNAPSHOT)).digest('hex')===EXPECTED_SHA256;
+function readVerifiedSnapshot(readBackup=()=>readFileSync(BACKUP_URL,'utf8')){
+ const snapshot=JSON.parse(readBackup());
+ if(createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')!==EXPECTED_SHA256)
+  throw new Error('Policy backup integrity failed');
+ return snapshot;
 }
-export async function comparePolicy({decideFn=decide,ruleIds=RULE_IDS}={}){
- if(!policySnapshotVerified())return {status:'invalid_backup'};
+export function safePolicySnapshot(){return clone(readVerifiedSnapshot());}
+export function policySnapshotVerified(){
+ try{readVerifiedSnapshot();return true;}catch{return false;}
+}
+export async function comparePolicy({decideFn=decide,ruleIds=RULE_IDS,readBackup}={}){
+ let SNAPSHOT;
+ try{SNAPSHOT=readVerifiedSnapshot(readBackup);}catch{return {status:'invalid_backup'};}
  const expected=SNAPSHOT.ruleIds, observed=Array.isArray(ruleIds)?[...ruleIds]:[];
  const diff=[];
  if(JSON.stringify(expected)!==JSON.stringify(observed))diff.push('ruleIds');
@@ -54,7 +56,7 @@ export async function comparePolicy({decideFn=decide,ruleIds=RULE_IDS}={}){
  }
  return {
   status:diff.length?'policy_diff':'ready',baselineCommit:SNAPSHOT.sourceCommit,
-  backupSha256:EXPECTED_SHA256,changedItems:diff
+  backupSha256:EXPECTED_SHA256,backupVerified:true,backupVersion:SNAPSHOT.version,changedItems:diff
  };
 }
 // Only for isolated trial-policy objects. Actual production policy is immutable
