@@ -33,15 +33,10 @@ jobs:
       - run: node --test test/*.test.mjs
       - run: npm run decider:test
       - run: npm run detect:test
-      - name: Write truthful stage 12 checkpoint
+      - name: Verify clean checkout can bundle without ignored notes
         run: |
-          node --input-type=module <<'NODE'
-          import {writeFileSync} from 'node:fs';
-          writeFileSync('bundle-notes.json',JSON.stringify({
-            explanation:'12단계: 실제 API 응답의 요청 ID·시각·상태를 가린 서버 기록과 연결한 작전실을 구현했습니다.\n판정기 규칙·API 조회 탐지·기기 상태·복구 감사를 읽고 정상/금지 조회를 실제 결과 표로 확인합니다.\n제공 엔진 출처는 ALEPH SDP 엔진이며 신원 회수 집행과 공식 41종 결과는 미연결·미확인으로 남깁니다.',
-            blockedAt:'stage12_official_41_tests_and_identity_revocation_not_verified'
-          },null,2));
-          NODE
+          test ! -e bundle-notes.json
+          node --test test/bundle-isolation.test.mjs
       - name: Restricted Git/HTTPS execution smoke test
         run: node --import ./test/bundle-isolation-preload.mjs scripts/bundle.mjs
       - run: npm run bundle
