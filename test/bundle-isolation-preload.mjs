@@ -63,11 +63,21 @@ for(const [name,allowed] of [
  };
 }
 // Other file I/O methods are not required by the submitted module graph.
-for(const name of ['open','openSync','readFile','writeFile','appendFile','appendFileSync',
+for(const name of ['open','readFile','writeFile','appendFile','appendFileSync',
  'createReadStream','createWriteStream','rm','rmSync','unlink','unlinkSync','rename',
  'renameSync','copyFile','copyFileSync','cp','cpSync','rmdir','rmdirSync']){
  fs[name]=()=>fail('FORBIDDEN node:fs.'+name);
 }
+// Node 22 ESM loading may call readFileSync -> openSync('r').
+ // Only open the approved source modules, config and temporary test fixture for reading.
+const realOpenSync=fs.openSync;
+fs.openSync=(...args)=>{
+ const path=pathOf(args[0]),flags=args[1];
+ if((flags==='r'||flags==='rs'||flags===0)
+  &&(allowedRead.has(path)||(diagnosticDir&&path.startsWith(diagnosticDir+'/'))))
+  return realOpenSync(...args);
+ fail('FORBIDDEN node:fs.openSync');
+};
 syncBuiltinESMExports();
 
 // The runtime resolver protects both static and dynamically imported modules.
