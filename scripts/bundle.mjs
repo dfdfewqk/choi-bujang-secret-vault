@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { RULE_IDS } from '../src/decider.mjs';
-import { runAttackChecks } from '../src/attack-check.mjs';
+import { runStage12PublicReadOnlyChecks } from '../src/stage12-bundle-check.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const gitRead = (...args) => execFileSync('git', args, {
@@ -55,8 +55,8 @@ try {
   if (typeof notes.explanation !== 'string' || notes.explanation.trim().length < 10) {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
-  if (typeof runAttackChecks !== 'function') fail('src/attack-check.mjs가 runAttackChecks를 내보내야 합니다.');
-  const attackAttempts = await runAttackChecks(config);
+  if (config.step !== 12) fail('이번 제출 실행기는 12단계 전용입니다.');
+  const attackAttempts = await runStage12PublicReadOnlyChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
     fail('직접 실행한 공격 점검 결과 1~20개가 필요합니다.');
   }
