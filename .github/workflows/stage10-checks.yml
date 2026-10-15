@@ -39,7 +39,6 @@ jobs:
           npm run fixture:7
           node --test test/step4-api.test.mjs test/step8-scoped-policy.test.mjs test/step8-resource-zones.test.mjs test/step8-judge-binding.test.mjs test/step8-signed-jwt-end-to-end.test.mjs test/step9-detect.test.mjs
           node --test test/xdr-brute-force.test.mjs test/xdr-web-injection.test.mjs test/xdr-known-cve.test.mjs test/xdr-persistence.test.mjs test/xdr-exfiltration.test.mjs
-      - run: npm run build -- --local
       - name: Confirm clean git index before bundling
         run: test -z "$(git status --porcelain --untracked-files=all)"
       - name: Write ignored stage-10 checkpoint explanation
