@@ -20,7 +20,7 @@ export async function approvalStatus(token){
 export async function signedFetch(path,{token,method='GET',body}={}){
  if(!pair||!approved)throw Error('기기 승인을 먼저 확인해 주세요.');
  // Query parameters are not supported on protected notes routes.
- if(!/^\/api\/notes(?:\/[a-f0-9-]{36})?$/u.test(path))throw Error('허용되지 않은 자료 경로입니다.');
+ if(!/^\/api\/(?:notes(?:\/[a-f0-9-]{36})?|operations)$/u.test(path))throw Error('허용되지 않은 자료 경로입니다.');
  method=method.toUpperCase();
  const authorization='Bearer '+token,at=new Date().toISOString(),nonce=crypto.randomUUID();
  const message=signedMessage({deviceId,method,path,bodyHash:await digest(canonical(body)),tokenHash:await digest(authorization),at,nonce});

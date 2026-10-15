@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7 && config.step !== 8 && config.step !== 9 && config.step !== 10 && config.step !== 11) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7 && config.step !== 8 && config.step !== 9 && config.step !== 10 && config.step !== 11 && config.step !== 12) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10 || config.step === 11) {
+  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10 || config.step === 11 || config.step === 12) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -113,7 +113,7 @@ export async function runAttackChecks(config) {
         observed: 'NOT_TESTED: DB role grants revoked and simulated SELECT denied; live public-key/JWT HTTP challenge remains',
       });
     }
-    if (config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10 || config.step === 11) {
+    if (config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10 || config.step === 11 || config.step === 12) {
       // Local request fixtures only, not proof of the real class engine or judge.
       const { decide, RULE_IDS } = await import('./decider.mjs');
       const { checkDecider } = await import('../scripts/decider-test.mjs');
@@ -164,7 +164,7 @@ export async function runAttackChecks(config) {
         path:'/api/notes/11111111-1111-4111-8111-111111111111',
         route:'GET /api/notes/:id',
       });
-      attempts.push({
+      if(config.step<12)attempts.push({
         attackId:'stage8_uuid_route_delegates_owner_check',
         expected:'SDP allows the exact UUID route; final API separately checks verified owner_id',
         observed:canonicalNote.decision==='allow'
@@ -229,6 +229,12 @@ export async function runAttackChecks(config) {
       let result;try{result=await response.json();}catch{}
       attempts.push({attackId:'stage11_anonymous_device_denied',expected:'Device approval/status requires verified login',
         observed:response.status===401&&result?.error==='UNAUTHORIZED'?'PASS: anonymous device status denied':'FAIL: anonymous device endpoint was not JSON 401'});
+    }
+    if(config.step>=12){
+      const response=await fetch(new URL('/api/operations',app),{method:'GET',redirect:'error',signal:AbortSignal.timeout(10000)});
+      let result;try{result=await response.json();}catch{}
+      attempts.push({attackId:'stage12_anonymous_operations_denied',expected:'Operations records require verified login and approved request proof',
+        observed:response.status===401&&result?.error==='UNAUTHORIZED'?'PASS: anonymous operations records denied':'FAIL: operations endpoint was not JSON 401'});
     }
     return attempts;
   }

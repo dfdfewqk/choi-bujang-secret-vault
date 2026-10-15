@@ -1,5 +1,3 @@
 import {handleRestore} from '../src/restore-api.mjs';
-// Signed judge-B requests only. GET previews, POST restores exactly one item.
-export default function handler(request,response){
- return handleRestore(request,response);
-}
+import {observeApi} from '../src/api-observation.mjs';
+export default function handler(req,res){return observeApi(req,res,{route:'restore',handler:handleRestore});}

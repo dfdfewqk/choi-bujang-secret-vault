@@ -1,0 +1,18 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>탈환 작전실 | BYTE BACK</title><link rel="stylesheet" href="/monster-defense.css"><link rel="stylesheet" href="/operations.css"></head>
+<body><main id="operations-root" class="operations-root">
+<p class="ops-kicker">BYTE BACK · LEVEL 12</p><h1>탈환 작전실</h1>
+<p>화면의 성공 문구는 공식 통과 증거가 아닙니다. 서버 응답과 기록을 확인합니다.</p>
+<p id="operations-state" role="status" aria-live="polite">자료실에서 로그인·기기 승인 후 작전실을 열어 주세요.</p>
+<div class="ops-toolbar"><button id="operations-refresh" type="button" class="btn-secondary">서버 기록 새로 읽기</button><button id="operations-probe" type="button" class="btn-primary">안전한 조회 점검 실행</button><a href="/">자료실로 돌아가기</a></div>
+<div class="ops-cards">
+<section><h2>판정기 규칙</h2><p id="operations-rules">미확인</p><p id="operations-policy"></p></section>
+<section><h2>탐지 사건</h2><p id="operations-detection">실제 사건 전달 미연결</p></section>
+<section><h2>회수 상태</h2><p id="operations-revocation">실제 신원 회수 집행 미연결</p><p id="operations-devices"></p></section>
+<section><h2>복구 버전</h2><p id="operations-recovery">서버 감사기록 미확인</p></section>
+</div>
+<p id="operations-source">제공 엔진: ALEPH SDP 엔진. 학생 작업: 판정·탐지 규칙, 승인 앱, 자료실 API, 백업 복구, 작전실.</p>
+<section><h2>공식 총공세 · 41종</h2><p id="operations-campaign">공식 결과 미연결 · 실행 여부 미확인. 아래 자체 점검과 합산하지 않습니다.</p></section>
+<section><h2>실제 API 관측과 점검 결과</h2><p>계정 기록과 익명 서비스 요청 기록을 표시합니다. 요청 본문·메모·신원·기기 키는 표시하지 않습니다.</p><p id="operations-record-count"></p>
+<div class="ops-table-wrap"><table><thead><tr><th>단계·구분</th><th>요청 / 기대 결과</th><th>실제 결과</th><th>요청 ID</th><th>확인 시각 / 출처</th></tr></thead><tbody id="operations-results"></tbody></table></div>
+</section><section><h2>재현·설치·복구</h2><p>README와 docs/STAGE12_OPERATIONS.md의 검사 커밋·설치·실행·중지·복구 순서를 따릅니다. 시험 결과와 엔진 출처를 확인합니다.</p></section>
+</main><script type="module">import {mountOperations} from './operations-client.mjs';mountOperations(document.querySelector('#operations-root'));</script></body></html>
