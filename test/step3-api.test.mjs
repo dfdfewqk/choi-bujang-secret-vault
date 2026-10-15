@@ -58,7 +58,7 @@ async function exercise({method='GET',id=null,body=null,user=A,auth='Bearer fake
   const res=response();
   try {
     await handleNotes({method,body,headers:{authorization:auth}},res,{
-      itemId:id,verifyAuthorization:async()=>user?{kind:'student',userId:user}:null,
+      itemId:id,appVerification:async()=>({ok:true}),verifyAuthorization:async()=>user?{kind:'student',userId:user}:null,
       databaseFactory:()=>db,
     });
   }finally{

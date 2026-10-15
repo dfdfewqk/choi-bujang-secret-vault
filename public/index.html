@@ -5,14 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#06182f">
 <meta name="description" content="BYTE BACK 4단계: 괴물 침공으로부터 내 정보를 지키는 인증 방어 자료실">
+<link rel="manifest" href="/manifest.webmanifest">
 <title>MONSTER DATA DEFENSE | BYTE BACK</title>
 <link rel="stylesheet" href="/monster-defense.css">
 </head>
 <body>
 <header class="site-header">
-  <div class="brand"><span class="brand-emblem" aria-hidden="true">⬡</span><strong>우리 반 공동 방어</strong><span class="brand-caption">BYTE BACK · LEVEL 04</span></div>
+  <div class="brand"><span class="brand-emblem" aria-hidden="true">⬡</span><strong>우리 반 공동 방어</strong><span class="brand-caption">BYTE BACK · LEVEL 11</span></div>
 </header>
 <main class="landing">
+  <p id="app-status" role="status">앱 설치와 기기 승인은 별개입니다. 보호 자료는 서버의 승인 확인이 필요합니다.</p>
   <div class="main-grid">
     <section class="battlefield" aria-label="도시를 향해 다가오는 괴물과 정보를 지키는 푸른 방어막">
       <div class="city-atmosphere" aria-hidden="true"></div>
@@ -28,7 +30,7 @@
         <path d="M7 39c0-11 24-11 24 0M40 15h20M40 25h20M40 35h11" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
       </svg>
     </section>
-    <section class="command" aria-label="4단계 방어 인증">
+    <section class="command" aria-label="기기 승인과 방어 인증">
       <h1 class="hero-heading">MONSTER<br>DATA DEFENSE</h1>
       <p class="hero-subtitle">괴물 침공으로부터 내 정보를 지키는 방어 시스템</p>
       <section id="login-panel" class="panel">
@@ -40,6 +42,14 @@
           <a id="signup" href="/signup.html" class="btn-secondary signup-action-link">학습용 계정 만들기 <span aria-hidden="true">↗</span></a>
         </form>
         <p class="form-hint">처음 방문하셨나요? 위의 <strong>학습용 계정 만들기</strong>에서 이메일 인증을 진행할 수 있습니다.<br>이미 가입했다면 로그인하세요.</p>
+      </section>
+      <section id="device-panel" class="panel hidden" aria-label="기기 승인">
+        <h2>기기 승인</h2><p id="device-status" role="status" aria-live="polite">승인 확인 전에는 보호 자료를 표시하지 않습니다.</p>
+        <p>앱 설치와 로그인만으로 기기가 승인되지는 않습니다. 승인 요청은 운영자가 확인합니다.</p>
+        <button id="device-request" type="button" class="btn-primary">기기 승인 요청</button>
+        <button id="device-check" type="button" class="btn-secondary">승인 결과 확인</button>
+        <button id="device-logout" type="button" class="btn-secondary">로그아웃</button>
+        <p class="form-hint">키와 로그인 정보는 이 화면의 메모리에만 유지합니다. 새로고침·화면 이동 후에는 다시 로그인하고 승인받아야 합니다. 승인 유효시간은 최대 8시간입니다.</p>
       </section>
       <section id="vault-panel" class="hidden" aria-label="로그인한 사용자 자료실">
         <section id="auth-completion" class="auth-completion" role="status" aria-live="polite" aria-label="계정 인증 완료 상태">
@@ -56,7 +66,7 @@
         <div class="panel vault-account">
           <h2>방어 자료실</h2>
           <p id="auth-status"></p>
-          <a id="access-check-link" href="/access-check.html" class="btn-secondary signup-action-link">4단계 다른 계정 접근 차단 검사 <span aria-hidden="true">↗</span></a>
+          <a id="access-check-link" href="/access-check.html" class="btn-secondary signup-action-link">다른 계정 접근 차단 검사 <span aria-hidden="true">↗</span></a>
           <button id="logout" class="btn-secondary">로그아웃</button>
         </div>
         <form id="create-form" class="panel">
@@ -73,7 +83,9 @@
     </section>
   </div>
 </main>
+<script type="module" src="/pwa-client.mjs"></script>
 <script type="module">
+  import {requestApproval,approvalStatus,signedFetch,clearDevice} from './device-client.mjs';
   import { createServerAuthClient } from './auth-client.mjs';
   import { isSignupEmailReturn, getAuthCompletion } from './auth-feedback.mjs';
   const returnedFromSignupEmail = isSignupEmailReturn(window.location.hash);
@@ -90,21 +102,38 @@
     $('#editor-label').textContent = '메모 추가';
     $('#cancel').classList.add('hidden');
   }
-  function showLoggedIn(loggedIn) {
+  function showLoggedIn(loggedIn,deviceApproved=false) {
     $('#login-panel').classList.toggle('hidden',loggedIn);
-    $('#vault-panel').classList.toggle('hidden',!loggedIn);
-    if(!loggedIn){list=[];$('#notes').replaceChildren();cleanEditor();}
+    $('#device-panel').classList.toggle('hidden',!loggedIn);
+    $('#vault-panel').classList.toggle('hidden',!loggedIn||!deviceApproved);
+    if(!deviceApproved){list=[];$('#notes').replaceChildren();cleanEditor();document.querySelectorAll('dialog').forEach(d=>d.remove());}
   }
+  async function updateApproval(data){
+    const allowed=data.status==='approved'&&Boolean(session);
+    showLoggedIn(Boolean(session),allowed);
+    const labels={pending:'승인 대기',approved:'서버 승인 확인 완료',expired:'승인 만료',revoked:'승인 취소',unknown:'승인 요청 전'};
+    $('#device-status').textContent=(labels[data.status]??'승인 확인 실패')+(data.deviceId?' · 기기 ID: '+data.deviceId:'');
+    if(allowed)await loadNotes();
+  }
+  $('#device-request').addEventListener('click',async()=>{
+    if(!session)return;
+    $('#device-request').disabled=true;
+    try{await updateApproval(await requestApproval(session.access_token));}
+    catch(e){showLoggedIn(Boolean(session));status('기기 승인 요청 실패: '+e.message);}
+    finally{$('#device-request').disabled=false;}
+  });
+  $('#device-check').addEventListener('click',async()=>{
+    if(!session)return;
+    try{await updateApproval(await approvalStatus(session.access_token));}
+    catch(e){showLoggedIn(Boolean(session));status('승인 확인 실패: '+e.message);}
+  });
+  window.addEventListener('offline',()=>{showLoggedIn(Boolean(session));status('오프라인에서는 보호 자료를 열 수 없습니다.');});
   async function api(path,options={}) {
     const current = await supabase.auth.getSession();
     const token = current.data.session?.access_token;
     if(!token)throw new Error('로그인이 필요합니다.');
-    const resp=await fetch(path,{
-      method:options.method??'GET',
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      cache:'no-store',
-      body:options.body?JSON.stringify(options.body):undefined,
-    });
+    const resp=await signedFetch(path,{token,method:options.method??'GET',body:options.body});
+    if(resp.status===403){showLoggedIn(Boolean(session));}
     let result;
     try{result=await resp.json();}catch{throw new Error('서버가 JSON 응답을 보내지 않았습니다.');}
     if(!resp.ok)throw new Error('요청 실패 ('+resp.status+'): '+(result.error??'알 수 없는 오류'));
@@ -151,17 +180,14 @@
     if (token === lastRenderedAccessToken) return;
     lastRenderedAccessToken = token;
     const currentVersion = ++sessionUpdateVersion;
+    if(!next||session?.user?.id!==next.user?.id)clearDevice();
     session = next;
     showLoggedIn(Boolean(next));
     if(next){
       displayCompletion(next);
       $('#auth-status').textContent='현재 계정: '+(next.user?.email??'인증된 사용자');
-      try{
-        await loadNotes();
-        if (currentVersion === sessionUpdateVersion) status('방어 자료실을 사용할 수 있습니다.');
-      }catch(e){
-        if (currentVersion === sessionUpdateVersion) status('메모 불러오기 실패: '+e.message);
-      }
+      $('#device-status').textContent='로그인 완료 · 기기 승인 요청 전';
+      status('기기 승인을 요청한 뒤 서버의 승인 결과를 확인해 주세요.');
     } else {
       status('로그인이 필요합니다.');
     }
@@ -181,10 +207,13 @@
       status('로그인 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
     }
   });
-  $('#logout').addEventListener('click',async()=>{
+  async function logout(){
     const {error}=await supabase.auth.signOut();
     if(error)status('로그아웃 실패: '+error.message);
-  });
+    else{clearDevice();await onSession(null);}
+  }
+  $('#logout').addEventListener('click',logout);
+  $('#device-logout').addEventListener('click',logout);
   $('#create-form').addEventListener('submit',async event=>{
     event.preventDefault();
     const title=$('#title').value.trim(),body=$('#body').value.trim();
@@ -196,6 +225,21 @@
     }catch(err){status(err.message);}
   });
   $('#cancel').addEventListener('click',cleanEditor);
+  $('#access-check-link').addEventListener('click',async event=>{
+    event.preventDefault();
+    try{
+      const response=await fetch('/access-check.html',{cache:'no-store'});
+      if(!response.ok)throw Error('검사 화면을 읽지 못했습니다.');
+      const doc=new DOMParser().parseFromString(await response.text(),'text/html');
+      const dialog=document.createElement('dialog');dialog.style.maxWidth='850px';
+      const close=document.createElement('button');close.textContent='자료실로 돌아가기';
+      close.addEventListener('click',()=>{dialog.close();dialog.remove();});
+      const content=doc.querySelector('.access-check-wrap');
+      content.querySelector('a[href="/"]')?.remove();
+      dialog.append(close,content);document.body.append(dialog);dialog.showModal();
+      const {mountAccessCheck}=await import('./access-check-client.mjs');mountAccessCheck(dialog);
+    }catch(e){status(e.message);}
+  });
   supabase.auth.onAuthStateChange((_event,newSession)=>{setTimeout(()=>{void onSession(newSession);},0);});
   const {data:{session:initialSession},error}=await supabase.auth.getSession();
   if(error)status('인증 상태 확인 실패: '+error.message);

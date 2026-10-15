@@ -181,7 +181,7 @@ export async function runAttackChecks(config) {
             ?'PASS: synthetic collection GET denied':'FAIL: broad collection GET allowed',
         });
       }
-      attempts.push({attackId:'stage8_live_cross_owner',
+      if(config.step<11)attempts.push({attackId:'stage8_live_cross_owner',
         expected:'Real authenticated B cannot fetch or modify A notes',
         observed:'NOT_TESTED: live signed accounts not used; synthetic server ownership tests run separately'});
     }
@@ -208,7 +208,7 @@ export async function runAttackChecks(config) {
             :'FAIL: local synthetic detector differed from contract'});
       }
     }
-    if(config.step===10){
+    if(config.step>=10){
       // This is an unauthenticated public HTTP check only. No note bodies or
       // real account credentials are used, so a real B restore remains untested.
       const resp=await fetch(new URL('/api/restore',app),{
@@ -223,6 +223,12 @@ export async function runAttackChecks(config) {
           ?'PASS: production restore preview denies anonymous requests'
           :'FAIL: restore preview did not deny anonymous requests (HTTP '+resp.status+')',
       });
+    }
+    if(config.step>=11){
+      const response=await fetch(new URL('/api/device',app),{method:'GET',redirect:'error',signal:AbortSignal.timeout(10000)});
+      let result;try{result=await response.json();}catch{}
+      attempts.push({attackId:'stage11_anonymous_device_denied',expected:'Device approval/status requires verified login',
+        observed:response.status===401&&result?.error==='UNAUTHORIZED'?'PASS: anonymous device status denied':'FAIL: anonymous device endpoint was not JSON 401'});
     }
     return attempts;
   }

@@ -93,7 +93,7 @@ async function request({ db, method = 'GET', id = null, body = null, userId = A,
     await handleNotes({ method, body, headers: { authorization: auth } }, res, {
       itemId: id,
       databaseFactory: () => db,
-      verifyAuthorization: async () => !userId ? null : kind==='judge'
+      appVerification:async()=>({ok:true}),verifyAuthorization: async () => !userId ? null : kind==='judge'
         ? { kind:'judge', userId:'99999999-9999-4999-8999-999999999999',
             identity:userId===A?'a':userId===B?'b':'unknown',
             runId:'11111111-1111-4111-8111-111111111111' }
@@ -340,7 +340,7 @@ test('step 4 SQL review preserves the already-created B memo and only reassigns 
 test('browser A/B ownership check uses an authenticated read-only GET without exposing tokens or modifying notes', async () => {
   const { readFile } = await import('node:fs/promises');
   const page = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-  const checker = await readFile(new URL('../public/access-check.html', import.meta.url), 'utf8');
+  const checker = await readFile(new URL('../public/access-check.html', import.meta.url), 'utf8')+await readFile(new URL('../public/access-check-client.mjs', import.meta.url), 'utf8');
   const css = await readFile(new URL('../public/monster-defense.css', import.meta.url), 'utf8');
   assert.match(page, /id="access-check-link" href="\/access-check\.html"/u);
   assert.match(checker, /id="check-own-list"/u);
@@ -348,9 +348,9 @@ test('browser A/B ownership check uses an authenticated read-only GET without ex
   assert.match(checker, /id="check-result"/u);
   assert.match(checker, /supabase\.auth\.getSession\(\)/u);
   assert.match(checker, /getSession\(\)/u);
-  assert.match(checker, /fetch\('\/api\/notes'/u);
-  assert.match(checker, /fetch\('\/api\/notes\/'\+encodeURIComponent\(id\)/u);
-  assert.match(checker, /'Authorization':'Bearer '\+current\.access_token/u);
+  assert.match(checker, /signedFetch\('\/api\/notes'/u);
+  assert.match(checker, /signedFetch\('\/api\/notes\/'\+id\.toLowerCase\(\)/u);
+  assert.match(checker, /token:current\.access_token/u);
   assert.match(checker, /response\.status===404/u);
   assert.match(checker, /response\.status===200/u);
   assert.match(checker, /method:'GET'/u);
