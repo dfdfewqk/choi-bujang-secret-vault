@@ -18,7 +18,7 @@ test('bundle uses direct git read subcommands and HTTPS read-only checks',async(
  assert.doesNotMatch(checker,/\bawait import\(|\bexecFileSync\b|\bspawn\b|\bcreateHash\b|\brandomUUID\b/u);
  assert.match(source,/if \(error\?\.code !== 'ENOENT'\) throw error/u);
  assert.match(source,/official_41_tests_and_identity_revocation_not_verified/u);
- assert.match(readFileSync(new URL('../.gitignore',import.meta.url),'utf8'),/^bundle-notes\\.json$/mu);
+ assert.ok(readFileSync(new URL('../.gitignore',import.meta.url),'utf8').split(/\r?\n/u).includes('bundle-notes.json'));
  const original=globalThis.fetch;let requests=0;
  globalThis.fetch=async(input,options={})=>{
   const url=new URL(input);assert.equal(url.protocol,'https:');
