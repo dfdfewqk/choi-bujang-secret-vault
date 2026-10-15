@@ -1,3 +1,28 @@
+## 10단계 저장점 — 검증된 사본에서 한 건만 복원 (2026-10-15)
+
+- 공식 10단계에 따라 `aleph.config.json.step=10`, `restoreRoute="/api/restore"`.
+- **복구 서비스:** `POST https://choi-bujang-secret-vault-six-jet.vercel.app/api/restore`. 서명 검증된 시험 계정 **B**의 Bearer 토큰과 `{"id":"<해당 메모의 UUID>"}` (또는 `noteId`)를 보냅니다. 대상 ID가 생략되면 확인된 B 사본이 정확히 하나일 때만 복원합니다. `GET /api/restore?id=<UUID>`는 실행 전 메타데이터/해시/변경 여부만 표시합니다.
+- **사본:** `supabase/step10_verified_restoration.sql`의 `byteback_private.note_origins`에는 신규 메모 INSERT 시점의 ID·소유자·제목·내용·SHA-256을 한번 저장합니다. UPDATE·DELETE는 원본을 바꾸지 못합니다. **기존 데이터의 침해 전 상태가 검증되지 않았으므로 기존 메모를 소급 백업하거나 자동 복원하지 않습니다.**
+- **검증:** 요청마다 공식 서명 JWT·runId·B 신원→내부 owner_id를 서버에서 검증합니다. 백업 ID·owner·SHA-256을 SQL 트랜잭션에서 재확인합니다. 현재 행의 owner가 달라졌으면 중단, 삭제됐으면 같은 note_uuid/owner_id로 한 행만 복원합니다. 다른 메모·기존 sort_order·감사 기록은 변경하지 않습니다.
+- **정책:** 9단계 검증 커밋 `94df01d95cd0`을 기준으로 별도 검증된 정책 스냅숏을 두고 기존 SDP 규칙(기기 등록, 복합 위험, 목록 차단, 공지 차단, 개별 메모)을 읽기 전용으로 비교합니다. 코드 기반 실운영 정책의 변경은 **검증한 Git 커밋을 재배포**해야 하며, 복구 HTTP API가 운영 정책 파일을 수정한다고 주장하지 않습니다. 분리된 시험 정책 객체는 `restoreTrialPolicy`로만 복원합니다.
+- **감사:** 복원 요청 성공 시 `byteback_private.restore_audit`에 대상·소유자·이전/원본 해시·복구 여부만 새로 기록합니다. 제목/본문/토큰은 API 응답·감사 기록에 넣지 않습니다.
+- **보존:** 기존 1~9단계와 XDR-01~06의 기능·DB 기존 5건·계정/정책 권한을 변경하지 않았습니다. `README`의 이전 단계 기록은 개발 이력입니다.
+
+### 복구 뒤 재검증 순서 (미실행은 미실행으로 표기)
+
+1. 확인된 시험 B가 메모 1건 생성 → 보호 사본 자동 생성 여부 (실제 HTTPS: **미실행**, SQL 트리거 검증 예정)
+2. `GET /api/restore?id=<UUID>`를 B 토큰으로 미리보기, 다른 계정 A/학생 403, 없는 메모 404 (실제 시험 JWT: **미실행**)
+3. B만 메모 PUT으로 변조 → `POST /api/restore` → 복원 뒤 UUID·소유자·SHA-256 일치 (실제 HTTPS: **미실행**)
+4. B만 메모 DELETE → 같은 복구 호출 → 다시 B GET 200, A GET 404 (실제 HTTPS: **미실행**)
+5. 1~5단계: 공개 자료 제거, 비인증 API 거부, 서로 다른 사용자 메모 404, 원본 DB 직접 조회 차단 — 기존 자동회귀로 실행
+6. 6~8단계: 등록 기기/재인증/전체 목록 거부/공지 쓰기 거부 — 기존 자동회귀로 실행
+7. 9단계: 정상 120건 observe·121건 propose_revocation — `npm run detect:test`.
+8. 변경 전후 커밋과 운영 배포 SHA를 대조한 뒤 `npm run bundle` 실행.
+
+명령: `node --test test/step10-restore.test.mjs`, `npm run detect:test`, `npm run decider:test`, `npm run bundle`. **로컬 모의검사 통과와 공식 심판 점수는 별개입니다.**
+
+---
+
 ## 9단계 저장점 — 도플갱어 조회 폭주 탐지 (2026-10-15)
 
 - `aleph.config.json.step=9`, 기존 GitHub·Vercel·Supabase 설정은 유지합니다.

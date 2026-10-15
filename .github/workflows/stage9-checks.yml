@@ -70,7 +70,7 @@ jobs:
             changedFiles:b.changedFiles.length,policyRules:b.policyRules,
             stage9LocalChecks:outcomes.length,stage9LocalFailures:failures.length,
             totalSelfChecks:b.attackAttempts.length},null,2));
-          if(b.step!==9||failures.length||outcomes.length!==4)process.exitCode=1;
+          if(b.step<9||failures.length||outcomes.length!==4)process.exitCode=1;
           NODE
       - uses: actions/upload-artifact@v4
         with:
