@@ -37,7 +37,7 @@ jobs:
         run: |
           test ! -e bundle-notes.json
           node --test test/bundle-isolation.test.mjs
-      - name: Restricted Git execution and zero-network bundle test
+      - name: Zero-network bundle test without extra Node builtin imports
         run: node --import ./test/bundle-isolation-preload.mjs scripts/bundle.mjs
       - run: npm run bundle
       - name: Validate stage 12 summary
