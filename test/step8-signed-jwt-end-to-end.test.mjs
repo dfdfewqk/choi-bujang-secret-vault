@@ -76,7 +76,7 @@ async function invoke(db,verifier,token,{method='GET',id=null,body={},headers={}
  const h={...headers};
  if(token!==null)h.authorization='Bearer '+token;
  await handleNotes({method,headers:h,body,query:id?{id}:undefined},
-   res,{itemId:id,verifyAuthorization:verifier,databaseFactory:()=>db});
+   res,{itemId:id,appVerification:async()=>({ok:true}),verifyAuthorization:verifier,databaseFactory:()=>db});
  return res;
 }
 test('S08 actual ES256 signature -> run owner -> A own / B denied, without real credentials',async()=>{

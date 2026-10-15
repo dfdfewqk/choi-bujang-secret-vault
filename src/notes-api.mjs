@@ -1,3 +1,4 @@
+import {verifyAppRequest} from './app-request.mjs';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import config from '../aleph.config.json' with { type: 'json' };
@@ -40,6 +41,7 @@ export async function handleNotes(request, response, {
   itemId = null,
   verifyAuthorization = null,
   databaseFactory = getDatabase,
+  appVerification = verifyAppRequest,
 } = {}) {
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -86,6 +88,11 @@ export async function handleNotes(request, response, {
     const boundOwner = await verifiedOwnerId(verified, db);
     if (!boundOwner) {
       return response.status(403).json({ error: 'OWNER_BINDING_UNAVAILABLE' });
+    }
+    if(config.step>=11){
+      const app=await appVerification({request,owner:boundOwner,db,
+        path:item?'/api/notes/'+itemId:'/api/notes'});
+      if(app?.ok!==true)return response.status(403).json({error:app?.error??'APP_SIGNATURE_REQUIRED'});
     }
     verified = { ...verified, userId: boundOwner };
     const table = db.from('vault_training_notes');

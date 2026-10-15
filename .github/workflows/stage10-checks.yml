@@ -64,7 +64,7 @@ jobs:
           const stage10=b.attackAttempts.find(x=>x.attackId==='stage10_anonymous_restore_denied');
           console.log(JSON.stringify({step:b.step,commit:b.commit,restoreRoute:b.restoreRoute,
             totalChecks:b.attackAttempts.length,stage10Check:stage10?.observed},null,2));
-          if(b.step!==10||b.restoreRoute!=='/api/restore'||!stage10)process.exitCode=1;
+          if(b.step<10||b.restoreRoute!=='/api/restore'||!stage10)process.exitCode=1;
           NODE
       - uses: actions/upload-artifact@v4
         with:

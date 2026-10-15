@@ -75,7 +75,7 @@ test('No query may enable export or replace a path ID in server note API',async(
    for(const [itemId,query] of [[A,{id:A,export:'1'}],[A,{id:B}],[null,{action:'export'}]]){
      const response={code:0,body:null,setHeader(){return this;},status(n){this.code=n;return this;},json(o){this.body=o;return this;}};
      await handleNotes({method:'GET',headers:{authorization:'Bearer placeholder'},query},response,{
-       itemId,verifyAuthorization:async()=>({kind:'student',userId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'}),
+       itemId,appVerification:async()=>({ok:true}),verifyAuthorization:async()=>({kind:'student',userId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'}),
        databaseFactory:()=>{touched++;throw Error('DB touched');}
      });
      assert.equal(response.code,400);

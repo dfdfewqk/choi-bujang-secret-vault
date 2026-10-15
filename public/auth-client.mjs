@@ -1,7 +1,7 @@
 // Same-origin Auth client facade. NO Supabase URL or publishable key in any
 // browser-served file: all sign-in, sign-up, refresh and verification use /api/auth.
-// Session is isolated to one browser tab; A and B can log in independently.
-// A one-time migration supports the existing server-auth and legacy sessions.
+// Session stays only in this page memory. Reload/navigation requires login.
+// Legacy persistent credentials are deleted without reuse.
 const STORAGE_KEY = 'byteback-server-auth-v1';
 // One-time migration of sessions created by the old browser Supabase SDK.
 const LEGACY_KEY = 'sb-bcwzllejypavwgsfqfbm-auth-token';
@@ -10,49 +10,15 @@ let cached = null;
 let verifiedToken = null;
 let inFlight = null;
 
-function readStorage(storage, key) {
-  try { return JSON.parse(storage.getItem(key) ?? 'null'); }
-  catch { return null; }
+function clearSharedLegacySession(){
+ // Remove old credentials; never migrate them into a new approved app session.
+ for(const storage of [globalThis.localStorage,globalThis.sessionStorage]){
+  try{storage?.removeItem(STORAGE_KEY);storage?.removeItem(LEGACY_KEY);}catch{}
+ }
 }
-function clearSharedLegacySession() {
-  // Previous releases stored every account in the same origin-wide storage.
-  // Remove those copies to prevent a different tab from importing stale JWTs.
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(LEGACY_KEY);
-  } catch { /* blocked storage is not an authorization bypass */ }
-}
-function storedSession() {
-  if (cached) return cached;
-  let session = readStorage(sessionStorage, STORAGE_KEY);
-  if (!session?.access_token) {
-    // Migrate once from either legacy format into this TAB only.
-    session = readStorage(localStorage, STORAGE_KEY);
-    if (!session?.access_token) session = readStorage(localStorage, LEGACY_KEY);
-    if (session?.access_token && session?.refresh_token) {
-      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session)); }
-      catch { /* an active tab may still work in memory */ }
-    }
-  }
-  clearSharedLegacySession();
-  if (session?.access_token && session?.refresh_token) {
-    cached = session;
-    return session;
-  }
-  return null;
-}
-function storeSession(session) {
-  cached = session;
-  verifiedToken = null;
-  try {
-    if (session?.access_token) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    } else {
-      sessionStorage.removeItem(STORAGE_KEY);
-    }
-  } catch { /* session stays in memory if tab storage is unavailable */ }
-  clearSharedLegacySession();
-}
+clearSharedLegacySession();
+function storedSession(){return cached;}
+function storeSession(session){cached=session;verifiedToken=null;clearSharedLegacySession();}
 function emit(event, session) {
   for (const listener of listeners) {
     try { listener(event, session); } catch { /* listener errors are not Auth errors */ }
@@ -136,7 +102,7 @@ async function loadSession() {
       current = { ...current, user: data.user };
       cached = current;
       verifiedToken = current.access_token;
-      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(current)); } catch { /* ignore */ }
+      clearSharedLegacySession();
       if (fromLink) emit('SIGNED_IN', current);
     } catch (error) {
       return { session: null, error: { message: error.message, status: 502 } };

@@ -25,7 +25,7 @@ test('stage 5 keeps note CRUD and browser Auth behind server functions', async (
   assert.match(pages[0], /supabase\.auth\.signInWithPassword/u);
   assert.match(pages[0], /supabase\.auth\.signOut/u);
   assert.match(pages[2], /supabase\.auth\.signUp/u);
-  assert.match(pages[1], /fetch\('\/api\/notes'/u);
+  assert.match(await load('public/access-check-client.mjs'), /signedFetch\('\/api\/notes'/u);
   for (const page of pages) assert.match(page, /createServerAuthClient\(\)/u);
   assert.match(await load('public/auth-client.mjs'), /fetch\('\/api\/auth'/u);
 

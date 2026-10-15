@@ -64,7 +64,7 @@ async function invoke({db,verified,id=null,method='GET',body={},headers={}}){
    method,body,query:id?{id}:undefined,
    headers:{authorization:'Bearer fixture.token.notreal',...headers},
   },res,{
-   itemId:id,verifyAuthorization:async()=>verified,
+   itemId:id,appVerification:async()=>({ok:true}),verifyAuthorization:async()=>verified,
    databaseFactory:()=>db,
   });
  }finally{

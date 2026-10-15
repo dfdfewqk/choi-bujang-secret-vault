@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7 && config.step !== 8 && config.step !== 9 && config.step !== 10) {
+  if (config.step !== 1 && config.step !== 2 && config.step !== 3 && config.step !== 4 && config.step !== 5 && config.step !== 6 && config.step !== 7 && config.step !== 8 && config.step !== 9 && config.step !== 10 && config.step !== 11) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   let app;
@@ -30,7 +30,7 @@ export async function runAttackChecks(config) {
       // A non-JSON response is a failed check, not a successful deployment.
     }
   }
-  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10) {
+  if (config.step === 3 || config.step === 4 || config.step === 5 || config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10 || config.step === 11) {
     const attempts = [{
       attackId: 'public_data_removed',
       expected: '/data.json does not expose any synthetic notes',
@@ -113,7 +113,7 @@ export async function runAttackChecks(config) {
         observed: 'NOT_TESTED: DB role grants revoked and simulated SELECT denied; live public-key/JWT HTTP challenge remains',
       });
     }
-    if (config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10) {
+    if (config.step === 6 || config.step === 7 || config.step === 8 || config.step === 9 || config.step === 10 || config.step === 11) {
       // Local request fixtures only, not proof of the real class engine or judge.
       const { decide, RULE_IDS } = await import('./decider.mjs');
       const { checkDecider } = await import('../scripts/decider-test.mjs');
@@ -181,7 +181,7 @@ export async function runAttackChecks(config) {
             ?'PASS: synthetic collection GET denied':'FAIL: broad collection GET allowed',
         });
       }
-      attempts.push({attackId:'stage8_live_cross_owner',
+      if(config.step<11)attempts.push({attackId:'stage8_live_cross_owner',
         expected:'Real authenticated B cannot fetch or modify A notes',
         observed:'NOT_TESTED: live signed accounts not used; synthetic server ownership tests run separately'});
     }
@@ -208,7 +208,7 @@ export async function runAttackChecks(config) {
             :'FAIL: local synthetic detector differed from contract'});
       }
     }
-    if(config.step===10){
+    if(config.step>=10){
       // This is an unauthenticated public HTTP check only. No note bodies or
       // real account credentials are used, so a real B restore remains untested.
       const resp=await fetch(new URL('/api/restore',app),{
@@ -223,6 +223,12 @@ export async function runAttackChecks(config) {
           ?'PASS: production restore preview denies anonymous requests'
           :'FAIL: restore preview did not deny anonymous requests (HTTP '+resp.status+')',
       });
+    }
+    if(config.step>=11){
+      const response=await fetch(new URL('/api/device',app),{method:'GET',redirect:'error',signal:AbortSignal.timeout(10000)});
+      let result;try{result=await response.json();}catch{}
+      attempts.push({attackId:'stage11_anonymous_device_denied',expected:'Device approval/status requires verified login',
+        observed:response.status===401&&result?.error==='UNAUTHORIZED'?'PASS: anonymous device status denied':'FAIL: anonymous device endpoint was not JSON 401'});
     }
     return attempts;
   }

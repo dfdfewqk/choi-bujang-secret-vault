@@ -19,6 +19,7 @@ test('패키징 함수 기준표는 시작 틀의 실제 API와 일치한다', a
   if (config.step >= 5) stageFunctions.push('api/auth.js');
   // Stage 10 adds the authenticated B-only verified-backup restoration route.
   if (config.step >= 10) stageFunctions.push('api/restore.js');
+  if (config.step >= 11) stageFunctions.push('api/device.js');
   assert.deepEqual(actual, [...baseline.functions, ...baseline.allowedNew, ...stageFunctions].sort());
 });
 

@@ -162,7 +162,7 @@ test('same-origin browser facade handles login, token retrieval and logout',asyn
     assert.equal(signedIn.error,null);
     assert.equal(signedIn.data.session.access_token,session.access_token);
     assert.equal((await client.auth.getSession()).data.session.user.email,session.user.email);
-    assert.ok(backing.has('byteback-server-auth-v1'));
+    assert.equal(backing.has('byteback-server-auth-v1'),false);
     assert.equal(shared.has('byteback-server-auth-v1'),false);
     assert.ok(events.includes('SIGNED_IN'));
     assert.equal((await client.auth.signOut()).error,null);
