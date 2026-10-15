@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runStage12PublicReadOnlyChecks} from '../src/stage12-bundle-check.mjs';
 
-test('bundle uses direct git read subcommands and HTTPS read-only checks',async()=>{
+test('bundle is Git-read-only and makes zero outbound requests',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
  assert.match(source,/execFileSync\('git', args, \{/u);
  assert.match(source,/gitRead\('show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'\)/u);
@@ -19,33 +19,21 @@ test('bundle uses direct git read subcommands and HTTPS read-only checks',async(
  assert.match(source,/if \(error\?\.code !== 'ENOENT'\) throw error/u);
  assert.match(source,/official_41_tests_and_identity_revocation_not_verified/u);
  assert.ok(readFileSync(new URL('../.gitignore',import.meta.url),'utf8').split(/\r?\n/u).includes('bundle-notes.json'));
+ assert.doesNotMatch(checker,/\bfetch\s*\(|\bhttps?:\/\//u);
  const original=globalThis.fetch;let requests=0;
- globalThis.fetch=async(input,options={})=>{
-  const url=new URL(input);assert.equal(url.protocol,'https:');
-  assert.ok(['/', '/aleph.json', '/data.json'].includes(url.pathname),
-    'Protected APIs must not be probed by the submission');
-  assert.ok(['GET','HEAD'].includes(options.method??'GET'));
-  assert.equal(options.body,undefined);requests++;
-  if(url.pathname==='/aleph.json')return Response.json({step:12});
-  if(url.pathname==='/data.json')return new Response('',{status:404});
-  if(url.pathname==='/')return new Response('',{headers:{'x-content-type-options':'nosniff'}});
-  throw new Error('Unexpected HTTP request');
- };
+ globalThis.fetch=async()=>{requests++;throw Error('network not permitted in bundle');};
  try{
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
   const checks=await runStage12PublicReadOnlyChecks(config);
-  assert.equal(requests,3);assert.equal(checks.length,20);
-  assert.equal(checks.filter(c=>c.observed==='not_run').length,17);
-  assert.ok(checks.every(c=>!c.observed.startsWith('FAIL')));
-  for (const id of ['anonymous_note_read_denied', 'anonymous_item_read_denied',
-    'stage10_anonymous_restore_denied', 'stage11_anonymous_device_denied',
-    'stage12_anonymous_operations_denied']) {
-    assert.equal(checks.find(c=>c.attackId===id).observed, 'not_run');
-  }
+  assert.equal(requests,0);
+  assert.equal(checks.length,20);
+  assert.equal(new Set(checks.map(c=>c.attackId)).size,20);
+  assert.ok(checks.every(c=>Object.keys(c).sort().join(',')==='attackId,expected,observed'));
+  assert.ok(checks.every(c=>c.observed==='not_run'));
  }finally{globalThis.fetch=original;}
 });
 
-test('stage 12 does not fabricate successes when every HTTPS GET is unavailable',async()=>{
+test('stage 12 output needs no fetch API in an offline sandbox',async()=>{
   const original=globalThis.fetch;
   globalThis.fetch=async()=>{throw new Error('network unavailable');};
   try{

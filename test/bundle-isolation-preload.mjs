@@ -11,14 +11,7 @@ subprocess.execFileSync = (command, args, options) => {
   return exec(command, args, options);
 };
 syncBuiltinESMExports();
-const actualFetch = globalThis.fetch;
-globalThis.fetch = async (input, options = {}) => {
-  const url = new URL(input);
-  const method = options.method ?? 'GET';
-  if (url.protocol !== 'https:' || url.username || url.password
-      || !['GET','HEAD'].includes(method) || options.body !== undefined
-      || !['/', '/aleph.json', '/data.json'].includes(url.pathname)) {
-    throw new Error('BUNDLE_ISOLATION: disallowed outbound request');
-  }
-  return actualFetch(input, options);
+// No outbound HTTP is required to package a submission. Fail closed on ANY fetch.
+globalThis.fetch = async () => {
+  throw new Error('BUNDLE_ISOLATION: outbound networking must not run during bundle');
 };
