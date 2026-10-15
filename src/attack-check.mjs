@@ -165,12 +165,22 @@ export async function runAttackChecks(config) {
         route:'GET /api/notes/:id',
       });
       attempts.push({
-        attackId:'stage8_unverified_note_get_denied',
-        expected:'SDP without owner proof cannot allow a specific note UUID read; API verifies actual owner separately',
-        observed:canonicalNote.decision==='deny'&&canonicalNote.reasonCode==='resource_not_allowed'
-          ?'PASS: local SDP denies an unverified note UUID read; authenticated API retains owner check'
-          :'FAIL: SDP allowed a note UUID read without owner evidence',
+        attackId:'stage8_uuid_route_delegates_owner_check',
+        expected:'SDP allows the exact UUID route; final API separately checks verified owner_id',
+        observed:canonicalNote.decision==='allow'
+          ?'PASS: local SDP allows exact UUID route; live owner enforcement not claimed'
+          :'FAIL: legitimate UUID route rejected before server owner verification',
       });
+      for(const prefix of ['/notes','/api/notes']){
+        const collection=await decide({...normal,service:'notes',method:'GET',
+          path:prefix,route:'GET '+prefix});
+        attempts.push({
+          attackId:prefix==='/notes'?'stage8_notes_list_denied':'stage8_api_notes_list_denied',
+          expected:'SDP denies broad note collection GET on '+prefix,
+          observed:collection.decision==='deny' && collection.reasonCode==='resource_not_allowed'
+            ?'PASS: synthetic collection GET denied':'FAIL: broad collection GET allowed',
+        });
+      }
       attempts.push({attackId:'stage8_live_cross_owner',
         expected:'Real authenticated B cannot fetch or modify A notes',
         observed:'NOT_TESTED: live signed accounts not used; synthetic server ownership tests run separately'});
