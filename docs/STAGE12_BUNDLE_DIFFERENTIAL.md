@@ -39,3 +39,9 @@ Eight anonymous GETs do not read private API response bodies; only `/aleph.json`
 ## Previously checked but not established as root causes
 
 The existing Git `show` command is allowed by the official error text. The reference also uses Git reads, `fetch`, `AbortSignal.timeout` and `alephEvidence`, so their mere presence does not prove a ban. Dependencies `@supabase/supabase-js` and `jose` appear in both repositories' `package.json`, but are not in the actual Stage 12 bundle import graph. Server-side note ownership and live identity-revocation remain separate security-verification projects, not mechanisms for correcting the sandbox runner.
+
+## Independent cross-run validation (PR-only)
+
+The PR workflow runs `node test/stage12-reference-differential.mjs` **after** the normal complete bundle tests. This script checks out the reference's immutable commit in a disposable temp directory, adds its required *ignored* explanatory fixture, and executes both bundlers with the **same Node 22 version and offline in-memory GET responses**. The fixture has no live HTTP requests, credentials or real note bodies. It compares schema, status fields, observed/unrun counts, and records historical dynamic-import syntax counts. No reference code is copied into the submitted import graph.
+
+A successful comparison proves only deterministic local behavior in that harness; it cannot establish what the official judge regards as unsupported. In particular, `src/attack-check.mjs` retains syntactically present legacy dynamic imports for older stages, but Stage 12 returns before those branches. The official judge's static analysis policy is not known; do not infer a cause merely from lexical presence.
