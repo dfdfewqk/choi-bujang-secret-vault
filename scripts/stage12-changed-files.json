@@ -1,4 +1,4 @@
 [
   "scripts/stage12-changed-files.json",
-  "test/package-starter.test.mjs"
+  "test/bundle-isolation.test.mjs"
 ]

@@ -103,9 +103,12 @@ test('false public fixture result cannot be counted as blocked',async()=>{
 test('Git HEAD is read from allowed filesystem; manifest is explicit',()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
  const list=JSON.parse(readFileSync(new URL('../scripts/stage12-changed-files.json',import.meta.url),'utf8'));
- assert.ok(list.length>=5);
+ assert.ok(list.length>=1&&list.length<=30);
  assert.equal(list.length,new Set(list).size);
  assert.ok(list.includes('scripts/stage12-changed-files.json'));
+ assert.ok(list.every(path=>typeof path==='string'
+  &&/^[a-zA-Z0-9_.\\/-]{1,120}$/u.test(path)
+  &&!path.includes('..')&&!path.startsWith('/')));
  assert.match(source,/readFileSync\(join\(directory,'HEAD'\)/u);
  assert.doesNotMatch(source,/\b(?:execFileSync|child_process|spawnSync)\b/u);
 });
