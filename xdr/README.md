@@ -61,3 +61,11 @@ node scripts/xdr-run.mjs brute-force
 ## XDR-06 exfiltration
 
 `node xdr/exfiltration/read-alerts.mjs`는 30개 가상 경보의 안전한 다섯 필드만 출력합니다. `npm run xdr:run -- exfiltration`은 오프라인 독립 판정과 별도 임시 목적지 거부 제안·안전한 알림 기록을 실행합니다. 기존 ZTNA 규칙은 수정하지 않으며 실제 네트워크 차단을 뜻하지 않습니다.
+
+## XDR-05 privilege (권한 상승)
+`node xdr/privilege/read-alerts.mjs`는 26개 수업용 Wazuh 경보에서 다섯 개의 안전한 열만 추출합니다.
+`xdr/privilege/patterns.json`에는 T1068/T1078 근거가 있는 패턴만 기록하고, `decide.mjs`는 다른 파일을 불러오지 않고 독립 실행합니다.
+`npm run xdr:run -- privilege`를 두 번 수행하면 `xdr/privilege/result.json`의 block·alert·record 결과가 안정적으로 재생성됩니다.
+`respond.mjs`는 block 후보만 동일 계정·출발 주소에 대한 **15분 한정 제안**으로 작성하고, 실제 trustedAccount/trustedSourceIp 제공자로 확인한 경우에만 별도 ZTNA 사전 게이트가 거부합니다.
+기존 `src/decider.mjs`를 변경하거나 클라이언트 헤더의 계정·IP만 보고 거부하지 않습니다. 26개 가상 경보의 정상 9건은 자동 차단 0건입니다.
+MITRE: https://attack.mitre.org/techniques/T1068/ , https://attack.mitre.org/techniques/T1078/ .

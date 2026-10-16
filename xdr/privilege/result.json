@@ -1,0 +1,167 @@
+{
+  "schema": "aleph.xdr.result.v1",
+  "moduleKey": "privilege",
+  "decisions": [
+    {
+      "alertId": "pv-01",
+      "action": "block",
+      "confidence": 0.92,
+      "reason": "관리자 그룹 신규 편입"
+    },
+    {
+      "alertId": "pv-02",
+      "action": "block",
+      "confidence": 0.93,
+      "reason": "관리자 그룹 변경 직후 권한 명령"
+    },
+    {
+      "alertId": "pv-03",
+      "action": "block",
+      "confidence": 0.89,
+      "reason": "낯선 출처 또는 시간의 관리자 명령"
+    },
+    {
+      "alertId": "pv-04",
+      "action": "block",
+      "confidence": 0.97,
+      "reason": "관리자 그룹 변경 직후 권한 명령"
+    },
+    {
+      "alertId": "pv-05",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "다계정 관리자 그룹 변경"
+    },
+    {
+      "alertId": "pv-06",
+      "action": "block",
+      "confidence": 0.91,
+      "reason": "예상 밖 관리자 세션 승격"
+    },
+    {
+      "alertId": "pv-07",
+      "action": "block",
+      "confidence": 0.97,
+      "reason": "관리자 그룹 변경 직후 권한 명령"
+    },
+    {
+      "alertId": "pv-08",
+      "action": "block",
+      "confidence": 0.93,
+      "reason": "타 계정 관리자 권한 사용"
+    },
+    {
+      "alertId": "pv-09",
+      "action": "block",
+      "confidence": 0.93,
+      "reason": "관리자 그룹 신규 편입"
+    },
+    {
+      "alertId": "pv-10",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-11",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-12",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-13",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-14",
+      "action": "alert",
+      "confidence": 0.71,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-15",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-16",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-17",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "권한 변화 관련 추가 확인"
+    },
+    {
+      "alertId": "pv-18",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-19",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-20",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-21",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-22",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-23",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-24",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-25",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    },
+    {
+      "alertId": "pv-26",
+      "action": "record",
+      "confidence": 0.06,
+      "reason": "권한 변화 공격 단서 없음"
+    }
+  ],
+  "counts": {
+    "block": 9,
+    "alert": 8,
+    "record": 9
+  }
+}

@@ -17,3 +17,6 @@ xdr/web-injection/deny-rules.runtime.json
 xdr/known-cve/deny-rules.runtime.json
 xdr/persistence/deny-rules.runtime.json
 xdr/exfiltration/deny-rules.runtime.json
+
+# XDR-05 runtime privilege deny proposals; never commit live alerts.
+xdr/privilege/deny-rules.runtime.json

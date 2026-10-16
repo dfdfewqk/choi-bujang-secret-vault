@@ -1,0 +1,81 @@
+name: Bonus XDR-05 privilege verification
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'xdr/privilege/**'
+      - 'scripts/xdr-run.mjs'
+      - 'test/xdr-privilege.test.mjs'
+      - '.github/workflows/bonus-xdr-05.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Preserve ZTNA and all previous XDR regression tests
+        run: |
+          npm run decider:test
+          npm run detect:test
+          node --test test/*.test.mjs
+      - name: Verify sanitized Wazuh reader counts
+        run: |
+          node xdr/privilege/read-alerts.mjs > /tmp/xdr05-safe-rows.txt
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          const src=JSON.parse(await readFile('xdr/fixtures/privilege.json','utf8'));
+          const rows=(await readFile('/tmp/xdr05-safe-rows.txt','utf8')).trim().split('\n');
+          assert.equal(src.alerts.length,26);
+          assert.equal(rows.length-1,src.alerts.length);
+          for(const row of rows.slice(1))assert.deepEqual(Object.keys(JSON.parse(row)),
+            ['timestamp','sourceAddress','account','ruleLevel','description']);
+          console.log('Wazuh alerts='+src.alerts.length+'; projected rows='+(rows.length-1));
+          NODE
+      - name: First required privilege XDR run
+        run: npm run xdr:run -- privilege
+      - name: Rerun and refresh XDR-05 result
+        run: npm run xdr:run -- privilege
+      - name: Verify counts, no false normal blocks and expiring proposals
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          const src=JSON.parse(await readFile('xdr/fixtures/privilege.json','utf8'));
+          const result=JSON.parse(await readFile('xdr/privilege/result.json','utf8'));
+          const deny=JSON.parse(await readFile('xdr/privilege/deny-rules.runtime.json','utf8'));
+          const log=await readFile('xdr/alerts.log','utf8');
+          assert.equal(src.alerts.length,26);
+          assert.equal(result.decisions.length,26);
+          assert.deepEqual(result.counts,{block:9,alert:8,record:9});
+          assert.equal(deny.rules.length,8);
+          for(let i=17;i<26;i++)assert.notEqual(result.decisions[i].action,'block',src.alerts[i].id);
+          for(const rule of deny.rules){
+            assert.equal(rule.effect,'deny');
+            assert.ok(rule.verifiedAccount&&rule.verifiedSourceIp&&rule.evidenceAlertIds.length);
+            assert.ok(Date.parse(rule.expiresAt)>Date.parse(rule.createdAt));
+          }
+          assert.doesNotMatch(log,/password=|Bearer\s+|sb_secret_|srcip|srcuser|203\.0\.113|192\.0\.2|198\.51\.100/u);
+          console.log('XDR-05 block=9 alert=8 record=9; normal blocked=0; temporary account+IP deny proposals='+deny.rules.length);
+          NODE
+      - name: Ensure result.json is reproducible and runtime files are excluded from Git
+        run: |
+          git diff --exit-code -- xdr/privilege/result.json
+          git check-ignore xdr/alerts.log
+          git check-ignore xdr/privilege/deny-rules.runtime.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bonus-xdr-05-privilege
+          path: xdr/privilege/result.json
+          if-no-files-found: error
+          retention-days: 90

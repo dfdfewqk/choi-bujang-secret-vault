@@ -1,3 +1,10 @@
+## 보너스 XDR-05 저장점 — 권한 가로채기 탐지 (2026-10-16)
+- Wazuh 모양의 가상 경보 26건은 변경하지 않았으며, `node xdr/privilege/read-alerts.mjs`로 시각·출발 주소·계정·규칙 수준·설명 다섯 필드만 출력합니다.
+- 단독 `xdr/privilege/decide.mjs`는 import/파일 입출력/외부 요청 없이 `T1068`·`T1078` 패턴으로 임계값 0.85(block), 0.5(alert), 그 아래(record)를 반환합니다. 보류·취소·정상 이벤트를 자동 차단하지 않습니다.
+- `npm run xdr:run -- privilege`는 추적되는 `xdr/privilege/result.json`을 재생성하며 9/8/9로 분류합니다. 정상 9건 차단 0건. 독립 `respond.mjs`는 검증된 동일 계정과 출처 주소에만 15분 만료 거부 *제안*을 제공하며 원본 ZTNA 판정기·서버 계정·DB 세션은 변경하지 않습니다.
+- 경보 기록 `xdr/alerts.log`와 `xdr/privilege/deny-rules.runtime.json`은 Git에 올리지 않습니다. 검증 경로: `node --test test/xdr-privilege.test.mjs`, `npm run xdr:run -- privilege`, GitHub Actions `bonus-xdr-05.yml`. 가상 시험 통과는 실제 세션 회수 또는 공식 심판 판정이 아닙니다.
+- 근거: [MITRE T1068](https://attack.mitre.org/techniques/T1068/), [MITRE T1078](https://attack.mitre.org/techniques/T1078/). 관리자 그룹 변경은 그 자체만으로 T1068 취약점 악용을 입증하지 않습니다.
+
 ## 12단계 화면 집계 보완 (2026-10-16)
 - 첫 화면의 `#ops-stats`와 상세 탈환 작전실의 수치는 동일한 `GET /api/checks` 응답에서만 가져옵니다. 응답에는 읽기 전용 19건의 직접 HTTP 관측 또는 미실행, 고정 가상 입력 출처 및 공식 결과와의 구분이 포함됩니다.
 - API 접근 실패·기록 형식 오류·합계 불일치면 모든 집계 수치를 '-'로 비웁니다. 부정확한 성공 문구를 만들지 않습니다.
