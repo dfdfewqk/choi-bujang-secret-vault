@@ -64,11 +64,11 @@ try {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
   if (config.step !== 12) fail('이번 제출 실행기는 12단계 전용입니다.');
-  // Only the dedicated Stage12 read-only checker belongs in the sandbox.
-  // Preserve legacy 1–11 checks but do not import them from this entrypoint.
-  const { runStage12PublicReadOnlyChecks } = await import(
-    pathToFileURL(join(root, 'src', 'stage12-bundle-check.mjs')).href);
-  const attackAttempts = await runStage12PublicReadOnlyChecks(config);
+  // Official Stage 12 entry is minimal: the historical 1–11 test module is
+  // preserved separately and never imported in the isolated bundle.
+  const { runAttackChecks } = await import(
+    pathToFileURL(join(root, 'src', 'attack-check.mjs')).href);
+  const attackAttempts = await runAttackChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
     fail('직접 실행한 공격 점검 결과 1~20개가 필요합니다.');
   }

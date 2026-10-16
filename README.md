@@ -2,7 +2,7 @@
 
 - 공식 심판의 `S12_BUNDLE_UNSUPPORTED`가 반복되었습니다. 이전 Git 옵션 수정과 CI 성공은 심판 통과의 증거가 아니며 **이번 수정의 공식 결과도 미확인**입니다.
 - `npm run bundle`의 공식 제출 경로는 외부 HTTP 요청을 **0건** 수행합니다. `src/stage12-bundle-check.mjs`는 아직 실행하지 않은 20개 점검을 모두 `observed: 'not_run'`으로 기록하며 성공을 꾸미지 않습니다. 실제 API 점검은 로그인 후 탈환 작전실과 기존 별도 회귀 테스트에서만 수행합니다. 실패한 요청은 성공으로 적지 않습니다.
-- 기존 1~11단계 자기 점검과 합성 테스트는 `src/attack-check.mjs`에 보존하되 12단계 제출 실행 시 불러오지 않습니다. Git 읽기 `show`는 한 번만 수행합니다.
+- 기존 1~11단계 자기 점검과 합성 테스트는 `src/attack-check-legacy.mjs`에 변경 없이 보존합니다. 12단계 제출용 `src/attack-check.mjs`는 과거 시험 모듈을 실행하지 않습니다. 이전 단계 호출은 지연 로드로 계속 지원합니다. Git 읽기 `show`는 한 번만 수행합니다.
 - CI에서 별도의 모듈·Git/HTTP 제한 검사, 전체 회귀, 제출 JSON 구조 확인을 수행하며 이는 공식 격리 환경의 완전한 재현이 아닙니다. 서비스/API/DB/감사/설정은 변경하지 않았습니다.
 
 ## 12단계 저장점 — 실제 결과를 읽는 탈환 작전실 (2026-10-15)
@@ -559,7 +559,7 @@ npm run xdr:run -- brute-force
 
 `aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 이전 제출 묶음 방식의 자리표시자입니다. 1단계에서는 학생이 편집하지 않습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
 
-로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 저장소의 `src/attack-check.mjs`는 실제 배포가 된 뒤 `/data.json`을 비로그인으로 요청해 공개 가상 메모의 확인 표시를 읽습니다.
+로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 1~11단계용 `src/attack-check-legacy.mjs`는 실제 배포가 된 뒤 `/data.json`을 비로그인으로 요청해 공개 가상 메모의 확인 표시를 읽습니다. 12단계용 `src/attack-check.mjs`는 제한된 읽기 전용 검사만 수행합니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
