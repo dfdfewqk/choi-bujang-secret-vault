@@ -9,13 +9,13 @@ import {runStage12PublicReadOnlyChecks} from '../src/stage12-bundle-check.mjs';
 
 test('bundle is Git-read-only and makes zero outbound requests',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
- assert.match(source,/execFileSync\('git', args, \{/u);
- assert.match(source,/gitRead\('show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'\)/u);
+ assert.match(source,/execFileSync\('git', \[/u);
+ assert.match(source,/'show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'/u);
  assert.match(source,/from '\.\.\/src\/stage12-bundle-check\.mjs'/u);
  assert.doesNotMatch(source,/\bawait import\(/u);
- assert.doesNotMatch(source,/\bgitRead\('(status|diff-tree|config|remote|rev-parse)'/u);
- const commands=[...source.matchAll(/\bgitRead\('([^']+)'/gu)].map(m=>m[1]);
- assert.deepEqual(commands,['show']);
+ assert.doesNotMatch(source,/\bgitRead\s*\(/u);
+ assert.equal([...source.matchAll(/\bexecFileSync\s*\(/gu)].length,1);
+ assert.doesNotMatch(source,/\b(?:spawn|spawnSync|execSync|fork)\s*\(/u);
  const checker=readFileSync(new URL('../src/stage12-bundle-check.mjs',import.meta.url),'utf8');
  const imports=[...source.matchAll(/from '([^']+)'/gu),...checker.matchAll(/from '([^']+)'/gu)].map(m=>m[1]);
  assert.ok(imports.every(p=>p.startsWith('../src/')||['node:child_process','node:fs','node:path'].includes(p)));
@@ -122,6 +122,6 @@ test('runtime file guard blocks writes outside required submission output',()=>{
 test('source contains one git show subprocess site and no unapproved alternate spawn site',()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
  assert.equal([...source.matchAll(/\bexecFileSync\s*\(/gu)].length,1);
- assert.match(source,/execFileSync\('git', args, \{/u);
+ assert.match(source,/execFileSync\('git', \[/u);
  assert.doesNotMatch(source,/\b(?:spawnSync|spawn|fork|execSync|execFile|process\.binding)\s*\(/u);
 });
