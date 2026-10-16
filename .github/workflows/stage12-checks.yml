@@ -53,8 +53,23 @@ jobs:
           node --input-type=module <<'NODE'
           import {readFileSync} from 'node:fs';
           const b=JSON.parse(readFileSync('artifacts/submission.json','utf8'));
-          if(b.step!==12||b.attackAttempts.length>20||!b.attackAttempts.some(r=>r.attackId==='stage12_anonymous_operations_denied'))process.exit(1);
-          console.log(JSON.stringify({step:b.step,commit:b.commit,checks:b.attackAttempts.length}));
+          import {execFileSync} from 'node:child_process';
+          import {RULE_IDS} from './src/decider.mjs';
+          const commit=execFileSync('git',['show','-s','--format=%H','HEAD'],{encoding:'utf8'}).trim();
+          const changedFiles=execFileSync('git',['show','--first-parent','-m','--pretty=format:','--name-only','HEAD'],{encoding:'utf8'})
+            .split(/\r?\n/u).map(s=>s.trim()).filter(Boolean).sort();
+          const unique=new Set(b.attackAttempts.map(r=>r.attackId));
+          if(b.schema!=='aleph.defense.submission.v2'||b.step!==12||b.commit!==commit
+            ||JSON.stringify(b.changedFiles)!==JSON.stringify([...new Set(changedFiles)])
+            ||JSON.stringify(b.policyRules)!==JSON.stringify([...RULE_IDS])
+            ||b.attackAttempts.length<1||b.attackAttempts.length>20
+            ||unique.size!==b.attackAttempts.length
+            ||!b.attackAttempts.some(r=>r.attackId==='stage12_anonymous_operations_denied')
+            ||b.attackAttempts.some(r=>Object.keys(r).sort().join(',')!=='attackId,expected,observed')
+            ||b.attackAttempts.some(r=>!r.observed||!r.expected))process.exit(1);
+          const unrun=b.attackAttempts.filter(r=>r.observed==='not_run').length;
+          console.log(JSON.stringify({step:b.step,commit:b.commit,checks:b.attackAttempts.length,
+            observed:b.attackAttempts.length-unrun,notRun:unrun}));
           NODE
       - uses: actions/upload-artifact@v4
         with:

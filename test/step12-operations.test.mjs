@@ -50,20 +50,28 @@ test('approved account receives scoped redacted data, never fabricated 41 passes
  assert.equal(res.body.recovery.completed,0);assert.equal(res.body.recovery.latestAt,null);
  assert.equal(res.body.rules.policyStatus,'ready');assert.doesNotMatch(JSON.stringify(res.body),/do not expose|owner_id|publicKey/u);
 });
-test('12-stage packaging retains 20 real/synthetic checks without calling them 41 official passes',async()=>{
+test('actual Stage12 bundle and legacy wrapper return the same truthful offline checks',async()=>{
  const previous=globalThis.fetch;
+ let requestCount=0;
  try{
-  globalThis.fetch=async input=>{const p=new URL(input).pathname;
-   if(p==='/data.json')return new Response(null,{status:404});
-   if(p==='/aleph.json')return new Response(JSON.stringify({step:12}),{status:200});
-   if(p.startsWith('/api/'))return new Response(JSON.stringify({error:'UNAUTHORIZED'}),{status:401});
-   return new Response('<html></html>',{status:200,headers:{'X-Content-Type-Options':'nosniff'}});};
+  globalThis.fetch=async()=>{requestCount++;throw Error('No HTTP is permitted in the current stage12 bundle');};
   const {runAttackChecks}=await import('../src/attack-check.mjs');
+  const {runStage12PublicReadOnlyChecks}=await import('../src/stage12-bundle-check.mjs');
+  const {readFileSync}=await import('node:fs');
+  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
+  assert.match(source,/await runStage12PublicReadOnlyChecks\(config\)/u,
+    'Assert the same function that the actual npm run bundle invokes');
   const config=(await import('../aleph.config.json',{with:{type:'json'}})).default;
-  const rows=await runAttackChecks(config);
-  assert.equal(rows.length,20);assert.ok(rows.some(r=>r.attackId==='stage12_anonymous_operations_denied'));
-  assert.ok(rows.filter(r=>r.attackId.startsWith('stage9_')).length===4);
-  assert.ok(rows.every(r=>Object.keys(r).sort().join(',')==='attackId,expected,observed'));
+  const submitted=await runStage12PublicReadOnlyChecks(config);
+  const wrapper=await runAttackChecks(config);
+  assert.deepEqual(submitted,wrapper,'Legacy wrapper and submitted checker disagree');
+  assert.equal(submitted.length,20);
+  assert.equal(new Set(submitted.map(r=>r.attackId)).size,submitted.length);
+  assert.ok(submitted.some(r=>r.attackId==='stage12_anonymous_operations_denied'));
+  assert.equal(submitted.filter(r=>r.attackId.startsWith('stage9_')).length,4);
+  assert.ok(submitted.every(r=>Object.keys(r).sort().join(',')==='attackId,expected,observed'));
+  assert.ok(submitted.every(r=>r.observed==='not_run'),'Never claim unexecuted checks passed');
+  assert.equal(requestCount,0);
  }finally{globalThis.fetch=previous;}
 });
 test('app client signs operations GET; API verifies it, queries snapshot and records the same request',async()=>{
