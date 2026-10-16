@@ -56,6 +56,11 @@ test('actual Stage12 bundle and legacy wrapper produce the same 5-field observat
   globalThis.fetch=async url=>{
    count++;
    const path=new URL(url).pathname;
+   if(path==='/api/checks'){
+    const caseId=new URL(url).searchParams.get('case');
+    return new Response(JSON.stringify({schema:'aleph.readonly.fixture.v1',
+      caseId,source:'fixed_virtual_fixture',ready:true}),{status:200});
+   }
    if(path==='/aleph.json')return new Response('{"step":12}',{status:200});
    if(path==='/')return new Response(null,{status:200,headers:{'x-content-type-options':'nosniff'}});
    if(path==='/data.json')return new Response(null,{status:404});
@@ -67,10 +72,10 @@ test('actual Stage12 bundle and legacy wrapper produce the same 5-field observat
   const config=(await import('../aleph.config.json',{with:{type:'json'}})).default;
   const first=await runAttackChecks(config),second=await runStage12PublicReadOnlyChecks(config);
   assert.deepEqual(first,second);
-  assert.equal(count,16);
+  assert.equal(count,38);
   assert.equal(first.length,20);
-  assert.equal(first.filter(x=>x.result==='not_run').length,12);
-  assert.equal(first.filter(x=>x.result==='blocked').length,8);
+  assert.equal(first.filter(x=>x.result==='not_run').length,1);
+  assert.equal(first.filter(x=>x.result==='blocked').length,19);
   assert.ok(first.every(x=>Object.keys(x).sort().join(',')==='attackId,expected,observed,result,stage'));
  }finally{globalThis.fetch=prior;}
 });

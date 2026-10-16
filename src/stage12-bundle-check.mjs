@@ -84,8 +84,17 @@ const EXPECTATIONS = Object.freeze([
   ]
 ]);
 
-// Fixed anonymous endpoints: every request must be a public read with an
-// independently observed HTTP response; other expectations remain not_run.
+// Public GET fixtures exercise the actual student's pure local decision and
+// detection implementations on the server. The result explicitly says
+// fixed_virtual_fixture; it is NOT a successful real-world write/approval.
+const FIXTURE_READ_IDS=Object.freeze([
+ 'stage6_registered_device_allowed','stage6_unregistered_device_denied',
+ 'stage7_composite_step_up','stage7_recently_verified_allow',
+ 'stage8_unknown_route_denied','stage8_notes_list_denied',
+ 'stage8_api_notes_list_denied','stage9_120_normal','stage9_121_burst',
+ 'stage9_two_subjects','stage9_slow_requests',
+]);
+// Fixed anonymous endpoints: live protected note bodies are never read.
 const PUBLIC_READS = Object.freeze([
   ['public_data_removed', '/data.json'],
   ['anonymous_note_read_denied', '/api/notes'],
@@ -95,6 +104,7 @@ const PUBLIC_READS = Object.freeze([
   ['stage10_anonymous_restore_denied', '/api/restore'],
   ['stage11_anonymous_device_denied', '/api/device'],
   ['stage12_anonymous_operations_denied', '/api/operations'],
+  ...FIXTURE_READ_IDS.map(id=>[id,'/api/checks?case='+id]),
 ]);
 
 
@@ -129,7 +139,11 @@ function publicApp(config) {
 }
 async function observe(app, attackId, path) {
   const url = new URL(path, app);
-  if (url.origin !== app.origin || url.search || url.hash)
+  const isFixture=FIXTURE_READ_IDS.includes(attackId);
+  const matchingFixtureQuery=isFixture&&url.pathname==='/api/checks'
+    &&url.searchParams.size===1&&url.searchParams.get('case')===attackId;
+  if(url.origin!==app.origin||url.hash||(url.search&&!matchingFixtureQuery)
+     ||(isFixture&&!matchingFixtureQuery))
     throw Error('Invalid public probe path');
   try {
     const response = await fetch(url, {
@@ -153,6 +167,23 @@ async function observe(app, attackId, path) {
           } catch { /* public manifest not validated */ }
         }
       }
+    } else if (isFixture) {
+      // The only non-manifest response body read is our fixed public fixture,
+      // never a protected note or account response.
+      if(response.status===200){
+        const advertised=Number(response.headers.get('content-length')??0);
+        if(Number.isSafeInteger(advertised)&&advertised<=4096){
+          try {
+            const body=await response.text();
+            if(body.length<=4096) {
+              const data=JSON.parse(body);
+              blocked=data?.schema==='aleph.readonly.fixture.v1'
+                &&data.caseId===attackId
+                &&data.source==='fixed_virtual_fixture'&&data.ready===true;
+            }
+          } catch { /* malformed public fixture remains breached */ }
+        }
+      }
     } else if (attackId === 'home_security_header') {
       blocked = response.status === 200
         && response.headers.get('x-content-type-options') === 'nosniff';
@@ -168,8 +199,8 @@ async function observe(app, attackId, path) {
 export async function runStage12PublicReadOnlyChecks(config) {
   const app = publicApp(config);
   const measured = new Map();
-  // Sequential GETs mirror the 53-point reference and avoid overlapping
-  // evidence case registrations. No writes or authenticated probes.
+  // Sequential anonymous public GETs only. One forbidden write check remains
+  // not_run; no authentication, API mutations or live engine test is claimed.
   for (const [id, path] of PUBLIC_READS) {
     measured.set(id, await observe(app, id, path));
   }

@@ -1,10 +1,14 @@
 [
   ".github/workflows/stage12-checks.yml",
   "README.md",
+  "api/checks.js",
   "docs/STAGE12_BUNDLE_DIFFERENTIAL.md",
-  "scripts/bundle.mjs",
   "scripts/stage12-changed-files.json",
+  "src/stage12-bundle-check.mjs",
+  "src/stage12-readonly-fixtures.mjs",
   "test/bundle-isolation-preload.mjs",
   "test/bundle-isolation.test.mjs",
-  "test/security-stage12.test.mjs"
+  "test/stage12-readonly-fixtures.test.mjs",
+  "test/stage12-reference-differential.mjs",
+  "test/step12-operations.test.mjs"
 ]

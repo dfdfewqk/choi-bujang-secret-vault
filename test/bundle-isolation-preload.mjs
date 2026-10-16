@@ -116,14 +116,24 @@ globalThis.fetch=async(input,init={})=>{
  let url;
  try{url=new URL(input instanceof Request?input.url:input);}catch{fail('FORBIDDEN fetch URL');}
  const method=String(init?.method??(input instanceof Request?input.method:'GET')).toUpperCase();
- if(url.origin!==publicOrigin||url.username||url.password||url.search||url.hash
+ const fixtureNames=new Set([
+  'stage6_registered_device_allowed','stage6_unregistered_device_denied',
+  'stage7_composite_step_up','stage7_recently_verified_allow',
+  'stage8_unknown_route_denied','stage8_notes_list_denied',
+  'stage8_api_notes_list_denied','stage9_120_normal','stage9_121_burst',
+  'stage9_two_subjects','stage9_slow_requests',
+ ]);
+ const allowedFixture=url.pathname==='/api/checks'&&url.searchParams.size===1
+  &&fixtureNames.has(url.searchParams.get('case'));
+ if(url.origin!==publicOrigin||url.username||url.password||url.hash
+  ||(url.search&&!allowedFixture)
   ||!['GET','HEAD'].includes(method)||init?.body!=null
   ||(input instanceof Request&&input.body!=null))
   fail('FORBIDDEN fetch '+method+' '+url.origin);
  // Mutation fixture reads return a clearly simulated 204, without networking.
  const allowedPaths=new Set(['/', '/data.json', '/aleph.json', '/api/notes',
   '/api/notes/11111111-1111-4111-8111-111111111111',
-  '/api/restore', '/api/device', '/api/operations']);
+  '/api/restore', '/api/device', '/api/operations', '/api/checks']);
  if(!allowedPaths.has(url.pathname))fail('FORBIDDEN fetch path '+url.pathname);
  const requestHeaders=new Headers(init?.headers??(input instanceof Request?input.headers:undefined));
  if(['authorization','cookie','x-api-key','apikey'].some(key=>requestHeaders.has(key)))

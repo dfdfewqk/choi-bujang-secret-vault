@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {runStage12PublicReadOnlyChecks} from '../src/stage12-bundle-check.mjs';
-import {runStage12SubmissionChecks} from '../src/stage12-submission-check.mjs';
+import {READ_ONLY_CASES} from '../src/stage12-readonly-fixtures.mjs';
 
 test('Stage12 restricted submission and separate live checker contracts',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
@@ -38,6 +38,13 @@ test('Stage12 restricted submission and separate live checker contracts',async()
    assert.equal(options.credentials,undefined);
    assert.equal(options.headers.accept,'application/json');
    assert.equal(options.alephEvidence.requestKey,'read');
+   if(path==='/api/checks'){
+    const caseId=options.alephEvidence.caseId;
+    assert.equal(new URL(url).searchParams.get('case'),caseId);
+    assert.ok(READ_ONLY_CASES.includes(caseId));
+    return new Response(JSON.stringify({schema:'aleph.readonly.fixture.v1',
+     caseId,source:'fixed_virtual_fixture',ready:true}),{status:200});
+   }
    if(path==='/aleph.json')return new Response('{"step":12}',{status:200});
    if(path==='/')return new Response(null,{status:200,headers:{'x-content-type-options':'nosniff'}});
    if(path==='/data.json')return new Response(null,{status:404});
@@ -46,29 +53,53 @@ test('Stage12 restricted submission and separate live checker contracts',async()
   };
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
   const rows=await runStage12PublicReadOnlyChecks(config);
-  assert.equal(calls.length,8);
-  assert.deepEqual(calls.map(x=>x.path),[
+  assert.equal(calls.length,19);
+  assert.deepEqual(calls.slice(0,8).map(x=>x.path),[
    '/data.json','/api/notes','/aleph.json',
    '/api/notes/11111111-1111-4111-8111-111111111111',
    '/','/api/restore','/api/device','/api/operations'
   ]);
+  assert.deepEqual(calls.slice(8).map(x=>x.caseId),READ_ONLY_CASES);
+  assert.ok(calls.slice(8).every(x=>x.path==='/api/checks'));
   assert.equal(new Set(rows.map(x=>x.attackId)).size,20);
   assert.ok(rows.every(x=>Object.keys(x).sort().join(',')==='attackId,expected,observed,result,stage'));
   assert.ok(rows.every(x=>Number.isInteger(x.stage)&&x.stage>=1&&x.stage<=12));
   assert.ok(rows.every(x=>['blocked','breached','not_run'].includes(x.result)));
   assert.ok(rows.every(x=>(x.observed==='not_run')===(x.result==='not_run')));
-  assert.equal(rows.filter(x=>x.result==='not_run').length,12);
-  assert.equal(rows.filter(x=>x.observed!=='not_run').length,8);
+  assert.equal(rows.filter(x=>x.result==='not_run').length,1);
+  assert.equal(rows.filter(x=>x.observed!=='not_run').length,19);
   const result=Object.fromEntries(rows.map(x=>[x.attackId,x]));
   assert.equal(result.deployment_step12_manifest.observed,'HTTP 200');
   assert.equal(result.deployment_step12_manifest.result,'blocked');
   assert.equal(result.home_security_header.result,'blocked');
   assert.equal(result.stage10_anonymous_restore_denied.result,'blocked');
   assert.equal(result.anonymous_note_read_denied.result,'blocked');
-  assert.equal(result.stage9_121_burst.result,'not_run');
+  assert.equal(result.stage9_121_burst.result,'blocked');
+  assert.equal(result.stage8_announcement_edit_denied.result,'not_run');
  }finally{globalThis.fetch=original;}
 });
 
+test('false public fixture result cannot be counted as blocked',async()=>{
+ const prior=globalThis.fetch;
+ try{
+  globalThis.fetch=async(url)=>{
+   const u=new URL(url);
+   if(u.pathname==='/api/checks')return new Response(JSON.stringify({
+    schema:'aleph.readonly.fixture.v1',caseId:u.searchParams.get('case'),
+    source:'fixed_virtual_fixture',ready:false
+   }),{status:200});
+   if(u.pathname==='/aleph.json')return new Response('{"step":12}',{status:200});
+   if(u.pathname==='/')return new Response(null,{status:200,headers:{'x-content-type-options':'nosniff'}});
+   return new Response(null,{status:401});
+  };
+  const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
+  const rows=await runStage12PublicReadOnlyChecks(config);
+  const affected=rows.filter(x=>READ_ONLY_CASES.includes(x.attackId));
+  assert.equal(affected.length,11);
+  assert.ok(affected.every(x=>x.observed==='HTTP 200'&&x.result==='breached'));
+  assert.equal(rows.find(x=>x.attackId==='stage8_announcement_edit_denied').result,'not_run');
+ }finally{globalThis.fetch=prior;}
+});
 test('Git HEAD is read from allowed filesystem; manifest is explicit',()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
  const list=JSON.parse(readFileSync(new URL('../scripts/stage12-changed-files.json',import.meta.url),'utf8'));
@@ -84,7 +115,7 @@ test('Offline reads remain not_run without fabricated result',async()=>{
  try{
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
   const rows=await runStage12PublicReadOnlyChecks(config);
-  assert.equal(n,8);
+  assert.equal(n,19);
   assert.ok(rows.every(x=>x.observed==='not_run'&&x.result==='not_run'));
  }finally{globalThis.fetch=before;}
 });

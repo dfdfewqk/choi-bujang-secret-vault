@@ -67,7 +67,7 @@ try{
     ' const path=url.pathname;',
     ' if(path==="/aleph.json")return new Response(JSON.stringify({step:12}),{status:200});',
     ' if(path==="/")return new Response("",{status:200,headers:{"x-content-type-options":"nosniff"}});',
-    ' if(path==="/api/checks")return new Response(JSON.stringify({source:"fixed_virtual_fixture",ready:true}),{status:200});',
+    ' if(path==="/api/checks")return new Response(JSON.stringify({schema:"aleph.readonly.fixture.v1",caseId:url.searchParams.get("case"),source:"fixed_virtual_fixture",ready:true}),{status:200});',
     ' const status=(path==="/api/restore"?405:path==="/data.json"||path==="/notes.json"?404:401);',
     ' return new Response(JSON.stringify({error:"UNAUTHORIZED"}),{status});',
     '};'
@@ -87,8 +87,8 @@ try{
   assert.equal(passReference.hasCheckedAt,true);
   assert.equal(candidate.checks,20);
   assert.equal(passReference.checks,13);
-  assert.equal(candidate.observed,8);
-  assert.equal(candidate.notRun,12);
+  assert.equal(candidate.observed,19);
+  assert.equal(candidate.notRun,1);
   assert.equal(passReference.observed,13);
   assert.equal(passReference.notRun,0);
   process.stdout.write(JSON.stringify({

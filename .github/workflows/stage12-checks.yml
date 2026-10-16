@@ -48,6 +48,8 @@ jobs:
         run: |
           node --check scripts/bundle.mjs
           node --check src/stage12-bundle-check.mjs
+          node --check src/stage12-readonly-fixtures.mjs
+          node --check api/checks.js
           node --check src/decider.mjs
           node --check src/resource-zones.mjs
       - name: Restricted offline bundle (public GETs record not_run)
@@ -77,6 +79,8 @@ jobs:
             ||b.attackAttempts.length<1||b.attackAttempts.length>20
             ||unique.size!==b.attackAttempts.length
             ||!b.attackAttempts.some(r=>r.attackId==='stage12_anonymous_operations_denied')
+            ||!b.attackAttempts.some(r=>r.attackId==='stage8_announcement_edit_denied'
+              &&r.observed==='not_run'&&r.result==='not_run')
             ||!Number.isFinite(Date.parse(b.checkedAt))
             ||b.attackAttempts.some(r=>Object.keys(r).sort().join(',')!=='attackId,expected,observed,result,stage')
             ||b.attackAttempts.some(r=>!r.observed||!r.expected||!Number.isInteger(r.stage)
