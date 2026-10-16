@@ -156,6 +156,27 @@ test('runtime network guard rejects write verbs and nonpublic URLs',()=>{
     'fetch');
  expectSandboxRejection("await fetch('http://127.0.0.1:1234/')",'fetch');
 });
+test('caught forbidden network request remains a failure in the sticky ledger',()=>{
+ const result=diagnose("try{await fetch('https://choi-bujang-secret-vault-six-jet.vercel.app/aleph.json',{method:'POST'})}catch{};");
+ assert.notEqual(result.status,0,'Caught forbidden operation must still fail the process');
+ assert.match(result.stderr,/BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER/u);
+ assert.match(result.stderr,/FORBIDDEN fetch POST/u);
+});
+test('caught non-public URL remains a failure in the sticky ledger',()=>{
+ const result=diagnose("try{await fetch('http://127.0.0.1:1234/')}catch{};");
+ assert.notEqual(result.status,0);
+ assert.match(result.stderr,/BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER/u);
+});
+test('caught unauthorized file access remains a failure in the sticky ledger',()=>{
+ const result=diagnose("try{const f=await import('node:fs');f.readFileSync('/tmp/forbidden-sticky-test','utf8')}catch{};");
+ assert.notEqual(result.status,0);
+ assert.match(result.stderr,/BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER/u);
+});
+test('caught forbidden child process remains a failure in the sticky ledger',()=>{
+ const result=diagnose("try{const c=await import('node:child_process');c.execFileSync('git',['status'])}catch{};");
+ assert.notEqual(result.status,0);
+ assert.match(result.stderr,/BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER/u);
+});
 test('diagnostic mock confirms public GET and HEAD are permitted, without external requests',()=>{
  const result=diagnose('for(const method of [\"GET\",\"HEAD\"]){'
   +'const r=await fetch('+JSON.stringify(publicApp)+',{method});'

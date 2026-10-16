@@ -11,7 +11,18 @@ const config=JSON.parse(fs.readFileSync(join(root,'aleph.config.json'),'utf8'));
 const publicOrigin=new URL(config.publicAppUrl??'https://invalid.example').origin;
 if(!publicOrigin.startsWith('https://')||!new URL(publicOrigin).hostname.endsWith('.vercel.app'))
  throw Error('BUNDLE_ISOLATION: public app origin must be a public HTTPS Vercel URL');
-const fail=reason=>{throw new Error('BUNDLE_ISOLATION: '+reason);};
+// Keep a sticky record: returning not_run after catching an exception must not
+// hide a forbidden attempted operation from the CI-only sandbox.
+const forbiddenAttempts=[];
+const fail=reason=>{
+ forbiddenAttempts.push(reason);
+ throw new Error('BUNDLE_ISOLATION: '+reason);
+};
+process.on('exit',()=>{
+ if(!forbiddenAttempts.length)return;
+ process.stderr.write('BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER '+JSON.stringify(forbiddenAttempts)+'\n');
+ process.exitCode=86;
+});
 const gitArgs=['show','--first-parent','-m','--pretty=format:%H','--name-only','HEAD'];
 const allowedGit=(command,args,options)=>command==='git'&&Array.isArray(args)
  &&args.length===gitArgs.length&&args.every((x,i)=>x===gitArgs[i])
