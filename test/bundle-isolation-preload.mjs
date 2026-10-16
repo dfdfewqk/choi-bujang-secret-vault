@@ -82,7 +82,7 @@ syncBuiltinESMExports();
 
 // The runtime resolver protects both static and dynamically imported modules.
 const sourceModules=new Set([
- 'scripts/bundle.mjs','src/decider.mjs',
+ 'scripts/bundle.mjs','src/attack-check.mjs','src/decider.mjs',
  'src/resource-zones.mjs','src/stage12-bundle-check.mjs',
 ].map(s=>pathToFileURL(join(root,s)).href));
 const builtins=new Set(['node:fs','node:path','node:url','node:child_process','node:crypto']);

@@ -65,8 +65,12 @@ jobs:
             ||b.attackAttempts.length<1||b.attackAttempts.length>20
             ||unique.size!==b.attackAttempts.length
             ||!b.attackAttempts.some(r=>r.attackId==='stage12_anonymous_operations_denied')
-            ||b.attackAttempts.some(r=>Object.keys(r).sort().join(',')!=='attackId,expected,observed')
-            ||b.attackAttempts.some(r=>!r.observed||!r.expected))process.exit(1);
+            ||!Number.isFinite(Date.parse(b.checkedAt))
+            ||b.attackAttempts.some(r=>Object.keys(r).sort().join(',')!=='attackId,expected,observed,result,stage')
+            ||b.attackAttempts.some(r=>!r.observed||!r.expected||!Number.isInteger(r.stage)
+              ||r.stage<1||r.stage>12||!['blocked','breached','not_run'].includes(r.result)
+              ||!/^(not_run|HTTP [1-5][0-9]{2})$/.test(r.observed)
+              ||(r.observed==='not_run')!==(r.result==='not_run')))process.exit(1);
           const unrun=b.attackAttempts.filter(r=>r.observed==='not_run').length;
           console.log(JSON.stringify({step:b.step,commit:b.commit,checks:b.attackAttempts.length,
             observed:b.attackAttempts.length-unrun,notRun:unrun}));

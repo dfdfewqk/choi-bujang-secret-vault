@@ -97,6 +97,29 @@ const PUBLIC_READS = Object.freeze([
   ['stage12_anonymous_operations_denied', '/api/operations'],
 ]);
 
+
+const CASE_STAGE = Object.freeze({
+  public_data_removed:2,
+  anonymous_note_read_denied:3,
+  deployment_step12_manifest:12,
+  anonymous_item_read_denied:4,
+  home_security_header:2,
+  stage6_registered_device_allowed:6,
+  stage6_unregistered_device_denied:6,
+  stage7_composite_step_up:7,
+  stage7_recently_verified_allow:7,
+  stage8_unknown_route_denied:8,
+  stage8_announcement_edit_denied:8,
+  stage8_notes_list_denied:8,
+  stage8_api_notes_list_denied:8,
+  stage9_120_normal:9,
+  stage9_121_burst:9,
+  stage9_two_subjects:9,
+  stage9_slow_requests:9,
+  stage10_anonymous_restore_denied:10,
+  stage11_anonymous_device_denied:11,
+  stage12_anonymous_operations_denied:12,
+});
 function publicApp(config) {
   const app = new URL(config.publicAppUrl);
   if (app.protocol !== 'https:' || !app.hostname.endsWith('.vercel.app')
@@ -104,51 +127,54 @@ function publicApp(config) {
       || app.pathname !== '/') throw Error('Stage12 public HTTPS origin invalid');
   return app;
 }
-
 async function observe(app, attackId, path) {
   const url = new URL(path, app);
-  if (url.origin !== app.origin || url.search || url.hash) throw Error('Invalid public probe path');
+  if (url.origin !== app.origin || url.search || url.hash)
+    throw Error('Invalid public probe path');
   try {
     const response = await fetch(url, {
       method: 'GET',
-      credentials: 'omit',
-      redirect: 'error',
       headers: {accept: 'application/json'},
+      redirect: 'manual',
       signal: AbortSignal.timeout(4500),
       alephEvidence: {caseId: attackId, requestKey: 'read'},
     });
-    // Only a public manifest may be inspected. Never read note/API response
-    // bodies, including on unexpected HTTP 200.
-    if (attackId === 'deployment_step12_manifest' && response.status === 200) {
-      const advertised = Number(response.headers.get('content-length') ?? 0);
-      if (!Number.isSafeInteger(advertised) || advertised > 4096)
-        return 'HTTP 200; manifestStep=unverified';
-      let step = 'unverified';
-      try {
-        const body = await response.text();
-        if (body.length <= 4096) {
-          const parsed = JSON.parse(body);
-          if (Number.isInteger(parsed?.step)) step = String(parsed.step);
+    // The 53-point reference uses the canonical observable format HTTP NNN
+    // and reports blocked/breached separately. A status alone isn't a pass.
+    let blocked = false;
+    if (attackId === 'deployment_step12_manifest') {
+      // This file is public. Never read response bodies from private note APIs.
+      if (response.status === 200) {
+        const advertised = Number(response.headers.get('content-length') ?? 0);
+        if (Number.isSafeInteger(advertised) && advertised <= 4096) {
+          try {
+            const body = await response.text();
+            if (body.length <= 4096) blocked = JSON.parse(body)?.step === 12;
+          } catch { /* public manifest not validated */ }
         }
-      } catch { /* A malformed public manifest is not a successful check. */ }
-      return 'HTTP 200; manifestStep=' + step;
+      }
+    } else if (attackId === 'home_security_header') {
+      blocked = response.status === 200
+        && response.headers.get('x-content-type-options') === 'nosniff';
+    } else {
+      blocked = [401,403,404,405].includes(response.status);
     }
-    const header = attackId === 'home_security_header'
-      ? '; nosniff=' + (response.headers.get('x-content-type-options') === 'nosniff')
-      : '';
-    return 'HTTP ' + response.status + header;
+    return {observed: 'HTTP ' + response.status, result: blocked ? 'blocked' : 'breached'};
   } catch {
-    return 'not_run';
+    return {observed: 'not_run', result: 'not_run'};
   }
 }
 
 export async function runStage12PublicReadOnlyChecks(config) {
   const app = publicApp(config);
-  // Public GETs run concurrently with bounded request timeouts; no writes.
-  const measured = await Promise.all(PUBLIC_READS.map(async ([id, path]) =>
-    [id, await observe(app, id, path)]));
-  const outcomes = new Map(measured);
+  const measured = new Map();
+  // Sequential GETs mirror the 53-point reference and avoid overlapping
+  // evidence case registrations. No writes or authenticated probes.
+  for (const [id, path] of PUBLIC_READS) {
+    measured.set(id, await observe(app, id, path));
+  }
   return EXPECTATIONS.map(([attackId, expected]) => ({
-    attackId, expected, observed: outcomes.get(attackId) ?? 'not_run',
+    attackId, stage: CASE_STAGE[attackId], expected,
+    ...(measured.get(attackId) ?? {observed: 'not_run', result: 'not_run'}),
   }));
 }

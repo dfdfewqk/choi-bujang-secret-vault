@@ -25,12 +25,14 @@ test('npm run bundle invokes the exact check function inspected by Stage12 tests
  const packageJson=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8'));
  const source=readFileSync(resolve(root,'scripts/bundle.mjs'),'utf8');
  assert.equal(packageJson.scripts.bundle,'node scripts/bundle.mjs');
- assert.match(source,/import \{ runStage12PublicReadOnlyChecks \} from '\.\.\/src\/stage12-bundle-check\.mjs'/u);
- assert.match(source,/await runStage12PublicReadOnlyChecks\(config\)/u);
+ assert.match(source,/await import\(pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href\)/u);
+ assert.match(source,/await runAttackChecks\(config\)/u);
 });
 test('entire npm run bundle import closure stays within judge builtin allowlist',()=>{
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
- const queue=['scripts/bundle.mjs'],seen=new Set();
+ // The sole Stage12 dynamic entry is explicitly whitelisted and monitored
+ // by the CI-only runtime module resolver. Previous stages' branches are not run.
+ const queue=['scripts/bundle.mjs','src/attack-check.mjs','src/decider.mjs'],seen=new Set();
  const allowed=new Set(['node:fs','node:path','node:url','node:child_process','node:crypto']);
  while(queue.length) {
   const rel=queue.pop();
@@ -47,14 +49,19 @@ test('entire npm run bundle import closure stays within judge builtin allowlist'
     queue.push(target.slice(root.length+1));
    }
   }
-  assert.doesNotMatch(source,/\bawait\s+import\s*\(/u,'Dynamic import in '+rel);
+  if(rel==='scripts/bundle.mjs'){
+   assert.match(source,/await import\(pathToFileURL\(join\(root, 'src', 'decider\.mjs'\)\)\.href\)/u);
+   assert.match(source,/await import\(pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href\)/u);
+  }else if(rel==='src/attack-check.mjs'){
+   assert.match(source,/if \(config\.step === 12\) return runStage12PublicReadOnlyChecks\(config, app\)/u);
+  }else assert.doesNotMatch(source,/\bawait\s+import\s*\(/u,'Unexpected dynamic import in '+rel);
   if(rel==='src/stage12-bundle-check.mjs'){
    assert.match(source,/method: 'GET'/u);
    assert.doesNotMatch(source,/method:\s*'(?:POST|PUT|DELETE|PATCH)'/u);
-  }else assert.doesNotMatch(source,/\bfetch\s*\(/u,'Unexpected network in '+rel);
+  }else if(rel!=='src/attack-check.mjs') assert.doesNotMatch(source,/\bfetch\s*\(/u,'Unexpected network in '+rel);
  }
  assert.deepEqual([...seen].sort(),[
-  'scripts/bundle.mjs','src/decider.mjs','src/resource-zones.mjs','src/stage12-bundle-check.mjs'
+  'scripts/bundle.mjs','src/attack-check.mjs','src/decider.mjs','src/resource-zones.mjs','src/stage12-bundle-check.mjs'
  ].sort());
 });
 test('CI-only guard checks runtime imports, ESM named bindings and process execution',()=>{

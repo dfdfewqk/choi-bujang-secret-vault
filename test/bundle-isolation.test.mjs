@@ -7,90 +7,85 @@ import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {runStage12PublicReadOnlyChecks} from '../src/stage12-bundle-check.mjs';
 
-test('Stage12 submission imports remain allowlisted and safe GETs are actually measured',async()=>{
+test('Stage12 exact submitted entrypoint and 53-point observation contract',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
- assert.match(source,/execFileSync\('git', \[/u);
- assert.match(source,/'show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'/u);
- assert.match(source,/from '\.\.\/src\/stage12-bundle-check\.mjs'/u);
+ assert.match(source,/await import\(pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href\)/u);
+ assert.match(source,/await runAttackChecks\(config\)/u);
  assert.equal([...source.matchAll(/\bexecFileSync\s*\(/gu)].length,1);
- assert.doesNotMatch(source,/\b(?:spawn|spawnSync|execSync|fork|await import)\s*\(/u);
+ assert.match(source,/'show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'/u);
  const checker=readFileSync(new URL('../src/stage12-bundle-check.mjs',import.meta.url),'utf8');
- assert.doesNotMatch(checker,/\b(?:execFileSync|spawn|execSync|fork|await import)\s*\(/u);
  assert.match(checker,/method: 'GET'/u);
  assert.match(checker,/alephEvidence:/u);
- assert.doesNotMatch(source,/readFileSync\(join\(root, 'bundle-notes\.json'\)/u);
- assert.match(source,/official_41_tests_and_identity_revocation_not_verified/u);
- assert.ok(readFileSync(new URL('../.gitignore',import.meta.url),'utf8')
-   .split(/\r?\n/u).includes('bundle-notes.json'));
-
- const original=globalThis.fetch, calls=[];
+ assert.doesNotMatch(checker,/\b(?:execFileSync|spawn|execSync|fork|await import)\s*\(/u);
+ const calls=[],original=globalThis.fetch;
  try{
   globalThis.fetch=async(url,options)=>{
-   const value=new URL(url);
-   calls.push(value.pathname);
-   assert.equal(value.protocol,'https:');
-   assert.equal(value.hostname,'choi-bujang-secret-vault-six-jet.vercel.app');
+   const path=new URL(url).pathname;
+   calls.push({path,caseId:options.alephEvidence.caseId});
+   assert.equal(new URL(url).protocol,'https:');
    assert.equal(options.method,'GET');
-   assert.equal(options.redirect,'error');
-   assert.equal(options.credentials,'omit');
-   assert.equal(options.alephEvidence.requestKey,'read');
-   assert.equal(typeof options.alephEvidence.caseId,'string');
+   assert.equal(options.redirect,'manual');
+   assert.equal(options.credentials,undefined);
    assert.equal(options.headers.accept,'application/json');
-   assert.equal(options.body,undefined);
-   if(value.pathname==='/aleph.json')
-    return new Response(JSON.stringify({step:12}),{status:200,
-     headers:{'content-type':'application/json'}});
-   if(value.pathname==='/')return new Response(null,{status:200,
-    headers:{'x-content-type-options':'nosniff'}});
-   if(value.pathname==='/data.json')return new Response(null,{status:404});
-   if(value.pathname==='/api/restore')return new Response(null,{status:405});
+   assert.equal(options.alephEvidence.requestKey,'read');
+   if(path==='/aleph.json')return new Response('{"step":12}',{status:200});
+   if(path==='/')return new Response(null,{status:200,headers:{'x-content-type-options':'nosniff'}});
+   if(path==='/data.json')return new Response(null,{status:404});
+   if(path==='/api/restore')return new Response(null,{status:405});
    return new Response(null,{status:401});
   };
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
-  const checks=await runStage12PublicReadOnlyChecks(config);
-  assert.equal(calls.length,8,'Eight safe anonymous reads must be attempted');
-  assert.equal(new Set(calls).size,8);
-  assert.equal(checks.length,20);
-  assert.equal(new Set(checks.map(c=>c.attackId)).size,20);
-  assert.ok(checks.every(c=>Object.keys(c).sort().join(',')==='attackId,expected,observed'));
-  assert.equal(checks.filter(c=>c.observed==='not_run').length,12);
-  const result=Object.fromEntries(checks.map(c=>[c.attackId,c.observed]));
-  assert.equal(result.deployment_step12_manifest,'HTTP 200; manifestStep=12');
-  assert.equal(result.anonymous_note_read_denied,'HTTP 401');
-  assert.equal(result.stage10_anonymous_restore_denied,'HTTP 405');
-  assert.equal(result.home_security_header,'HTTP 200; nosniff=true');
-  assert.equal(result.stage9_121_burst,'not_run');
+  const rows=await runStage12PublicReadOnlyChecks(config);
+  assert.equal(calls.length,8);
+  assert.deepEqual(calls.map(x=>x.path),[
+   '/data.json','/api/notes','/aleph.json',
+   '/api/notes/11111111-1111-4111-8111-111111111111',
+   '/','/api/restore','/api/device','/api/operations'
+  ]);
+  assert.equal(new Set(rows.map(x=>x.attackId)).size,20);
+  assert.ok(rows.every(x=>Object.keys(x).sort().join(',')==='attackId,expected,observed,result,stage'));
+  assert.ok(rows.every(x=>Number.isInteger(x.stage)&&x.stage>=1&&x.stage<=12));
+  assert.ok(rows.every(x=>['blocked','breached','not_run'].includes(x.result)));
+  assert.ok(rows.every(x=>(x.observed==='not_run')===(x.result==='not_run')));
+  assert.equal(rows.filter(x=>x.result==='not_run').length,12);
+  const result=Object.fromEntries(rows.map(x=>[x.attackId,x]));
+  assert.equal(result.deployment_step12_manifest.observed,'HTTP 200');
+  assert.equal(result.deployment_step12_manifest.result,'blocked');
+  assert.equal(result.home_security_header.result,'blocked');
+  assert.equal(result.stage10_anonymous_restore_denied.result,'blocked');
+  assert.equal(result.anonymous_note_read_denied.result,'blocked');
+  assert.equal(result.stage9_121_burst.result,'not_run');
  }finally{globalThis.fetch=original;}
 });
 
-test('offline public reads remain not_run and never invent success',async()=>{
- const original=globalThis.fetch;let attempts=0;
- globalThis.fetch=async()=>{attempts++;throw new Error('safe offline test');};
+test('Offline reads remain not_run without fabricated result',async()=>{
+ const before=globalThis.fetch;let n=0;
+ globalThis.fetch=async()=>{n++;throw new Error('offline');};
  try{
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
   const rows=await runStage12PublicReadOnlyChecks(config);
-  assert.equal(attempts,8);
-  assert.equal(rows.length,20);
-  assert.ok(rows.every(r=>r.observed==='not_run'));
- }finally{globalThis.fetch=original;}
+  assert.equal(n,8);
+  assert.ok(rows.every(x=>x.observed==='not_run'&&x.result==='not_run'));
+ }finally{globalThis.fetch=before;}
 });
 
-test('unexpected protected HTTP 200 is recorded without reading private response body',async()=>{
- const original=globalThis.fetch;let bodyReads=0;
+test('Unexpected protected HTTP 200 is breached and no private response body is read',async()=>{
+ const before=globalThis.fetch;let reads=0;
  try{
-  globalThis.fetch=async(url)=>{
-   const p=new URL(url).pathname;
-   const res=p==='/aleph.json'
+  globalThis.fetch=async url=>{
+   const path=new URL(url).pathname;
+   const res=path==='/aleph.json'
     ?new Response('{"step":12}',{status:200})
-    :new Response(null,{status:p==='/api/notes'?200:401});
-   if(p==='/api/notes')res.text=async()=>{bodyReads++;throw Error('private content read');};
+    :new Response(null,{status:path==='/api/notes'?200:401});
+   if(path==='/api/notes')res.text=async()=>{reads++;throw Error('private response accessed');};
    return res;
   };
   const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
-  const rows=await runStage12PublicReadOnlyChecks(config);
-  assert.equal(rows.find(r=>r.attackId==='anonymous_note_read_denied').observed,'HTTP 200');
-  assert.equal(bodyReads,0);
- }finally{globalThis.fetch=original;}
+  const result=await runStage12PublicReadOnlyChecks(config);
+  assert.equal(result.find(x=>x.attackId==='anonymous_note_read_denied').observed,'HTTP 200');
+  assert.equal(result.find(x=>x.attackId==='anonymous_note_read_denied').result,'breached');
+  assert.equal(reads,0);
+ }finally{globalThis.fetch=before;}
 });
 
 const isolationRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');

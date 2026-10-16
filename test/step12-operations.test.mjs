@@ -50,37 +50,29 @@ test('approved account receives scoped redacted data, never fabricated 41 passes
  assert.equal(res.body.recovery.completed,0);assert.equal(res.body.recovery.latestAt,null);
  assert.equal(res.body.rules.policyStatus,'ready');assert.doesNotMatch(JSON.stringify(res.body),/do not expose|owner_id|publicKey/u);
 });
-test('actual Stage12 bundle and legacy wrapper share real-read / not_run contract',async()=>{
- const previous=globalThis.fetch;let requestCount=0;
+test('actual Stage12 bundle and legacy wrapper produce the same 5-field observations',async()=>{
+ const prior=globalThis.fetch;let count=0;
  try{
-  globalThis.fetch=async(url,options)=>{
-   requestCount++;
-   assert.equal(options.method,'GET');
+  globalThis.fetch=async url=>{
+   count++;
    const path=new URL(url).pathname;
    if(path==='/aleph.json')return new Response('{"step":12}',{status:200});
-   if(path==='/')return new Response(null,{status:200,
-    headers:{'x-content-type-options':'nosniff'}});
+   if(path==='/')return new Response(null,{status:200,headers:{'x-content-type-options':'nosniff'}});
    if(path==='/data.json')return new Response(null,{status:404});
    if(path==='/api/restore')return new Response(null,{status:405});
    return new Response(null,{status:401});
   };
   const {runAttackChecks}=await import('../src/attack-check.mjs');
   const {runStage12PublicReadOnlyChecks}=await import('../src/stage12-bundle-check.mjs');
-  const {readFileSync}=await import('node:fs');
-  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
-  assert.match(source,/await runStage12PublicReadOnlyChecks\(config\)/u);
   const config=(await import('../aleph.config.json',{with:{type:'json'}})).default;
-  const submitted=await runStage12PublicReadOnlyChecks(config);
-  const wrapper=await runAttackChecks(config);
-  assert.deepEqual(submitted,wrapper,'Legacy wrapper and submitted checker disagree');
-  assert.equal(submitted.length,20);
-  assert.equal(new Set(submitted.map(r=>r.attackId)).size,submitted.length);
-  assert.ok(submitted.some(r=>r.attackId==='stage12_anonymous_operations_denied'));
-  assert.equal(submitted.filter(r=>r.attackId.startsWith('stage9_')).length,4);
-  assert.ok(submitted.every(r=>Object.keys(r).sort().join(',')==='attackId,expected,observed'));
-  assert.equal(submitted.filter(r=>r.observed==='not_run').length,12);
-  assert.equal(requestCount,16,'Each of the two independent functions should make 8 GETs');
- }finally{globalThis.fetch=previous;}
+  const first=await runAttackChecks(config),second=await runStage12PublicReadOnlyChecks(config);
+  assert.deepEqual(first,second);
+  assert.equal(count,16);
+  assert.equal(first.length,20);
+  assert.equal(first.filter(x=>x.result==='not_run').length,12);
+  assert.equal(first.filter(x=>x.result==='blocked').length,8);
+  assert.ok(first.every(x=>Object.keys(x).sort().join(',')==='attackId,expected,observed,result,stage'));
+ }finally{globalThis.fetch=prior;}
 });
 test('app client signs operations GET; API verifies it, queries snapshot and records the same request',async()=>{
  const previous=globalThis.fetch;let registration,approved=false;const used=new Set(),audits=[];
