@@ -1,4 +1,19 @@
 [
+  ".github/workflows/stage12-checks.yml",
+  "README.md",
+  "api/checks.js",
+  "docs/STAGE12_OPERATIONS.md",
+  "public/index.html",
+  "public/operations-client.mjs",
+  "public/operations.css",
+  "public/operations.html",
+  "public/receipt.mjs",
+  "scripts/bundle.mjs",
   "scripts/stage12-changed-files.json",
-  "test/bundle-isolation.test.mjs"
+  "src/stage12-bundle-check.mjs",
+  "src/stage12-summary.mjs",
+  "test/bundle-isolation-preload.mjs",
+  "test/bundle-isolation.test.mjs",
+  "test/stage12-readonly-fixtures.test.mjs",
+  "test/stage12-summary.test.mjs"
 ]

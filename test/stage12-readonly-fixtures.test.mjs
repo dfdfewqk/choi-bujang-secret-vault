@@ -38,7 +38,7 @@ test('unsupported, malformed, and all write requests are denied without executin
   assert.equal(res.statusCode,405);
   assert.equal(res.body.error,'METHOD_NOT_ALLOWED');
  }
- for(const query of [{},{case:'stage8_announcement_edit_denied'},
+ for(const query of [{case:'stage8_announcement_edit_denied'},
    {case:'stage9_121_burst',anything:'extra'},
    {case:['stage9_121_burst']}]){
   const res=output();

@@ -50,6 +50,8 @@ jobs:
           node --check src/stage12-bundle-check.mjs
           node --check src/stage12-readonly-fixtures.mjs
           node --check api/checks.js
+          node --check src/stage12-summary.mjs
+          node --check public/receipt.mjs
           node --check src/decider.mjs
           node --check src/resource-zones.mjs
       - name: Restricted offline bundle (public GETs record not_run)

@@ -12,6 +12,18 @@
 <section><h2>복구 버전</h2><p id="operations-recovery">서버 감사기록 미확인</p></section>
 </div>
 <p id="operations-source">제공 엔진: ALEPH SDP 엔진. 학생 작업: 판정·탐지 규칙, 승인 앱, 자료실 API, 백업 복구, 작전실.</p>
+<section class="ops-receipt-detail">
+<h2>현재 공개 자체 점검 기록</h2>
+<p>실제 GET 응답은 HTTP 상태를, 요청하지 않은 쓰기·인증 검사는 미실행으로 표시합니다. 고정 가상 시험은 실제 회수·승인을 뜻하지 않습니다.</p>
+<dl id="ops-stats" class="ops-stats">
+<div><dt>전체 점검</dt><dd data-k="total">-</dd></div>
+<div><dt>자체 점검 기대 일치</dt><dd data-k="blocked">-</dd></div>
+<div><dt>자체 점검 불일치</dt><dd data-k="failed">-</dd></div>
+<div><dt>미실행</dt><dd data-k="notRun">-</dd></div>
+</dl>
+<p id="ops-meta" role="status">서버의 실제 점검 기록을 읽기 전입니다.</p>
+<div class="ops-table-wrap"><table><thead><tr><th>사례 / 단계</th><th>기대 조건</th><th>실제 관측</th><th>상태</th></tr></thead><tbody id="ops-selfcheck-rows"></tbody></table></div>
+</section>
 <section><h2>공식 총공세 · 41종</h2><p id="operations-campaign">공식 결과 미연결 · 실행 여부 미확인. 아래 자체 점검과 합산하지 않습니다.</p></section>
 <section><h2>실제 API 관측과 점검 결과</h2><p>계정 기록과 익명 서비스 요청 기록을 표시합니다. 요청 본문·메모·신원·기기 키는 표시하지 않습니다.</p><p id="operations-record-count"></p>
 <div class="ops-table-wrap"><table><thead><tr><th>단계·구분</th><th>요청 / 기대 결과</th><th>실제 결과</th><th>요청 ID</th><th>확인 시각 / 출처</th></tr></thead><tbody id="operations-results"></tbody></table></div>

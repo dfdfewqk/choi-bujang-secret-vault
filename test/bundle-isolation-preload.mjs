@@ -123,8 +123,8 @@ globalThis.fetch=async(input,init={})=>{
   'stage8_api_notes_list_denied','stage9_120_normal','stage9_121_burst',
   'stage9_two_subjects','stage9_slow_requests',
  ]);
- const allowedFixture=url.pathname==='/api/checks'&&url.searchParams.size===1
-  &&fixtureNames.has(url.searchParams.get('case'));
+ const allowedFixture=url.pathname==='/api/checks'
+  &&[...fixtureNames].some(id=>url.search==='?case='+id);
  if(url.origin!==publicOrigin||url.username||url.password||url.hash
   ||(url.search&&!allowedFixture)
   ||!['GET','HEAD'].includes(method)||init?.body!=null

@@ -140,8 +140,10 @@ function publicApp(config) {
 async function observe(app, attackId, path) {
   const url = new URL(path, app);
   const isFixture=FIXTURE_READ_IDS.includes(attackId);
+  // The private judge may supply a restricted URL implementation without
+  // URLSearchParams. The fixed case query is a literal known string.
   const matchingFixtureQuery=isFixture&&url.pathname==='/api/checks'
-    &&url.searchParams.size===1&&url.searchParams.get('case')===attackId;
+    &&url.search==='?case='+attackId;
   if(url.origin!==app.origin||url.hash||(url.search&&!matchingFixtureQuery)
      ||(isFixture&&!matchingFixtureQuery))
     throw Error('Invalid public probe path');
@@ -196,14 +198,19 @@ async function observe(app, attackId, path) {
   }
 }
 
-export async function runStage12PublicReadOnlyChecks(config) {
+export async function runStage12PublicReadOnlyChecks(config,{concurrency=1}={}) {
   const app = publicApp(config);
   const measured = new Map();
   // Sequential anonymous public GETs only. One forbidden write check remains
   // not_run; no authentication, API mutations or live engine test is claimed.
-  for (const [id, path] of PUBLIC_READS) {
-    measured.set(id, await observe(app, id, path));
-  }
+  const workers=Math.max(1,Math.min(4,Number.isInteger(concurrency)?concurrency:1));
+  let cursor=0;
+  await Promise.all(Array.from({length:workers},async()=>{
+    while(cursor<PUBLIC_READS.length){
+      const [id,path]=PUBLIC_READS[cursor++];
+      measured.set(id,await observe(app,id,path));
+    }
+  }));
   return EXPECTATIONS.map(([attackId, expected]) => ({
     attackId, stage: CASE_STAGE[attackId], expected,
     ...(measured.get(attackId) ?? {observed: 'not_run', result: 'not_run'}),

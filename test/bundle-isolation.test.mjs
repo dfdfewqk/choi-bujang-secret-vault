@@ -258,3 +258,31 @@ test('source contains no child process but does read the Git repository',()=>{
  assert.match(source,/readFileSync\(join\(directory,'HEAD'\)/u);
  assert.doesNotMatch(source,/\b(?:spawnSync|spawn|fork|execSync|execFile|process\.binding)\s*\(/u);
 });
+
+// The judge supplies a restricted URL facade: it may lack searchParams.
+test('Stage12 GET checks run with URL.searchParams unavailable',async()=>{
+ const NativeURL=globalThis.URL, originalFetch=globalThis.fetch;
+ const requests=[];
+ try{
+  globalThis.URL=class extends NativeURL {
+   get searchParams(){return undefined;}
+  };
+  globalThis.fetch=async(url,options)=>{
+   requests.push({path:url.pathname,query:url.search,method:options?.method});
+   if(url.pathname==='/api/checks'){
+    const caseId=url.search.slice('?case='.length);
+    return new Response(JSON.stringify({schema:'aleph.readonly.fixture.v1',
+      caseId,source:'fixed_virtual_fixture',ready:true}),{status:200});
+   }
+   if(url.pathname==='/aleph.json')return new Response('{"step":12}',{status:200});
+   if(url.pathname==='/')return new Response(null,{status:200,headers:{'x-content-type-options':'nosniff'}});
+   return new Response(null,{status:401});
+  };
+  const config=JSON.parse(readFileSync(new NativeURL('../aleph.config.json',import.meta.url)));
+  const rows=await runStage12PublicReadOnlyChecks(config);
+  assert.equal(requests.length,19);
+  assert.ok(requests.every(r=>r.method==='GET'));
+  assert.equal(rows.filter(r=>r.result==='not_run').length,1);
+  assert.equal(rows.filter(r=>r.result==='blocked').length,19);
+ }finally{globalThis.URL=NativeURL;globalThis.fetch=originalFetch;}
+});

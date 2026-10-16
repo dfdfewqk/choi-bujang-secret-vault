@@ -1,6 +1,7 @@
 import {createServerAuthClient} from './auth-client.mjs';
 import {signedFetch} from './device-client.mjs';
 import {classifyAuditHeader} from './operations-health.mjs';
+import {loadOps} from './receipt.mjs';
 const deferred=[
  ['4·8 / 타인 메모','다른 시험 계정에서 확인한 메모 ID로 서명 GET','타인 메모 404 · 알려진 타인 ID 필요'],
  ['5 / 원본 DB','브라우저 역할의 원본 DB 직접 조회','거부 · 역할별 운영 재시험 미실행'],
@@ -82,5 +83,5 @@ export function mountOperations(root){
   }catch(e){say(e.message);render();}finally{$('#operations-probe').disabled=false;}
  }
  $('#operations-refresh').addEventListener('click',refresh);$('#operations-probe').addEventListener('click',runProbes);
- render();void refresh();
+ render();void loadOps(root);void refresh();
 }
