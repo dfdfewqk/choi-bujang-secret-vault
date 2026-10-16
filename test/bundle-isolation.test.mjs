@@ -20,7 +20,7 @@ test('Stage12 restricted submission and separate live checker contracts',async()
  assert.ok(wrapper.indexOf('if (config?.step === 12)') < wrapper.indexOf("await import('./attack-check-legacy.mjs')"));
  assert.doesNotMatch(wrapper,/\b(?:POST|PUT|PATCH|DELETE)\b/u);
  assert.equal([...source.matchAll(/\bexecFileSync\s*\(/gu)].length,1);
- assert.match(source,/'show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'/u);
+ assert.match(source,/'show', '--first-parent', '--format=%H', '--name-only', 'HEAD'/u);
  const checker=readFileSync(new URL('../src/stage12-bundle-check.mjs',import.meta.url),'utf8');
  assert.match(checker,/method: 'GET'/u);
  assert.match(checker,/alephEvidence:/u);

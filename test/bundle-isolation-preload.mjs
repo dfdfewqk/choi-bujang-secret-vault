@@ -23,7 +23,7 @@ process.on('exit',()=>{
  process.stderr.write('BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER '+JSON.stringify(forbiddenAttempts)+'\n');
  process.exitCode=86;
 });
-const gitArgs=['show','--first-parent','-m','--pretty=format:%H','--name-only','HEAD'];
+const gitArgs=['show','--first-parent','--format=%H','--name-only','HEAD'];
 const allowedGit=(command,args,options)=>command==='git'&&Array.isArray(args)
  &&args.length===gitArgs.length&&args.every((x,i)=>x===gitArgs[i])
  &&options&&resolve(options.cwd??'.')===root;

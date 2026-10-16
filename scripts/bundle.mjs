@@ -23,7 +23,7 @@ try {
   // Use literal Git arguments at the subprocess call site so a restricted
   // grader can verify that this is exactly one read-only `git show` call.
   const lines = execFileSync('git', [
-    'show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD',
+    'show', '--first-parent', '--format=%H', '--name-only', 'HEAD',
   ], {
     cwd: root, encoding: 'utf8', timeout: 5000, maxBuffer: 512 * 1024,
   }).trim().split(/\r?\n/u).map(line => line.trim()).filter(Boolean);
