@@ -10,9 +10,11 @@ import {runStage12SubmissionChecks} from '../src/stage12-submission-check.mjs';
 
 test('Stage12 restricted submission and separate live checker contracts',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
- assert.match(source,/pathToFileURL\(join\(root, 'src', 'stage12-submission-check\.mjs'\)\)\.href/u);
+ assert.match(source,/import \{ RULE_IDS \} from '\.\.\/src\/decider\.mjs'/u);
+ assert.match(source,/import \{ runStage12SubmissionChecks \} from '\.\.\/src\/stage12-submission-check\.mjs'/u);
  assert.match(source,/runStage12SubmissionChecks\(config\)/u);
- assert.doesNotMatch(source,/pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href/u);
+ assert.doesNotMatch(source,/\bawait\s+import\s*\(|pathToFileURL|node:url/u);
+ assert.doesNotMatch(source,/attack-check\.mjs/u);
  const wrapper=readFileSync(new URL('../src/attack-check.mjs',import.meta.url),'utf8');
  assert.match(wrapper,/runStage12PublicReadOnlyChecks\(config\)/u);
  assert.doesNotMatch(wrapper,/\b(?:execFileSync|spawn|execSync|fork|require)\s*\(/u);
@@ -200,6 +202,25 @@ test('diagnostic mock confirms public GET and HEAD are permitted, without extern
   +'const r=await fetch('+JSON.stringify(publicApp)+',{method});'
   +'if(r.status!==204)throw Error(\"unexpected mock status\");}');
  assert.equal(result.status,0,result.stderr);
+});
+test('offline bundle guard rejects even a caught public GET attempt',()=>{
+ const result=diagnose("try{await fetch('https://choi-bujang-secret-vault-six-jet.vercel.app/aleph.json',{method:'GET'})}catch{}",{
+  BUNDLE_ISOLATION_DIAGNOSTIC:'0',
+ });
+ assert.notEqual(result.status,0);
+ assert.match(result.stderr,/BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER/u);
+ assert.match(result.stderr,/FORBIDDEN outbound fetch in zero-network submission/u);
+});
+test('caught asynchronous forbidden filesystem write is recorded',()=>{
+ const result=diagnose("try{const fs=await import('node:fs');await fs.promises.writeFile('/tmp/forbidden-async','x')}catch{}");
+ assert.notEqual(result.status,0);
+ assert.match(result.stderr,/BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER/u);
+ assert.match(result.stderr,/FORBIDDEN node:fs.promises.writeFile/u);
+});
+test('git show option injection is rejected even on read-only subcommand',()=>{
+ const result=diagnose("try{const c=await import('node:child_process');c.execFileSync('git',['show','--first-parent','--format=%H','--name-only','HEAD'],{cwd:process.cwd(),shell:true})}catch{}");
+ assert.notEqual(result.status,0);
+ assert.match(result.stderr,/BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER/u);
 });
 test('runtime file guard blocks writes outside required submission output',()=>{
  expectSandboxRejection("import {writeFileSync} from 'node:fs';"

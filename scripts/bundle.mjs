@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { RULE_IDS } from '../src/decider.mjs';
+import { runStage12SubmissionChecks } from '../src/stage12-submission-check.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const fail = (message) => { throw new Error(message); };
@@ -53,7 +54,6 @@ try {
   if (config.step >= 3 && (!Array.isArray(config.allowedRoutes) || !config.allowedRoutes.length)) {
     fail('3단계부터 aleph.config.json의 allowedRoutes에 자료 API 경로가 필요합니다. 3단계 제작 3을 다시 확인해 주세요.');
   }
-  const { RULE_IDS } = await import(pathToFileURL(join(root, 'src', 'decider.mjs')).href);
   if (!Array.isArray(RULE_IDS)) fail('src/decider.mjs의 RULE_IDS는 규칙 이름 배열이어야 합니다.');
   const policyRules = [...RULE_IDS];
   if (policyRules.length > 80 || policyRules.some(item => typeof item !== 'string'
@@ -64,11 +64,8 @@ try {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
   if (config.step !== 12) fail('이번 제출 실행기는 12단계 전용입니다.');
-  // Import only pure, zero-network observations in the private judge sandbox.
-  // The real GET checker and all historical stage checks remain unchanged but
-  // are not imported by this submission entrypoint.
-  const { runStage12SubmissionChecks } = await import(
-    pathToFileURL(join(root, 'src', 'stage12-submission-check.mjs')).href);
+  // Static imports above are the entire Stage 12 module graph.
+  // Legacy and live GET checkers are preserved but never loaded by the bundle.
   const attackAttempts = runStage12SubmissionChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
     fail('직접 실행한 공격 점검 결과 1~20개가 필요합니다.');

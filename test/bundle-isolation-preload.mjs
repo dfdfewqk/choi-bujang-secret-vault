@@ -26,7 +26,9 @@ process.on('exit',()=>{
 const gitArgs=['show','--first-parent','--format=%H','--name-only','HEAD'];
 const allowedGit=(command,args,options)=>command==='git'&&Array.isArray(args)
  &&args.length===gitArgs.length&&args.every((x,i)=>x===gitArgs[i])
- &&options&&resolve(options.cwd??'.')===root;
+ &&options&&resolve(options.cwd??'.')===root
+ &&options.shell!==true&&options.env===undefined
+ &&options.uid===undefined&&options.gid===undefined;
 
 const realExecFileSync=child.execFileSync;
 for(const name of ['execFileSync','execFile','execSync','exec','spawn','spawnSync','fork']){
@@ -79,6 +81,12 @@ for(const name of ['open','readFile','writeFile','appendFile','appendFileSync',
  'renameSync','copyFile','copyFileSync','cp','cpSync','rmdir','rmdirSync']){
  fs[name]=()=>fail('FORBIDDEN node:fs.'+name);
 }
+// Async filesystem access is not needed by the Stage12 submission module graph.
+// Refuse it even if an importer catches the rejected Promise.
+for(const name of ['writeFile','appendFile','mkdir','rm','unlink','rename','copyFile','cp','open']){
+ if(typeof fs.promises[name]==='function')
+  fs.promises[name]=()=>fail('FORBIDDEN node:fs.promises.'+name);
+}
 // Node 22 ESM loading may call readFileSync -> openSync('r').
  // Only open the approved source modules, config and temporary test fixture for reading.
 const realOpenSync=fs.openSync;
@@ -114,7 +122,6 @@ registerHooks({
   return result;
  }
 });
-const nativeFetch=globalThis.fetch;
 globalThis.fetch=async(input,init={})=>{
  let url;
  try{url=new URL(input instanceof Request?input.url:input);}catch{fail('FORBIDDEN fetch URL');}
@@ -132,7 +139,8 @@ globalThis.fetch=async(input,init={})=>{
  if(['authorization','cookie','x-api-key','apikey'].some(key=>requestHeaders.has(key)))
   fail('FORBIDDEN authenticated fetch');
  if(process.env.BUNDLE_ISOLATION_DIAGNOSTIC==='1')return new Response(null,{status:204});
- // The guarded CI invocation is explicitly OFFLINE; the separate npm run bundle
- // step exercises real public GETs. Never turn this synthetic block into a pass.
- throw new Error('BUNDLE_ISOLATION: offline fixture, request not sent');
+ // Production npm run bundle is deliberately network-free. An allowed HTTP verb
+ // is still an unintended attempted operation in this particular entrypoint.
+ // The sticky ledger prevents catch blocks from converting it to a false pass.
+ fail('FORBIDDEN outbound fetch in zero-network submission');
 };

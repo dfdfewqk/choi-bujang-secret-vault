@@ -44,7 +44,13 @@ jobs:
         run: |
           test ! -e bundle-notes.json
           node --test test/bundle-isolation.test.mjs
-      - name: Restricted offline bundle run (GET allowed, network unexecuted)
+      - name: Verify submitted module graph syntax
+        run: |
+          node --check scripts/bundle.mjs
+          node --check src/stage12-submission-check.mjs
+          node --check src/decider.mjs
+          node --check src/resource-zones.mjs
+      - name: Strict zero-network restricted bundle run
         run: node --import ./test/bundle-isolation-preload.mjs scripts/bundle.mjs
       - run: npm run bundle
       - name: Independently verify public HTTPS and TLS expiry
@@ -56,9 +62,13 @@ jobs:
           const b=JSON.parse(readFileSync('artifacts/submission.json','utf8'));
           import {execFileSync} from 'node:child_process';
           import {RULE_IDS} from './src/decider.mjs';
-          const commit=execFileSync('git',['show','-s','--format=%H','HEAD'],{encoding:'utf8'}).trim();
-          const changedFiles=execFileSync('git',['show','--first-parent','-m','--pretty=format:','--name-only','HEAD'],{encoding:'utf8'})
-            .split(/\r?\n/u).map(s=>s.trim()).filter(Boolean).sort();
+          // Use the same exact read-only Git arguments as scripts/bundle.mjs.
+          // One read prevents a false CI pass caused by a different merge algorithm.
+          const gitLines=execFileSync('git',['show','--first-parent','--format=%H','--name-only','HEAD'],{
+            cwd:process.cwd(),encoding:'utf8',timeout:5000,maxBuffer:512*1024
+          }).trim().split(/\r?\n/u).map(s=>s.trim()).filter(Boolean);
+          const commit=gitLines.shift();
+          const changedFiles=[...new Set(gitLines)].sort();
           const unique=new Set(b.attackAttempts.map(r=>r.attackId));
           if(b.schema!=='aleph.defense.submission.v2'||b.step!==12||b.commit!==commit
             ||JSON.stringify(b.changedFiles)!==JSON.stringify([...new Set(changedFiles)])

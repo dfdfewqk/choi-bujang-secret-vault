@@ -84,3 +84,18 @@ The previous zero-network PR #35 used three-field attack rows and statically imp
 The previous live GET checker, historical step 1–11 wrapper, server-side authorization, database and operation-room logic remain unchanged. The offline sandbox allowlist excludes the live/legacy checker entirely. Regression tests confirm the same twenty IDs, stages, and expectations as the live checker; zero HTTP calls from the submission checker; one permitted read-only Git show; and no forbidden runtime attempts.
 
 This is a compatibility mitigation, **not** an independently verified official judge pass. If an official re-evaluation still reports the same error, the next action is to request the rejected operation's method, exact signature and call stack rather than restoring prohibited guesses.
+
+## 2026-10-16: batched isolation hardening after second official rejection
+
+Official judge again returned `S12_BUNDLE_UNSUPPORTED` on the zero-network, five-field bundle even though standard GitHub Actions succeeded. The first denied function was not supplied, so the change below is a targeted compatibility and diagnostic correction rather than a proven judge-specific fix.
+
+1. Replaced dynamic decider loading with an exact static relative import in `scripts/bundle.mjs`.
+2. Replaced dynamic Stage 12 checker loading with an exact static relative import, preventing runtime module-URL construction.
+3. Eliminated the now-unneeded `node:url` import in the production bundle, reducing its module/API surface.
+4. Changed the CI-only guarded process to **fail** if any public GET or HEAD is attempted in the deliberately zero-network bundle, even if code catches that error.
+5. Guarded forbidden asynchronous filesystem writes (`node:fs.promises`) so caught Promise rejections cannot escape the sticky violation ledger.
+6. Hardened Git subprocess options against `shell:true` and environment overrides while retaining the original exact read-only `git show` args.
+7. Aligned CI's independent Git metadata verification with the exact single `git show` invocation from the bundle rather than a different `-m` variant.
+8. Added negative regression tests for caught public fetch, async filesystem write, and shell-enabled Git invocation, and a module-graph syntax check in CI.
+
+The 20 official submission checks still record `not_run` and are **not** asserted to have passed. No server/API, ownership, authentication, user note, or DB behavior was modified. The private judge outcome remains unknown until a new run is supplied; avoid interpreting a green local CI as official clearance.

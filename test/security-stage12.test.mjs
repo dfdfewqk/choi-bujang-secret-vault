@@ -25,14 +25,15 @@ test('npm run bundle invokes the exact check function inspected by Stage12 tests
  const packageJson=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8'));
  const source=readFileSync(resolve(root,'scripts/bundle.mjs'),'utf8');
  assert.equal(packageJson.scripts.bundle,'node scripts/bundle.mjs');
- assert.match(source,/pathToFileURL\(join\(root, 'src', 'stage12-submission-check\.mjs'\)\)\.href/u);
+ assert.match(source,/import \{ RULE_IDS \} from '\.\.\/src\/decider\.mjs'/u);
+ assert.match(source,/import \{ runStage12SubmissionChecks \} from '\.\.\/src\/stage12-submission-check\.mjs'/u);
  assert.match(source,/runStage12SubmissionChecks\(config\)/u);
- assert.doesNotMatch(source,/pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href/u);
+ assert.doesNotMatch(source,/\bawait\s+import\s*\(|\bpathToFileURL\b|node:url/u);
 });
 test('entire npm run bundle import closure stays within judge builtin allowlist',()=>{
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
- // The sole Stage12 dynamic entry is explicitly whitelisted and monitored
- // by the CI-only runtime module resolver. Previous stages' branches are not run.
+ // Follow all static imports actually loaded by the Stage12 bundle.
+ // No dynamic loaders or historical test/recovery modules may enter this graph.
  const queue=['scripts/bundle.mjs','src/stage12-submission-check.mjs','src/decider.mjs'],seen=new Set();
  const allowed=new Set(['node:fs','node:path','node:url','node:child_process','node:crypto']);
  while(queue.length) {
@@ -50,10 +51,7 @@ test('entire npm run bundle import closure stays within judge builtin allowlist'
     queue.push(target.slice(root.length+1));
    }
   }
-  if(rel==='scripts/bundle.mjs'){
-   assert.match(source,/await import\(pathToFileURL\(join\(root, 'src', 'decider\.mjs'\)\)\.href\)/u);
-   assert.match(source,/pathToFileURL\(join\(root, 'src', 'stage12-submission-check\.mjs'\)\)\.href/u);
-  }else assert.doesNotMatch(source,/\bawait\s+import\s*\(/u,'Unexpected dynamic import in '+rel);
+  assert.doesNotMatch(source,/\bawait\s+import\s*\(/u,'Unexpected dynamic import in '+rel);
   assert.doesNotMatch(source,/\bfetch\s*\(/u,'Unexpected network in '+rel);
   if(rel==='src/stage12-submission-check.mjs'){
    assert.match(source,/observed: 'not_run', result: 'not_run'/u);
