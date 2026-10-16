@@ -38,7 +38,7 @@ try {
   // notes file is not part of Git and must not even be opened in this path.
   // Keep truthful submission metadata in committed source instead.
   const notes = {
-    explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 묶음 자체는 외부 네트워크·인증·공식 41종 시험을 실행하지 않아 not_run으로 기록합니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 통과를 주장하지 않습니다.',
+    explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 묶음은 공개 HTTPS GET만 시도합니다. 실제 응답을 받은 항목만 HTTP 관측으로 기록하고, 통신 실패·인증·쓰기·실제 회수 및 공식 41종 시험은 not_run으로 기록합니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 통과를 주장하지 않습니다.',
     blockedAt: 'official_41_tests_and_identity_revocation_not_verified',
   };
   if (!Number.isInteger(config.step) || config.step < 1 || config.step > 12) fail('aleph.config.json의 step을 확인해 주세요.');
