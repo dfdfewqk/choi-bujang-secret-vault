@@ -44,7 +44,7 @@ const artifacts=join(root,'artifacts'),output=join(artifacts,'submission.json');
 const allowedRead=new Set([
  join(root,'aleph.config.json'),join(root,'scripts/bundle.mjs'),
  join(root,'src/decider.mjs'),join(root,'src/resource-zones.mjs'),
- join(root,'src/attack-check.mjs'),join(root,'src/stage12-bundle-check.mjs'),
+ join(root,'src/stage12-submission-check.mjs'),
 ]);
 const diagnosticDir=process.env.BUNDLE_ISOLATION_DIAGNOSTIC==='1'
  &&process.env.BUNDLE_ISOLATION_PROBE_FILE
@@ -93,8 +93,8 @@ syncBuiltinESMExports();
 
 // The runtime resolver protects both static and dynamically imported modules.
 const sourceModules=new Set([
- 'scripts/bundle.mjs','src/attack-check.mjs','src/decider.mjs',
- 'src/resource-zones.mjs','src/stage12-bundle-check.mjs',
+ 'scripts/bundle.mjs','src/stage12-submission-check.mjs','src/decider.mjs',
+ 'src/resource-zones.mjs',
 ].map(s=>pathToFileURL(join(root,s)).href));
 const builtins=new Set(['node:fs','node:path','node:url','node:child_process','node:crypto']);
 // Diagnostic-only fixture folder, never enabled by npm run bundle.

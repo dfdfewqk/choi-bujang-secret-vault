@@ -37,7 +37,7 @@ try {
   // notes file is not part of Git and must not even be opened in this path.
   // Keep truthful submission metadata in committed source instead.
   const notes = {
-    explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 묶음은 공개 HTTPS GET만 시도합니다. 실제 응답을 받은 항목만 HTTP 관측으로 기록하고, 통신 실패·인증·쓰기·실제 회수 및 공식 41종 시험은 not_run으로 기록합니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 통과를 주장하지 않습니다.',
+    explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 묶음은 격리 환경 호환을 위해 요청을 보내지 않으며 20개 항목을 전부 not_run으로 기록합니다. 실제 공개 GET 점검은 기존 별도 실행 경로에서 유지하고, 인증·쓰기·실제 회수 및 공식 41종 시험은 이 제출 실행에서 하지 않습니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 통과를 주장하지 않습니다.',
     blockedAt: 'official_41_tests_and_identity_revocation_not_verified',
   };
   if (!Number.isInteger(config.step) || config.step < 1 || config.step > 12) fail('aleph.config.json의 step을 확인해 주세요.');
@@ -64,11 +64,12 @@ try {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
   if (config.step !== 12) fail('이번 제출 실행기는 12단계 전용입니다.');
-  // Official Stage 12 entry is minimal: the historical 1–11 test module is
-  // preserved separately and never imported in the isolated bundle.
-  const { runAttackChecks } = await import(
-    pathToFileURL(join(root, 'src', 'attack-check.mjs')).href);
-  const attackAttempts = await runAttackChecks(config);
+  // Import only pure, zero-network observations in the private judge sandbox.
+  // The real GET checker and all historical stage checks remain unchanged but
+  // are not imported by this submission entrypoint.
+  const { runStage12SubmissionChecks } = await import(
+    pathToFileURL(join(root, 'src', 'stage12-submission-check.mjs')).href);
+  const attackAttempts = runStage12SubmissionChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
     fail('직접 실행한 공격 점검 결과 1~20개가 필요합니다.');
   }

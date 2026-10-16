@@ -76,3 +76,11 @@ This branch preserves the original legacy source byte-for-byte as `src/attack-ch
 The source of Stage 1–11 checks is preserved byte-for-byte in `src/attack-check-legacy.mjs`. The public `runAttackChecks(config)` entrypoint **retains backward compatibility** by dynamically loading that historical module only for non-12 steps. The Stage 12 branch returns first, so no old-stage fixture or test module executes during submission. A static inspector may still see this one unreachable import; the private judge's static behavior is unknown.
 
 No claim that this identifies the private judge's first forbidden call. **PR CI passing does not prove a score change.** Recheck the official result only after deploy approval.
+
+## 2026-10-16: restricted runner no-network, five-field isolation experiment
+
+The previous zero-network PR #35 used three-field attack rows and statically imported the same checker. The latest eight-GET implementation with five fields still receives user-reported S12_BUNDLE_UNSUPPORTED. Neither result isolates the forbidden function. This change therefore tests a combination not previously submitted: a standalone **pure** checker at `src/stage12-submission-check.mjs` that returns twenty truthful five-field `not_run` rows, and is the *only* checker imported by `scripts/bundle.mjs`.
+
+The previous live GET checker, historical step 1–11 wrapper, server-side authorization, database and operation-room logic remain unchanged. The offline sandbox allowlist excludes the live/legacy checker entirely. Regression tests confirm the same twenty IDs, stages, and expectations as the live checker; zero HTTP calls from the submission checker; one permitted read-only Git show; and no forbidden runtime attempts.
+
+This is a compatibility mitigation, **not** an independently verified official judge pass. If an official re-evaluation still reports the same error, the next action is to request the rejected operation's method, exact signature and call stack rather than restoring prohibited guesses.

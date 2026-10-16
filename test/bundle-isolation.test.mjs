@@ -6,11 +6,13 @@ import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {runStage12PublicReadOnlyChecks} from '../src/stage12-bundle-check.mjs';
+import {runStage12SubmissionChecks} from '../src/stage12-submission-check.mjs';
 
-test('Stage12 exact submitted entrypoint and 53-point observation contract',async()=>{
+test('Stage12 restricted submission and separate live checker contracts',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
- assert.match(source,/pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href/u);
- assert.match(source,/await runAttackChecks\(config\)/u);
+ assert.match(source,/pathToFileURL\(join\(root, 'src', 'stage12-submission-check\.mjs'\)\)\.href/u);
+ assert.match(source,/runStage12SubmissionChecks\(config\)/u);
+ assert.doesNotMatch(source,/pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href/u);
  const wrapper=readFileSync(new URL('../src/attack-check.mjs',import.meta.url),'utf8');
  assert.match(wrapper,/runStage12PublicReadOnlyChecks\(config\)/u);
  assert.doesNotMatch(wrapper,/\b(?:execFileSync|spawn|execSync|fork|require)\s*\(/u);
@@ -54,6 +56,10 @@ test('Stage12 exact submitted entrypoint and 53-point observation contract',asyn
   assert.ok(rows.every(x=>['blocked','breached','not_run'].includes(x.result)));
   assert.ok(rows.every(x=>(x.observed==='not_run')===(x.result==='not_run')));
   assert.equal(rows.filter(x=>x.result==='not_run').length,12);
+  const submitted=runStage12SubmissionChecks(config);
+  assert.deepEqual(submitted.map(x=>[x.attackId,x.stage,x.expected]),
+    rows.map(x=>[x.attackId,x.stage,x.expected]));
+  assert.ok(submitted.every(x=>x.observed==='not_run'&&x.result==='not_run'));
   const result=Object.fromEntries(rows.map(x=>[x.attackId,x]));
   assert.equal(result.deployment_step12_manifest.observed,'HTTP 200');
   assert.equal(result.deployment_step12_manifest.result,'blocked');
@@ -64,6 +70,18 @@ test('Stage12 exact submitted entrypoint and 53-point observation contract',asyn
  }finally{globalThis.fetch=original;}
 });
 
+test('submitted Stage12 graph cannot fetch even when network would succeed',()=>{
+ const before=globalThis.fetch;let count=0;
+ globalThis.fetch=()=>{count++;throw Error('submission must not perform fetch')};
+ try{
+  const config=JSON.parse(readFileSync(new URL('../aleph.config.json',import.meta.url)));
+  const submitted=runStage12SubmissionChecks(config);
+  assert.equal(count,0);
+  assert.equal(submitted.length,20);
+  assert.ok(submitted.every(x=>x.observed==='not_run'&&x.result==='not_run'));
+  assert.ok(submitted.every(x=>Object.keys(x).sort().join(',')==='attackId,expected,observed,result,stage'));
+ }finally{globalThis.fetch=before;}
+});
 test('Offline reads remain not_run without fabricated result',async()=>{
  const before=globalThis.fetch;let n=0;
  globalThis.fetch=async()=>{n++;throw new Error('offline');};
