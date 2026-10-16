@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { deploymentIdentity } from '../scripts/deployment-identity.mjs';
-import { runAttackChecks } from '../src/attack-check-legacy.mjs';
+import { runAttackChecks } from '../src/attack-check.mjs';
 
 const config = {
   step: 1,

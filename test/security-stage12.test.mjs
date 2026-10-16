@@ -52,6 +52,9 @@ test('entire npm run bundle import closure stays within judge builtin allowlist'
   if(rel==='scripts/bundle.mjs'){
    assert.match(source,/await import\(pathToFileURL\(join\(root, 'src', 'decider\.mjs'\)\)\.href\)/u);
    assert.match(source,/pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href/u);
+  }else if(rel==='src/attack-check.mjs'){
+   assert.match(source,/if \(config\?\.step === 12\) return runStage12PublicReadOnlyChecks\(config\)/u);
+   assert.match(source,/await import\('\.\/attack-check-legacy\.mjs'\)/u);
   }else assert.doesNotMatch(source,/\bawait\s+import\s*\(/u,'Unexpected dynamic import in '+rel);
   if(rel==='src/stage12-bundle-check.mjs'){
    assert.match(source,/method: 'GET'/u);

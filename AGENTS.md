@@ -16,7 +16,7 @@
 
 저장점 요청을 받으면 README.md에 현재 작동하는 기능과 다시 실행하는 방법을 짧게 갱신하세요. `aleph.config.json`의 단계, 실제 배포 주소, 로그인 발급자 정보, 허용 경로, 5단계부터의 원본 API 주소를 구현과 대조하세요. `src/decider.mjs`의 `RULE_IDS`에는 실제로 구현한 규칙 이름만 남기세요.
 
-`src/attack-check.mjs`는 **12단계에서 공개 HTTPS GET·HEAD만 수행하는 최소 진입점**입니다. 이전 1~11단계 자기 점검의 원본은 `src/attack-check-legacy.mjs`에 변경 없이 보존합니다. `npm run bundle`은 `runAttackChecks(config)`를 통해 오직 12단계 모듈만 실행합니다. 번들 제출과 12단계 테스트는 이 실제 경로의 동일한 결과를 검증하세요. 실제로 보내지 않은 요청은 `observed: 'not_run'`으로 남기고, 별도의 운영 점검·공식 41종 시험 결과인 것처럼 표시하지 마세요. 12단계 제출 경로에서 공개 HTTPS GET 읽기 점검만 실행하며 실패한 요청과 쓰기·인증·엔진 집행 검사는 `not_run`으로 유지하세요. 공식 41종 시험을 성공으로 꾸미지 마세요.
+`src/attack-check.mjs`는 **12단계에서 공개 HTTPS GET·HEAD만 수행하는 최소 진입점**입니다. 이전 1~11단계 자기 점검의 원본은 `src/attack-check-legacy.mjs`에 변경 없이 보존하고, `runAttackChecks(config)`의 이전 단계 호출도 필요할 때에만 지연 로드하여 동작을 유지합니다. `npm run bundle`은 `runAttackChecks(config)`를 통해 오직 12단계 모듈만 실행합니다. 번들 제출과 12단계 테스트는 이 실제 경로의 동일한 결과를 검증하세요. 실제로 보내지 않은 요청은 `observed: 'not_run'`으로 남기고, 별도의 운영 점검·공식 41종 시험 결과인 것처럼 표시하지 마세요. 12단계 제출 경로에서 공개 HTTPS GET 읽기 점검만 실행하며 실패한 요청과 쓰기·인증·엔진 집행 검사는 `not_run`으로 유지하세요. 공식 41종 시험을 성공으로 꾸미지 마세요.
 
 `aleph.config.json`의 `judgeIssuer`는 운영 측이 ZIP을 만들 때 채운 심판 접수 서버 주소입니다. 학생 요청으로 바꾸거나 다른 발급자 주소로 대체하지 마세요.
 

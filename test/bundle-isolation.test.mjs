@@ -13,7 +13,9 @@ test('Stage12 exact submitted entrypoint and 53-point observation contract',asyn
  assert.match(source,/await runAttackChecks\(config\)/u);
  const wrapper=readFileSync(new URL('../src/attack-check.mjs',import.meta.url),'utf8');
  assert.match(wrapper,/runStage12PublicReadOnlyChecks\(config\)/u);
- assert.doesNotMatch(wrapper,/\b(?:execFileSync|spawn|execSync|fork|require|await import)\s*\(/u);
+ assert.doesNotMatch(wrapper,/\b(?:execFileSync|spawn|execSync|fork|require)\s*\(/u);
+ assert.match(wrapper,/await import\('\.\/attack-check-legacy\.mjs'\)/u);
+ assert.ok(wrapper.indexOf('if (config?.step === 12)') < wrapper.indexOf("await import('./attack-check-legacy.mjs')"));
  assert.doesNotMatch(wrapper,/\b(?:POST|PUT|PATCH|DELETE)\b/u);
  assert.equal([...source.matchAll(/\bexecFileSync\s*\(/gu)].length,1);
  assert.match(source,/'show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'/u);
