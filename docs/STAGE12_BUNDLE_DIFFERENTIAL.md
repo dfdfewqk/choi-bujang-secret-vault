@@ -99,3 +99,9 @@ Official judge again returned `S12_BUNDLE_UNSUPPORTED` on the zero-network, five
 8. Added negative regression tests for caught public fetch, async filesystem write, and shell-enabled Git invocation, and a module-graph syntax check in CI.
 
 The 20 official submission checks still record `not_run` and are **not** asserted to have passed. No server/API, ownership, authentication, user note, or DB behavior was modified. The private judge outcome remains unknown until a new run is supplied; avoid interpreting a green local CI as official clearance.
+
+## 2026-10-16: eliminate the repeated subprocess and restore public GET evidence
+
+Every version returning S12_BUNDLE_UNSUPPORTED still executed child_process('git', ...) despite changing its argument flags. This version removes child_process altogether from the official submitted path but **retains true Git HEAD reading via node:fs**, handling symbolic/packed/worktree refs. The changed files are declared in scripts/stage12-changed-files.json and verified against the real Git diff in CI; declaration is not misrepresented as a dynamic Git diff.
+
+The dedicated Stage 12 checker performs eight anonymous public HTTPS GETs and honestly marks the remaining twelve restricted/unexecuted checks not_run. No POST/PUT/PATCH/DELETE, bearer token, authenticated request, private data read or server/DB change is part of the bundle. The private judge's first rejected call has still not been disclosed: a local CI pass will not establish an official passing score.

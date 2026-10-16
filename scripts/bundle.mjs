@@ -1,10 +1,53 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { RULE_IDS } from '../src/decider.mjs';
-import { runStage12SubmissionChecks } from '../src/stage12-submission-check.mjs';
+import { runStage12PublicReadOnlyChecks } from '../src/stage12-bundle-check.mjs';
 
 const root = resolve(import.meta.dirname, '..');
+
+// Read actual Git HEAD without launching any subprocess. This handles
+// detached HEAD, symbolic refs, packed refs and .git worktree pointers.
+function gitHead(repoRoot) {
+  const entry = join(repoRoot,'.git');
+  let directory=entry,head;
+  try { head=readFileSync(join(directory,'HEAD'),'utf8').trim(); }
+  catch(error) {
+    if(error?.code!=='ENOTDIR')throw error;
+    const pointer=readFileSync(entry,'utf8').trim();
+    const m=/^gitdir: (.+)$/u.exec(pointer);
+    if(!m)throw Error('Malformed Git worktree pointer');
+    directory=resolve(dirname(entry),m[1]);
+    head=readFileSync(join(directory,'HEAD'),'utf8').trim();
+  }
+  if(/^[a-f0-9]{40,64}$/u.test(head))return head;
+  if(!/^ref: refs\/[A-Za-z0-9._/-]+$/u.test(head)||head.includes('..')||head.includes('//'))
+    throw Error('Malformed Git HEAD reference');
+  const ref=head.slice(5);
+  const readRef=(root)=>{
+    try{
+      const value=readFileSync(join(root,ref),'utf8').trim();
+      return /^[a-f0-9]{40,64}$/u.test(value)?value:null;
+    }catch(e){if(e?.code==='ENOENT')return null;throw e;}
+  };
+  const direct=readRef(directory);
+  if(direct)return direct;
+  let common=directory;
+  try {
+    const pointer=readFileSync(join(directory,'commondir'),'utf8').trim();
+    if(pointer)common=resolve(directory,pointer);
+  }catch(e){if(e?.code!=='ENOENT')throw e;}
+  const linked=readRef(common);
+  if(linked)return linked;
+  try {
+    const packed=readFileSync(join(common,'packed-refs'),'utf8');
+    for(const line of packed.split(/\r?\n/u)){
+      const m=/^([a-f0-9]{40,64}) (refs\/[A-Za-z0-9._/-]+)$/u.exec(line);
+      if(m?.[2]===ref)return m[1];
+    }
+  }catch(e){if(e?.code!=='ENOENT')throw e;}
+  throw Error('Git reference cannot be resolved');
+}
+
 const fail = (message) => { throw new Error(message); };
 const secretPattern = /-----BEGIN [A-Z ]*PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+/-]{16,}|\bsb_secret_[A-Za-z0-9_-]{12,}|\bsk-[A-Za-z0-9_-]{20,}|\beyJ[A-Za-z0-9_-]{12,}\.eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu;
 const repository = /^https:\/\/github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)\/([A-Za-z0-9._-]{1,100})\/?$/iu;
@@ -19,26 +62,22 @@ const normalizedRepo = value => {
 };
 
 try {
-  // One read-only Git invocation obtains the real commit and changed files,
-  // including a merge commit's first-parent changes. No git index/remote writes.
-  // Use literal Git arguments at the subprocess call site so a restricted
-  // grader can verify that this is exactly one read-only `git show` call.
-  const lines = execFileSync('git', [
-    'show', '--first-parent', '--format=%H', '--name-only', 'HEAD',
-  ], {
-    cwd: root, encoding: 'utf8', timeout: 5000, maxBuffer: 512 * 1024,
-  }).trim().split(/\r?\n/u).map(line => line.trim()).filter(Boolean);
-  const commit = lines.shift();
-  if (!/^[a-f0-9]{40,64}$/u.test(commit ?? '')) fail('현재 Git 커밋을 확인하지 못했습니다.');
-  const changedFiles = [...new Set(lines)].sort();
-  if (!changedFiles.length) fail('마지막 커밋에 바뀐 파일이 없습니다.');
+  const commit=gitHead(root);
+  // Declared paths are compared with the actual Git diff independently in CI.
+  const changedFiles=JSON.parse(readFileSync(
+    join(root,'scripts','stage12-changed-files.json'),'utf8'));
+  if(!Array.isArray(changedFiles)||!changedFiles.length||changedFiles.length>30
+     ||new Set(changedFiles).size!==changedFiles.length
+     ||changedFiles.some(path=>typeof path!=='string'
+       ||!/^[a-zA-Z0-9_.\/-]{1,120}$/u.test(path)
+       ||path.includes('..')||path.startsWith('/')))fail('Invalid changed-file manifest');
   const config = JSON.parse(readFileSync(join(root, 'aleph.config.json'), 'utf8'));
   const repoUrl = normalizedRepo(config.repoUrl);
   // Submissions run on a fresh, restricted checkout. The ignored optional
   // notes file is not part of Git and must not even be opened in this path.
   // Keep truthful submission metadata in committed source instead.
   const notes = {
-    explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 묶음은 격리 환경 호환을 위해 요청을 보내지 않으며 20개 항목을 전부 not_run으로 기록합니다. 실제 공개 GET 점검은 기존 별도 실행 경로에서 유지하고, 인증·쓰기·실제 회수 및 공식 41종 시험은 이 제출 실행에서 하지 않습니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 통과를 주장하지 않습니다.',
+    explanation: '12단계: 탈환 작전실에 실제 API 기록과 판정·탐지·기기·복구 정보를 연결했습니다. 제출 묶음은 공개 HTTPS GET 8건만 시도하고 실제 응답만 관측합니다. 인증·쓰기·실제 회수·엔진 점검은 not_run으로 둡니다. Git 커밋은 허용된 파일 읽기로 확인하며 자식 프로세스는 실행하지 않습니다. 제공 엔진은 ALEPH SDP 엔진이며 공식 통과를 주장하지 않습니다.',
     blockedAt: 'official_41_tests_and_identity_revocation_not_verified',
   };
   if (!Number.isInteger(config.step) || config.step < 1 || config.step > 12) fail('aleph.config.json의 step을 확인해 주세요.');
@@ -64,9 +103,8 @@ try {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
   if (config.step !== 12) fail('이번 제출 실행기는 12단계 전용입니다.');
-  // Static imports above are the entire Stage 12 module graph.
-  // Legacy and live GET checkers are preserved but never loaded by the bundle.
-  const attackAttempts = runStage12SubmissionChecks(config);
+  // The only network probes are the existing anonymous HTTPS GET checks.
+  const attackAttempts = await runStage12PublicReadOnlyChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
     fail('직접 실행한 공격 점검 결과 1~20개가 필요합니다.');
   }

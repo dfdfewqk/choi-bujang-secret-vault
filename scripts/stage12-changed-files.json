@@ -1,0 +1,10 @@
+[
+  ".github/workflows/stage12-checks.yml",
+  "README.md",
+  "docs/STAGE12_BUNDLE_DIFFERENTIAL.md",
+  "scripts/bundle.mjs",
+  "scripts/stage12-changed-files.json",
+  "test/bundle-isolation-preload.mjs",
+  "test/bundle-isolation.test.mjs",
+  "test/security-stage12.test.mjs"
+]

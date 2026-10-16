@@ -23,30 +23,18 @@ process.on('exit',()=>{
  process.stderr.write('BUNDLE_ISOLATION: FORBIDDEN_ATTEMPT_LEDGER '+JSON.stringify(forbiddenAttempts)+'\n');
  process.exitCode=86;
 });
-const gitArgs=['show','--first-parent','--format=%H','--name-only','HEAD'];
-const allowedGit=(command,args,options)=>command==='git'&&Array.isArray(args)
- &&args.length===gitArgs.length&&args.every((x,i)=>x===gitArgs[i])
- &&options&&resolve(options.cwd??'.')===root
- &&options.shell!==true&&options.env===undefined
- &&options.uid===undefined&&options.gid===undefined;
-
-const realExecFileSync=child.execFileSync;
+// The bundle reads .git metadata via node:fs. No subprocess is needed.
 for(const name of ['execFileSync','execFile','execSync','exec','spawn','spawnSync','fork']){
- child[name]=(...args)=>{
-  if(name==='execFileSync'&&allowedGit(args[0],args[1],args[2])){
-   process.stderr.write('BUNDLE_ISOLATION: ALLOWED git show (read only)\n');
-   return realExecFileSync(...args);
-  }
-  fail('FORBIDDEN child_process.'+name+' command='+String(args[0]).slice(0,80));
- };
+ child[name]=(...args)=>fail('FORBIDDEN child_process.'+name+' command='+String(args[0]).slice(0,80));
 }
 const artifacts=join(root,'artifacts'),output=join(artifacts,'submission.json');
 // Node 22.23 uses the exported fs.readFileSync during ESM loading.
  // Permit only the real submission import graph, not arbitrary local files.
 const allowedRead=new Set([
  join(root,'aleph.config.json'),join(root,'scripts/bundle.mjs'),
+ join(root,'scripts/stage12-changed-files.json'),
  join(root,'src/decider.mjs'),join(root,'src/resource-zones.mjs'),
- join(root,'src/stage12-submission-check.mjs'),
+ join(root,'src/stage12-bundle-check.mjs'),
 ]);
 const diagnosticDir=process.env.BUNDLE_ISOLATION_DIAGNOSTIC==='1'
  &&process.env.BUNDLE_ISOLATION_PROBE_FILE
@@ -65,7 +53,8 @@ for(const [name,allowed] of [
  fs[name]=(...args)=>{
   const path=pathOf(args[0]);
   if(!allowed.has(path)
-   &&!(name==='readFileSync'&&diagnosticDir&&path.startsWith(diagnosticDir+'/')))
+   &&!(name==='readFileSync'&&diagnosticDir&&path.startsWith(diagnosticDir+'/'))
+   &&!(name==='readFileSync'&&(path===join(root,'.git')||path.startsWith(join(root,'.git')+'/'))))
    fail('FORBIDDEN node:fs.'+name+' path='+path.slice(-100));
   if(name==='mkdirSync'&&args[1]?.recursive!==true)fail('FORBIDDEN mkdir options');
   if(name==='writeFileSync'&&(args[2]?.encoding!=='utf8'||args[2]?.flag!=='w'))
@@ -93,7 +82,8 @@ const realOpenSync=fs.openSync;
 fs.openSync=(...args)=>{
  const path=pathOf(args[0]),flags=args[1];
  if((flags==='r'||flags==='rs'||flags===0)
-  &&(allowedRead.has(path)||(diagnosticDir&&path.startsWith(diagnosticDir+'/'))))
+  &&(allowedRead.has(path)||(diagnosticDir&&path.startsWith(diagnosticDir+'/'))
+    ||path.startsWith(join(root,'.git')+'/')))
   return realOpenSync(...args);
  fail('FORBIDDEN node:fs.openSync');
 };
@@ -101,7 +91,7 @@ syncBuiltinESMExports();
 
 // The runtime resolver protects both static and dynamically imported modules.
 const sourceModules=new Set([
- 'scripts/bundle.mjs','src/stage12-submission-check.mjs','src/decider.mjs',
+ 'scripts/bundle.mjs','src/stage12-bundle-check.mjs','src/decider.mjs',
  'src/resource-zones.mjs',
 ].map(s=>pathToFileURL(join(root,s)).href));
 const builtins=new Set(['node:fs','node:path','node:url','node:child_process','node:crypto']);
@@ -139,8 +129,7 @@ globalThis.fetch=async(input,init={})=>{
  if(['authorization','cookie','x-api-key','apikey'].some(key=>requestHeaders.has(key)))
   fail('FORBIDDEN authenticated fetch');
  if(process.env.BUNDLE_ISOLATION_DIAGNOSTIC==='1')return new Response(null,{status:204});
- // Production npm run bundle is deliberately network-free. An allowed HTTP verb
- // is still an unintended attempted operation in this particular entrypoint.
- // The sticky ledger prevents catch blocks from converting it to a false pass.
- fail('FORBIDDEN outbound fetch in zero-network submission');
+ // An allowed public GET is represented as not_run in the OFFLINE CI fixture.
+ // No actual external network access occurs in this guarded process.
+ throw new Error('BUNDLE_ISOLATION: offline public read fixture');
 };

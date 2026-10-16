@@ -47,12 +47,13 @@ jobs:
       - name: Verify submitted module graph syntax
         run: |
           node --check scripts/bundle.mjs
-          node --check src/stage12-submission-check.mjs
+          node --check src/stage12-bundle-check.mjs
           node --check src/decider.mjs
           node --check src/resource-zones.mjs
-      - name: Strict zero-network restricted bundle run
+      - name: Restricted offline bundle (public GETs record not_run)
         run: node --import ./test/bundle-isolation-preload.mjs scripts/bundle.mjs
-      - run: npm run bundle
+      - name: Execute real bundle and capture public GET statuses
+        run: npm run bundle
       - name: Independently verify public HTTPS and TLS expiry
         run: node scripts/check-public-availability.mjs
       - name: Validate stage 12 summary
