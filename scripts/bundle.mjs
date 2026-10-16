@@ -1,8 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { RULE_IDS } from '../src/decider.mjs';
-import { runStage12PublicReadOnlyChecks } from '../src/stage12-bundle-check.mjs';
+import { pathToFileURL } from 'node:url';
 
 const root = resolve(import.meta.dirname, '..');
 const fail = (message) => { throw new Error(message); };
@@ -54,6 +53,7 @@ try {
   if (config.step >= 3 && (!Array.isArray(config.allowedRoutes) || !config.allowedRoutes.length)) {
     fail('3단계부터 aleph.config.json의 allowedRoutes에 자료 API 경로가 필요합니다. 3단계 제작 3을 다시 확인해 주세요.');
   }
+  const { RULE_IDS } = await import(pathToFileURL(join(root, 'src', 'decider.mjs')).href);
   if (!Array.isArray(RULE_IDS)) fail('src/decider.mjs의 RULE_IDS는 규칙 이름 배열이어야 합니다.');
   const policyRules = [...RULE_IDS];
   if (policyRules.length > 80 || policyRules.some(item => typeof item !== 'string'
@@ -64,13 +64,18 @@ try {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
   if (config.step !== 12) fail('이번 제출 실행기는 12단계 전용입니다.');
-  const attackAttempts = await runStage12PublicReadOnlyChecks(config);
+  const { runAttackChecks } = await import(pathToFileURL(join(root, 'src', 'attack-check.mjs')).href);
+  const attackAttempts = await runAttackChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
     fail('직접 실행한 공격 점검 결과 1~20개가 필요합니다.');
   }
   for (const attempt of attackAttempts) {
     if (!attempt || typeof attempt !== 'object' || Array.isArray(attempt)
-        || Object.keys(attempt).sort().join(',') !== 'attackId,expected,observed'
+        || Object.keys(attempt).sort().join(',') !== 'attackId,expected,observed,result,stage'
+        || !Number.isInteger(attempt.stage) || attempt.stage < 1 || attempt.stage > 12
+        || !['blocked','breached','not_run'].includes(attempt.result)
+        || !/^(not_run|HTTP [1-5][0-9]{2})$/u.test(attempt.observed)
+        || (attempt.observed === 'not_run') !== (attempt.result === 'not_run')
         || typeof attempt.attackId !== 'string' || !/^[a-z0-9][a-z0-9_.-]{0,79}$/iu.test(attempt.attackId)
         || typeof attempt.expected !== 'string' || !attempt.expected.trim() || attempt.expected.length > 300
         || typeof attempt.observed !== 'string' || !attempt.observed.trim() || attempt.observed.length > 300) {
@@ -82,6 +87,7 @@ try {
   }
   const bundle = {
     schema: 'aleph.defense.submission.v2', step: config.step, commit, repoUrl,
+    checkedAt: new Date().toISOString(),
     changedFiles, policyRules,
     attackAttempts, explanation: notes.explanation.trim(), blockedAt: notes.blockedAt ?? null,
     identityProvider: config.identityProvider ?? null, allowedRoutes: config.allowedRoutes ?? [],
