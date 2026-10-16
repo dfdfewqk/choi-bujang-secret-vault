@@ -9,8 +9,9 @@ import {runStage12PublicReadOnlyChecks} from '../src/stage12-bundle-check.mjs';
 
 test('Stage12 exact submitted entrypoint and 53-point observation contract',async()=>{
  const source=readFileSync(new URL('../scripts/bundle.mjs',import.meta.url),'utf8');
- assert.match(source,/await import\(pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'\)\)\.href\)/u);
- assert.match(source,/await runAttackChecks\(config\)/u);
+ assert.match(source,/pathToFileURL\(join\(root, 'src', 'stage12-bundle-check\.mjs'\)\)\.href/u);
+ assert.doesNotMatch(source,/await import\(pathToFileURL\(join\(root, 'src', 'attack-check\.mjs'/u);
+ assert.match(source,/await runStage12PublicReadOnlyChecks\(config\)/u);
  assert.equal([...source.matchAll(/\bexecFileSync\s*\(/gu)].length,1);
  assert.match(source,/'show', '--first-parent', '-m', '--pretty=format:%H', '--name-only', 'HEAD'/u);
  const checker=readFileSync(new URL('../src/stage12-bundle-check.mjs',import.meta.url),'utf8');
@@ -130,6 +131,10 @@ test('indirectly loaded module cannot run an unapproved child process',()=>{
   expectSandboxRejection('await import('+JSON.stringify(pathToFileURL(entry).href)+')',
    'child_process\\.execFileSync',{BUNDLE_ISOLATION_PROBE_FILE:entry});
  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+test('Stage12 isolation rejects the legacy attack-check.mjs module graph',()=>{
+ const legacy = new URL('../src/attack-check.mjs',import.meta.url).href;
+ expectSandboxRejection('await import('+JSON.stringify(legacy)+')','file import');
 });
 test('runtime module resolver blocks forbidden builtin, package and file imports',()=>{
  expectSandboxRejection("await import('node:os')",'builtin import');

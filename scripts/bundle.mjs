@@ -64,8 +64,11 @@ try {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
   if (config.step !== 12) fail('이번 제출 실행기는 12단계 전용입니다.');
-  const { runAttackChecks } = await import(pathToFileURL(join(root, 'src', 'attack-check.mjs')).href);
-  const attackAttempts = await runAttackChecks(config);
+  // Only the dedicated Stage12 read-only checker belongs in the sandbox.
+  // Preserve legacy 1–11 checks but do not import them from this entrypoint.
+  const { runStage12PublicReadOnlyChecks } = await import(
+    pathToFileURL(join(root, 'src', 'stage12-bundle-check.mjs')).href);
+  const attackAttempts = await runStage12PublicReadOnlyChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
     fail('직접 실행한 공격 점검 결과 1~20개가 필요합니다.');
   }
@@ -79,7 +82,7 @@ try {
         || typeof attempt.attackId !== 'string' || !/^[a-z0-9][a-z0-9_.-]{0,79}$/iu.test(attempt.attackId)
         || typeof attempt.expected !== 'string' || !attempt.expected.trim() || attempt.expected.length > 300
         || typeof attempt.observed !== 'string' || !attempt.observed.trim() || attempt.observed.length > 300) {
-      fail('공격 점검 결과에는 attackId·expected·observed만 넣어 주세요.');
+      fail('공격 점검 결과에는 attackId·stage·expected·observed·result가 필요합니다.');
     }
   }
   if (new Set(attackAttempts.map(item => item.attackId)).size !== attackAttempts.length) {
