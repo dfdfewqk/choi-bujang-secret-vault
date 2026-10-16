@@ -55,3 +55,24 @@ The user re-submitted the production commit `951b27b9cc1082294afdc1e7d5e0425d178
 **Targeted compatibility experiment:** Keep the five-field result contract, `checkedAt`, eight sequential anonymous GETs, and all read-only Git logic as implemented in PR #42. Change only the Stage 12 submission entry to dynamically import the dedicated `src/stage12-bundle-check.mjs` directly, *never loading the legacy `src/attack-check.mjs` file at all*. Update local source-closure and runtime sandbox tests so loading the legacy file is explicitly rejected. Preserve the original file and its Stage 1–11 behavior for other workflows. No authenticated/private HTTP reads or writes.
 
 **Acceptance:** The branch must pass the real CI-only sandbox, `npm run bundle`, full regression tests and same-Node offline reference comparison. This demonstrates import-graph isolation; it **does not** prove the official runner accepted the submission. Keep the branch unmerged until the user requests another deployment or objective judge evidence justifies it.
+
+## 2026-10-16 investigation: repeated forbidden-command judge message
+
+Latest official report after production commit `c4b5a73c2f62e3721ec1eb1bff66c47cb2243727` again returned **0 / S12_BUNDLE_UNSUPPORTED** and described an unsupported command besides allowed Git read-only `show`. This is the user's reported judge result, **not** a command trace or a function name.
+
+### Public comparison, tied to historical evidence
+
+- `gkacksdnjs22-stack/choi-bujang-secret-vault@923505eaec47df059ba941ddef6ef36f68e7aada`: public author notes **53 points / S12_UNRUN_COUNTED**. Its `scripts/bundle.mjs` also runs read-only `git status`, `rev-parse`, `config`, `remote`, `diff-tree`, and `show`, so the mere presence of Git reading did not prevent that reported score.
+- That repository's later README documents a **0-point S12_BUNDLE_UNSUPPORTED** submission after a non-GET/HEAD request entered the bundle; the author removed POST/PUT/DELETE from the submission self-check. This is their diagnosis, not proof about our repository.
+- `youngjinphys/choi-bujang-secret-vault/docs/STAGE12_ISOLATED_BUNDLE.md` documents forbidden old-stage dynamic imports that reached `node:fs/promises` and `node:os`, and separately warns that untrusted Git subcommand allowlists can cause false confidence. Its later no-child-process approach is **not independently confirmed to have passed the judge**.
+- Our current production submission closure invokes exactly one `node:child_process.execFileSync('git', ['show', ...])`, and uses public HTTPS GET only. Neither additional forbidden subprocess nor POST was observed by our own CI sandbox. This does **not** reproduce the private judge's reported failure.
+
+### Narrow path sanitization in this diagnostic branch
+
+The **filename specifically mentioned in prior official error feedback**, `src/attack-check.mjs`, previously included a 282-line multi-stage function and **five unreachable old-stage dynamic imports** into fixture/test modules. Earlier PR #43 only removed the *import of that file from the bundle*, leaving the potentially dangerous source under its original filename.
+
+This branch preserves the original legacy source byte-for-byte as `src/attack-check-legacy.mjs`; its historical Stage 1 regression is redirected to that named legacy module. `src/attack-check.mjs` now has one allowed static import of the dedicated Stage 12 checker, exposes `runAttackChecks(config)` for current step 12, and has no legacy dynamic import or command execution. The Stage 12 bundle uses this precise entrypoint and keeps its sole allowed Git `show`, the five-field result schema, real public GETs and honest `not_run` rows. The CI-only runtime guard rejects any legacy-module import from the submitted graph.
+
+This changes the public `src/attack-check.mjs` API **for historical steps 1–11**: their preserved implementation is now imported from `src/attack-check-legacy.mjs` rather than the default Stage 12 entrypoint. The original code and existing Stage 1 test fixture are preserved, but external old-stage callers must use that new path. This tradeoff is intentional for a Stage 12-only official runtime, and should be reviewed before merging.
+
+No claim that this identifies the private judge's first forbidden call. **PR CI passing does not prove a score change.** Recheck the official result only after deploy approval.
