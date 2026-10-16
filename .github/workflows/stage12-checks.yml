@@ -43,7 +43,7 @@ jobs:
         run: |
           test ! -e bundle-notes.json
           node --test test/bundle-isolation.test.mjs
-      - name: Zero-network bundle test without extra Node builtin imports
+      - name: Restricted offline bundle run (GET allowed, network unexecuted)
         run: node --import ./test/bundle-isolation-preload.mjs scripts/bundle.mjs
       - run: npm run bundle
       - name: Independently verify public HTTPS and TLS expiry

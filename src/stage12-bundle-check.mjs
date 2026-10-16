@@ -1,7 +1,6 @@
-// Stage 12 official submission only: intentionally no network access.
-// Sandbox compatibility is more important here than local probe output.
-// Live API, ownership and engine verification stay in separate application tests.
-// Never report an unexecuted check as passing.
+// Stage 12 submission: use only anonymous public HTTPS GET requests.
+// No authenticated probes, mutations, recovery calls or engine simulation here.
+// Response bodies from protected note endpoints are NEVER read or logged.
 const EXPECTATIONS = Object.freeze([
   [
     "public_data_removed",
@@ -85,8 +84,71 @@ const EXPECTATIONS = Object.freeze([
   ]
 ]);
 
-export async function runStage12PublicReadOnlyChecks(_config) {
+// Fixed anonymous endpoints: every request must be a public read with an
+// independently observed HTTP response; other expectations remain not_run.
+const PUBLIC_READS = Object.freeze([
+  ['public_data_removed', '/data.json'],
+  ['anonymous_note_read_denied', '/api/notes'],
+  ['deployment_step12_manifest', '/aleph.json'],
+  ['anonymous_item_read_denied', '/api/notes/11111111-1111-4111-8111-111111111111'],
+  ['home_security_header', '/'],
+  ['stage10_anonymous_restore_denied', '/api/restore'],
+  ['stage11_anonymous_device_denied', '/api/device'],
+  ['stage12_anonymous_operations_denied', '/api/operations'],
+]);
+
+function publicApp(config) {
+  const app = new URL(config.publicAppUrl);
+  if (app.protocol !== 'https:' || !app.hostname.endsWith('.vercel.app')
+      || app.username || app.password || app.port || app.search || app.hash
+      || app.pathname !== '/') throw Error('Stage12 public HTTPS origin invalid');
+  return app;
+}
+
+async function observe(app, attackId, path) {
+  const url = new URL(path, app);
+  if (url.origin !== app.origin || url.search || url.hash) throw Error('Invalid public probe path');
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'omit',
+      redirect: 'error',
+      headers: {accept: 'application/json'},
+      signal: AbortSignal.timeout(4500),
+      alephEvidence: {caseId: attackId, requestKey: 'read'},
+    });
+    // Only a public manifest may be inspected. Never read note/API response
+    // bodies, including on unexpected HTTP 200.
+    if (attackId === 'deployment_step12_manifest' && response.status === 200) {
+      const advertised = Number(response.headers.get('content-length') ?? 0);
+      if (!Number.isSafeInteger(advertised) || advertised > 4096)
+        return 'HTTP 200; manifestStep=unverified';
+      let step = 'unverified';
+      try {
+        const body = await response.text();
+        if (body.length <= 4096) {
+          const parsed = JSON.parse(body);
+          if (Number.isInteger(parsed?.step)) step = String(parsed.step);
+        }
+      } catch { /* A malformed public manifest is not a successful check. */ }
+      return 'HTTP 200; manifestStep=' + step;
+    }
+    const header = attackId === 'home_security_header'
+      ? '; nosniff=' + (response.headers.get('x-content-type-options') === 'nosniff')
+      : '';
+    return 'HTTP ' + response.status + header;
+  } catch {
+    return 'not_run';
+  }
+}
+
+export async function runStage12PublicReadOnlyChecks(config) {
+  const app = publicApp(config);
+  // Public GETs run concurrently with bounded request timeouts; no writes.
+  const measured = await Promise.all(PUBLIC_READS.map(async ([id, path]) =>
+    [id, await observe(app, id, path)]));
+  const outcomes = new Map(measured);
   return EXPECTATIONS.map(([attackId, expected]) => ({
-    attackId, expected, observed: 'not_run',
+    attackId, expected, observed: outcomes.get(attackId) ?? 'not_run',
   }));
 }

@@ -113,6 +113,15 @@ globalThis.fetch=async(input,init={})=>{
   ||(input instanceof Request&&input.body!=null))
   fail('FORBIDDEN fetch '+method+' '+url.origin);
  // Mutation fixture reads return a clearly simulated 204, without networking.
+ const allowedPaths=new Set(['/', '/data.json', '/aleph.json', '/api/notes',
+  '/api/notes/11111111-1111-4111-8111-111111111111',
+  '/api/restore', '/api/device', '/api/operations']);
+ if(!allowedPaths.has(url.pathname))fail('FORBIDDEN fetch path '+url.pathname);
+ const requestHeaders=new Headers(init?.headers??(input instanceof Request?input.headers:undefined));
+ if(['authorization','cookie','x-api-key','apikey'].some(key=>requestHeaders.has(key)))
+  fail('FORBIDDEN authenticated fetch');
  if(process.env.BUNDLE_ISOLATION_DIAGNOSTIC==='1')return new Response(null,{status:204});
- return nativeFetch(input,{...init,method,redirect:'error'});
+ // The guarded CI invocation is explicitly OFFLINE; the separate npm run bundle
+ // step exercises real public GETs. Never turn this synthetic block into a pass.
+ throw new Error('BUNDLE_ISOLATION: offline fixture, request not sent');
 };

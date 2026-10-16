@@ -47,8 +47,11 @@ test('entire npm run bundle import closure stays within judge builtin allowlist'
     queue.push(target.slice(root.length+1));
    }
   }
-  assert.doesNotMatch(source,/\bfetch\s*\(|\bAbortSignal\.timeout\s*\(|\bawait\s+import\s*\(/u,
-   'Unexpected runtime operation in '+rel);
+  assert.doesNotMatch(source,/\bawait\s+import\s*\(/u,'Dynamic import in '+rel);
+  if(rel==='src/stage12-bundle-check.mjs'){
+   assert.match(source,/method: 'GET'/u);
+   assert.doesNotMatch(source,/method:\s*'(?:POST|PUT|DELETE|PATCH)'/u);
+  }else assert.doesNotMatch(source,/\bfetch\s*\(/u,'Unexpected network in '+rel);
  }
  assert.deepEqual([...seen].sort(),[
   'scripts/bundle.mjs','src/decider.mjs','src/resource-zones.mjs','src/stage12-bundle-check.mjs'
