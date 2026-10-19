@@ -21,6 +21,11 @@ export function createStudentView() {
         return value === null || value === undefined || value === '' ? '확인 불가' : String(value);
       }
 
+      function formatState(states, status) {
+        const originalStatus = status == null || status === '' ? 'unknown' : String(status);
+        return `${states[originalStatus] || '확인 불가'} (${originalStatus})`;
+      }
+
       function line(parent, name, value) {
         const item = document.createElement('p');
         item.textContent = `${name}: ${value}`;
@@ -58,9 +63,9 @@ export function createStudentView() {
         line(group, '사용자 ID', readable(user?.id));
         line(group, '현재 기기 이름', readable(device?.label));
         line(group, '현재 기기 ID', readable(device?.id));
-        line(group, '현재 기기 보안 상태', deviceStates[device?.status] || '확인 불가');
+        line(group, '현재 기기 보안 상태', formatState(deviceStates, device?.status));
         line(group, '현재 세션 ID', readable(session?.id));
-        line(group, '현재 세션 상태', sessionStates[session?.status] || '확인 불가');
+        line(group, '현재 세션 상태', formatState(sessionStates, session?.status));
       });
 
       section('등록 기기', devices, (group, data) => {
@@ -69,7 +74,7 @@ export function createStudentView() {
           return;
         }
         for (const device of data) {
-          line(group, '기기', `${readable(device?.label)} (ID: ${readable(device?.id)}) · ${deviceStates[device?.status] || '확인 불가'}`);
+          line(group, '기기', `${readable(device?.label)} (ID: ${readable(device?.id)}) · ${formatState(deviceStates, device?.status)}`);
         }
       });
 
@@ -79,7 +84,7 @@ export function createStudentView() {
           return;
         }
         for (const session of data) {
-          line(group, '세션', `${readable(session?.id)} · ${sessionStates[session?.status] || '확인 불가'}`);
+          line(group, '세션', `${readable(session?.id)} · ${formatState(sessionStates, session?.status)}`);
         }
       });
 
