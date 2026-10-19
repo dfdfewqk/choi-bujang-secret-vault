@@ -261,6 +261,18 @@ export function createStudentView() {
         if (event.rules?.length) {
           for (const rule of event.rules) addText(detail, readable(rule.id), readable(rule.text));
         } else addText(detail, '규칙', '표시할 규칙이 없습니다');
+        // 아직 연결되지 않은 조치는 요청을 보내지 않는 비활성 안내만 제공한다.
+        if (Array.isArray(event.supportedActions) && event.supportedActions.length > 0) {
+          sectionHeading(detail, '미지원 조치');
+          addText(detail, '조치 안내', '조치 실행 연결은 준비 중입니다. 실제 조치를 수행하지 않습니다.');
+          for (const action of event.supportedActions) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.disabled = true;
+            button.textContent = `${action} 미지원`;
+            detail.append(button);
+          }
+        }
         return detail;
       }
 
@@ -319,7 +331,137 @@ export function createStudentView() {
       renderRows();
       return root;
     },
-    renderStatus() { return '학생 구현 대기: 기기·세션·알림과 연결 점검 상태를 구분하세요.'; },
+    renderStatus({ devices, sessions, notifications, diagnostics, mode } = {}) {
+      // 이전 조회 결과가 남지 않도록 매 호출마다 현재 입력으로 새 DOM을 만든다.
+      const root = document.createElement('section');
+      const deviceLabels = { compliant: '보안 기준 충족', noncompliant: '보안 기준 미충족', unknown: '확인 불가' };
+      const sessionLabels = { active: '활성', expired: '만료', revoked: '철회됨', unknown: '확인 불가' };
+
+      function label(parent, name, value) {
+        const p = document.createElement('p');
+        p.textContent = `${name}: ${value}`;
+        parent.append(p);
+      }
+      function heading(parent, name) {
+        const title = document.createElement('h4');
+        title.textContent = name;
+        parent.append(title);
+      }
+      function readable(value) {
+        if (value === null || value === undefined || value === '') return '확인 불가';
+        const text = String(value);
+        // 제공 문자열에 인증 비밀값이 섞여 오더라도 화면이나 도움 요청에 노출하지 않는다.
+        const secret = /(?:Bearer\s+\S+|sk-(?:proj-|ant-|svcacct-)?[A-Za-z0-9_-]{8,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:api[_ -]?key|authorization|password|비밀번호|토큰)\s*[:=]\s*\S+)/i;
+        return secret.test(text) ? '[민감 정보 제외]' : text;
+      }
+      function statusName(states, status) {
+        const code = Object.hasOwn(states, status) ? status : 'unknown';
+        return `${states[code]} (${code})`;
+      }
+      function retry(labelName, resource) {
+        const code = resource?.error?.code;
+        const message = readable(resource?.error?.message);
+        if (typeof code === 'string' && /TIMEOUT/.test(code) || /시간.*초과/.test(message)) {
+          label(root, `${labelName} 상태`, '요청 시간 초과');
+        }
+        label(root, `${labelName} 조회 실패`, message);
+        label(root, '다시 시도', labelName === '진단 정보'
+          ? '제공 화면의 도움정보 불러오기 버튼을 직접 누르세요. 자동 재시도하지 않습니다.'
+          : '위쪽 다시 불러오기 버튼을 직접 누르세요. 자동 재시도하지 않습니다.');
+      }
+      function resourceList(name, resource, emptyMessage, entry) {
+        heading(root, name);
+        if (!resource || resource.status === 'loading') {
+          label(root, `${name} 조회 상태`, '불러오는 중');
+        } else if (resource.status === 'error') {
+          retry(name, resource);
+        } else if (resource.status === 'ok') {
+          if (!Array.isArray(resource.data)) {
+            label(root, `${name} 조회 상태`, '확인 불가 (응답 형식 불일치)');
+          } else if (resource.data.length === 0) {
+            label(root, `${name} 조회 결과`, emptyMessage);
+          } else {
+            const list = document.createElement('ul');
+            for (const row of resource.data) {
+              const item = document.createElement('li');
+              item.textContent = entry(row);
+              list.append(item);
+            }
+            root.append(list);
+          }
+        } else {
+          label(root, `${name} 조회 상태`, '아직 조회되지 않았습니다');
+        }
+      }
+
+      if (mode === 'demo') label(root, '자료 모드', '예제 자료 (실제 연결 아님)');
+      else if (mode === 'disconnected') label(root, '연결 상태', '연결 없음');
+      else if (mode === 'unknown') label(root, '연결 상태', '확인 불가');
+
+      label(root, '관측 범위', '본인 등록 기기 최대 100개, 현재 검증된 세션 한 개만 확인합니다. 과거 전체 세션 목록은 아닙니다.');
+      resourceList('기기', devices, '등록된 기기가 없습니다', device =>
+        `${readable(device?.label)} (ID: ${readable(device?.id)}) · ${statusName(deviceLabels, device?.status)}`);
+      resourceList('세션', sessions, '현재 연결 없음', session =>
+        `${readable(session?.id)} · ${statusName(sessionLabels, session?.status)}`);
+
+      heading(root, '알림');
+      if (!Array.isArray(notifications) || notifications.length === 0) {
+        label(root, '알림 상태', '주의할 알림이 없습니다');
+      } else {
+        const list = document.createElement('ul');
+        for (const item of notifications) {
+          const row = document.createElement('li');
+          row.textContent = `자료: ${readable(item?.resource)} · 코드: ${readable(item?.code)} · 내용: ${readable(item?.message)}`;
+          list.append(row);
+        }
+        root.append(list);
+      }
+
+      heading(root, '진단 정보');
+      // 출력과 복사는 정해진 여섯 필드만 사용하며 비정상·비밀값은 그대로 전달하지 않는다.
+      function safeField(value, pattern) {
+        return typeof value === 'string' && value.length <= 100 && pattern.test(value)
+          ? value : '확인 불가';
+      }
+      const diagnosticsReady = diagnostics?.status === 'ok' && diagnostics.data &&
+        typeof diagnostics.data === 'object' && !Array.isArray(diagnostics.data);
+      const data = diagnosticsReady ? diagnostics.data : {};
+      const safe = {
+        requestId: safeField(data.requestId, /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/),
+        component: safeField(data.component, /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/),
+        version: safeField(data.version, /^v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/),
+        checkedAt: safeField(data.checkedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/),
+        'engine.mode': safeField(data.engine?.mode, /^(connected|demo|disconnected|unknown)$/),
+        'engine.code': safeField(data.engine?.code, /^[A-Z][A-Z0-9_]{0,79}$/),
+      };
+      if (!diagnostics || diagnostics.status === 'idle') {
+        label(root, '진단 조회 상태', '아직 도움정보를 불러오지 않았습니다');
+      } else if (diagnostics.status === 'loading') {
+        label(root, '진단 조회 상태', '불러오는 중');
+      } else if (diagnostics.status === 'error') {
+        retry('진단 정보', diagnostics);
+      } else if (diagnosticsReady) {
+        for (const [name, value] of Object.entries(safe)) label(root, name, value);
+      } else {
+        label(root, '진단 조회 상태', '확인 불가 (응답 형식 불일치)');
+      }
+      label(root, '도움정보 안내', '도움 요청에 사용할 진단 정보는 사용자가 버튼을 누를 때만 클립보드로 복사합니다.');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = '도움정보 복사';
+      button.disabled = !diagnosticsReady;
+      button.addEventListener('click', async () => {
+        if (!diagnosticsReady) return;
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(safe, null, 2));
+          label(root, '복사 상태', '선별된 진단 정보를 복사했습니다');
+        } catch {
+          label(root, '복사 상태', '클립보드 복사에 실패했습니다. 브라우저 권한을 확인하세요');
+        }
+      });
+      root.append(button);
+      return root;
+    },
     renderVulnerabilities() { return '학생 구현 대기: 정확한 설치 버전·OSV 출처·조회 시각·부분 결과·조회 실패를 구분하세요.'; },
     renderAiConnection() { return '학생 구현 대기: 모델 응답 점검과 실제 사건 설명을 구분하고 AI 오류·취소·수동 복구를 안내하세요.'; },
     renderExplanation() { return '학생 구현 대기: 선택한 사건의 근거·규칙·현재 상태와 AI 설명을 연결하세요. 제안은 자동 실행하지 않습니다.'; },
