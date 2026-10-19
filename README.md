@@ -7,7 +7,7 @@
 - 공개 사이트: https://choi-bujang-secret-vault-six-jet.vercel.app/
 - Vercel은 루트 `vercel.json`에 따라 `npm run build`를 수행하고 `public/`을 게시합니다.
 - 코드: `api/`, `src/`, `scripts/`, `public/`, `xdr/`. 이전 단계 검증: `test/`, `.github/workflows/`.
-- 이미지 입력 `assets/monster-shield-scene.avif.b64`는 실제 빌드에서 사용하므로 지우지 않습니다.
+- 이미지 입력 `assets/monster-shield-scene.avif`는 실제 빌드에서 사용하므로 지우지 않습니다.
 - 실행: `npm ci`, `npm run build -- --local`; 로컬 테스트는 `node --test test/*.test.mjs`, `npm run decider:test`, `npm run detect:test`.
 - `npm run bundle`은 별도 제출용 묶음 작성입니다. 테스트 성공을 공식 통과로 표시하지 않습니다.
 

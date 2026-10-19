@@ -193,8 +193,7 @@ test('monster defense theme keeps the real login form and responsive stylesheet'
   assert.doesNotMatch(page,/monsters\/whale\.webp/u);
   assert.doesNotMatch(page,/class="nav-links"/u);
   assert.doesNotMatch(page,/class="defense-footer"/u);
-  const encoded=await readFile(new URL('../assets/monster-shield-scene.avif.b64',import.meta.url),'utf8');
-  const image=Buffer.from(encoded.trim(),'base64');
+  const image=await readFile(new URL('../assets/monster-shield-scene.avif',import.meta.url));
   const {createHash}=await import('node:crypto');
   assert.equal(image.length,58013);
   assert.equal(createHash('sha256').update(image).digest('hex'),'3f1f02c12f6cca2e29d1c94e3e2ecb4dd7aae370bb5d6d0e319ae05c39c0135c');

@@ -34,8 +34,8 @@ if (!process.argv.includes('--local')) {
 
 if (config.step >= 3) {
   // Original approved screenshot, cropped to the illustrated left hero so no fake form is rendered.
-  const encoded = (await readFile(resolve(root, 'assets', 'monster-shield-scene.avif.b64'), 'utf8')).trim();
-  const image = Buffer.from(encoded, 'base64');
+  const image = await readFile(resolve(root, 'assets', 'monster-shield-scene.avif'));
+  const encoded = image.toString('base64');
   const digest = createHash('sha256').update(image).digest('hex');
   const expected = '3f1f02c12f6cca2e29d1c94e3e2ecb4dd7aae370bb5d6d0e319ae05c39c0135c';
   if (digest !== expected || image.length !== 58013) {
