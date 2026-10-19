@@ -38,7 +38,7 @@
     "src/ai/credential-vault.mjs": "94a3c22cd2283338f0e1cf1cc58d56709807606da8dd34b26c43a37d51799cf2",
     "src/ai/learner-support-contract.mjs": "a5fd67792c31f1cdc575587b893afdaac1139e42f98a0dd99c4b9525461d3240",
     "src/ai/service.mjs": "96537ad8da6b498be7e13e05eb9183301f07de4c40dcac7456f7b5ebf1c564e1",
-    "src/ai/vault-service.mjs": "41e1830f319771bceed510edd815b467dbe1d698f01e54e0cc97592cff5427db",
+    "src/ai/vault-service.mjs": "955263282982a75a17a6783b7741adb33db2005fd3a2c5ea2a615d01061457c3",
     "src/connection/manager.mjs": "6d16e6837cd777513de3b36230a96e1959a08108a69894b312104b03dec6ab39",
     "src/connection/native-context.mjs": "d91635522e5ea781204fd1284f5ee3a30faa76e628746195ad3ea1a7e82bafd3",
     "src/connection/native-login.mjs": "9d9720e44533d37083bdf2bafd28d9848585c41b91b724ef444701e2abc216a8",

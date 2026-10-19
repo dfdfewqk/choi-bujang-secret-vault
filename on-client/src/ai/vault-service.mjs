@@ -16,10 +16,34 @@ const subject = v => typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,19
 const positive = v => Number.isSafeInteger(v) && v > 0;
 const own = code => Object.assign(new Error(code),{code});
 const abortRead=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted').get;
+// Keep only reviewed public error codes. Never forward the upstream error body,
+// stack, token, or message; an unknown or vault-internal code stays pending.
 const messages = Object.freeze({
   ON_AI_PROVISIONING_PENDING:'학생 앱 전용 이용 권한과 열쇠 발급을 준비 중입니다. 담당자에게 확인하세요.',
-  WB_CLCO_CANCELLED:'AI 요청을 취소했습니다.',
+  ON_AI_AUTHORIZATION_CHANGED:'AI 이용 권한 내용이 점검 도중 바뀌었습니다. 담당자에게 확인하세요.',
+  ON_AI_MODEL_LIST_EMPTY:'현재 앱 권한으로 쓸 수 있는 AI 모델이 없습니다. 담당자에게 모델 허용 설정을 확인하세요.',
+  MODEL_NOT_CONFIGURED:'앱 서버에 허용된 AI 모델을 설정하세요.',
+  ON_AI_INVALID_INPUT:'사건 근거와 현재 상태를 확인하세요.',
+  ON_AI_INVALID_OUTPUT:'AI 설명의 응답 형식을 확인할 수 없습니다.',
+  ON_AI_TRANSPORT_PENDING:'AI 연결 모듈이 준비되지 않았습니다. 담당자에게 확인하세요.',
+  WB_CLCO_AUTH_REQUIRED:'앱 계정 연결과 승인을 확인하세요.',
+  WB_CLCO_ACCESS_BLOCKED:'학생 앱의 이용 권한을 담당자에게 확인하세요.',
+  WB_CLCO_SESSION_CLOSED:'현재 AI 이용 시간을 확인하세요.',
+  WB_CLCO_COHORT_BUDGET_EXHAUSTED:'반의 AI 사용량을 담당자에게 확인하세요.',
+  WB_CLCO_LIMIT_REACHED:'AI 이용 한도를 담당자에게 확인하세요.',
+  WB_CLCO_RATE_LIMITED:'AI 요청이 잠시 제한됐습니다. 잠시 뒤 직접 다시 점검하세요.',
+  WB_CLCO_SERVER_UNAVAILABLE:'AI 서버가 응답하지 않습니다.',
   WB_CLCO_TIMEOUT:'AI 응답 시간이 초과됐습니다. 연결 상태를 확인하세요.',
+  WB_CLCO_NETWORK_ERROR:'AI 서버 연결을 확인하세요.',
+  WB_CLCO_CANCELLED:'AI 요청을 취소했습니다.',
+  WB_CLCO_INVALID_URL:'AI 서버 설정 주소를 확인하세요.',
+  WB_CLCO_INVALID_TOKEN:'앱 전용 인증 정보를 담당자에게 확인하세요.',
+  WB_CLCO_INVALID_LIMIT:'AI 요청 시간 제한 설정을 확인하세요.',
+  WB_CLCO_INVALID_RESPONSE:'AI 서버 응답을 확인할 수 없습니다.',
+  WB_CLCO_INVALID_CONTENT_TYPE:'AI 서버 응답 형식이 올바르지 않습니다.',
+  WB_CLCO_RESPONSE_TOO_LARGE:'AI 응답 크기 제한을 확인하세요.',
+  WB_CLCO_REDIRECT_BLOCKED:'AI 서버 주소가 변경됐습니다. 담당자에게 확인하세요.',
+  WB_CLCO_REQUEST_FAILED:'AI 요청을 처리하지 못했습니다.',
 });
 
 export function createVaultOnAiService({enabled=false,vault,model='aleph/auto',timeoutMs=10000,transportFactory,appAuthorization}={}) {
