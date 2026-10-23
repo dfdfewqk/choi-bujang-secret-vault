@@ -31,7 +31,7 @@ BEGIN
  IF FOUND THEN
   IF d.public_key IS DISTINCT FROM p_key THEN RAISE EXCEPTION 'device collision'; END IF;
  ELSE
-  IF (SELECT count(*) FROM byteback_private.app_devices WHERE owner_id=p_owner AND expires_at>clock_timestamp())>=8 THEN
+  IF (SELECT count(*) FROM byteback_private.app_devices WHERE owner_id=p_owner AND state IN ('pending','approved') AND expires_at>clock_timestamp())>=8 THEN
    RAISE EXCEPTION 'device limit'; END IF;
   INSERT INTO byteback_private.app_devices(owner_id,device_id,public_key,state)
    VALUES(p_owner,p_device,p_key,CASE WHEN p_trial THEN 'approved' ELSE 'pending' END) RETURNING * INTO d;
