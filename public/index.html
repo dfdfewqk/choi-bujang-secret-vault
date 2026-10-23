@@ -50,7 +50,7 @@
         <button id="device-request" type="button" class="btn-primary">기기 승인 요청</button>
         <button id="device-check" type="button" class="btn-secondary">승인 결과 확인</button>
         <button id="device-logout" type="button" class="btn-secondary">로그아웃</button>
-        <p class="form-hint">키와 로그인 정보는 이 화면의 메모리에만 유지합니다. 새로고침·화면 이동 후에는 다시 로그인하고 승인받아야 합니다. 승인 유효시간은 최대 8시간입니다.</p>
+        <p class="form-hint">로그인 정보는 화면을 나가면 삭제됩니다. 기기 인증키는 이 브라우저의 보안 저장소에 보관되어 같은 계정에서 다시 로그인할 때 재사용됩니다. 승인은 최대 8시간이며 만료·취소되면 재승인이 필요합니다.</p>
       </section>
       <section id="vault-panel" class="hidden" aria-label="로그인한 사용자 자료실">
         <section id="auth-completion" class="auth-completion" role="status" aria-live="polite" aria-label="계정 인증 완료 상태">
@@ -100,7 +100,7 @@
 <script type="module" src="/receipt.mjs"></script>
 <script type="module" src="/pwa-client.mjs"></script>
 <script type="module">
-  import {requestApproval,approvalStatus,signedFetch,clearDevice} from './device-client.mjs';
+  import {requestApproval,restoreDevice,approvalStatus,signedFetch,clearDevice} from './device-client.mjs';
   import { createServerAuthClient } from './auth-client.mjs';
   import { isSignupEmailReturn, getAuthCompletion } from './auth-feedback.mjs';
   const returnedFromSignupEmail = isSignupEmailReturn(window.location.hash);
@@ -133,7 +133,7 @@
   $('#device-request').addEventListener('click',async()=>{
     if(!session)return;
     $('#device-request').disabled=true;
-    try{await updateApproval(await requestApproval(session.access_token));}
+    try{await updateApproval(await requestApproval(session.access_token,session.user.id));}
     catch(e){showLoggedIn(Boolean(session));status('기기 승인 요청 실패: '+e.message);}
     finally{$('#device-request').disabled=false;}
   });
@@ -201,8 +201,23 @@
     if(next){
       displayCompletion(next);
       $('#auth-status').textContent='현재 계정: '+(next.user?.email??'인증된 사용자');
-      $('#device-status').textContent='로그인 완료 · 기기 승인 요청 전';
-      status('기기 승인을 요청한 뒤 서버의 승인 결과를 확인해 주세요.');
+      $('#device-status').textContent='이 브라우저의 기존 기기 승인 상태 확인 중…';
+      try {
+        const stored=await restoreDevice(next.access_token,next.user?.id);
+        if(currentVersion!==sessionUpdateVersion){clearDevice();return;}
+        if(stored){
+          await updateApproval(stored);
+          status(stored.status==='approved'?'기존 승인 기기로 로그인했습니다.':'기존 기기 승인 대기 중입니다. 승인 결과를 확인하세요.');
+        } else {
+          $('#device-status').textContent='새 기기 · 승인 요청 전';
+          status('새 기기라면 승인 요청을 한 번만 진행하세요.');
+        }
+      } catch(error) {
+        if(currentVersion!==sessionUpdateVersion){clearDevice();return;}
+        showLoggedIn(true);
+        $('#device-status').textContent='기존 기기 복원 실패';
+        status('기기 보안 저장소 또는 승인 서버 확인 실패: '+error.message);
+      }
     } else {
       status('로그인이 필요합니다.');
     }
