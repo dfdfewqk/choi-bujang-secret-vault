@@ -2,9 +2,9 @@ import {canonical,signedMessage} from './request-signature.mjs';
 import {loadTrustedDevice,saveTrustedDevice,forgetTrustedDevice} from './device-store.mjs';
 const enc=new TextEncoder();
 const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
-let pair=null,deviceId=null,approved=false,ownerId=null;
+let pair=null,deviceId=null,approved=false,ownerId=null,deviceGeneration=0;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export function clearDevice(){pair=null;deviceId=null;approved=false;ownerId=null;}
+export function clearDevice(){deviceGeneration++;pair=null;deviceId=null;approved=false;ownerId=null;}
 async function remoteStatus(token,id){
  const resp=await fetch('/api/device?id='+id,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
  const data=await resp.json();
@@ -17,6 +17,7 @@ async function remoteStatus(token,id){
 export async function restoreDevice(token,verifiedOwnerId){
  if(!UUID.test(verifiedOwnerId??''))throw Error('계정 인증이 필요합니다.');
  clearDevice();
+ const generation=deviceGeneration;
  const saved=await loadTrustedDevice(verifiedOwnerId);
  if(!saved)return null;
  if(saved.ownerId!==verifiedOwnerId||!/^[a-f0-9]{16}$/.test(saved.deviceId??'')
@@ -30,6 +31,7 @@ export async function restoreDevice(token,verifiedOwnerId){
  const signature=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},saved.privateKey,challenge);
  if(!await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},saved.publicKey,signature,challenge))throw Error('보관된 기기 인증키를 검증하지 못했습니다.');
  const remote=await remoteStatus(token,saved.deviceId);
+ if(deviceGeneration!==generation)throw Error('기기 인증 상태가 변경되었습니다.');
  if(!['approved','pending'].includes(remote.status)){
   await forgetTrustedDevice(verifiedOwnerId);
   return null;
