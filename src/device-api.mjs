@@ -31,7 +31,13 @@ export async function handleDevice(request,response,{verifyAuthorization,databas
    if(Object.keys(query).join(',')!=='id'||! /^[a-f0-9]{16}$/u.test(query.id??''))return response.status(400).json({error:'INVALID_DEVICE_ID'});
    rpc='byteback_device_status';args={p_owner:owner,p_device:query.id};
   }
-  const {data,error}=await db.rpc(rpc,args);if(error)throw error;
+  const {data,error}=await db.rpc(rpc,args);
+  // Registration capacity is not an outage. Return a stable, non-sensitive
+  // code so the client can suggest revoking stale pending devices.
+  // Only map the explicit database limit exception, never infer success.
+  if(error&&request.method==='POST'&&error.message==='device limit')
+    return response.status(409).json({error:'DEVICE_REGISTRATION_LIMIT'});
+  if(error)throw error;
   return response.status(200).json({deviceId:data?.deviceId??args.p_device,
    status:['approved','pending','revoked','expired'].includes(data?.status)?data.status:'unknown',
    expiresAt:data?.expiresAt??null});
