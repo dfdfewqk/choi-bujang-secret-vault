@@ -462,7 +462,111 @@ export function createStudentView() {
       root.append(button);
       return root;
     },
-    renderVulnerabilities() { return '학생 구현 대기: 정확한 설치 버전·OSV 출처·조회 시각·부분 결과·조회 실패를 구분하세요.'; },
+    renderVulnerabilities({ status = 'idle', mode = null, data = null, error = null } = {}) {
+      // 20단계: 제공 화면이 검증한 현재 조회 상태만 읽는다. 조회/설치/재시도는 하지 않는다.
+      // 매번 새 DOM을 만들어 오래된 결과나 성공 표시가 남지 않게 한다.
+      const root = document.createElement('section');
+      const safe = (value, max = 500) => typeof value === 'string' && value.trim().length > 0
+        && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value)
+        && !/(?:Bearer\s+\S+|sk-(?:proj-|ant-|svcacct-|on-)?[A-Za-z0-9_-]{8,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:api[_ -]?key|authorization|password|비밀번호|토큰)\s*[:=]\s*\S+)/i.test(value);
+      const print = (parent, name, value) => {
+        const row = document.createElement('p');
+        row.textContent = `${name}: ${value}`;
+        parent.append(row);
+      };
+      const validCode = value => typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,79}$/.test(value);
+      const stateNames = {
+        complete: '모두 조회(complete) · 승인된 조회 범위에서 응답 확인',
+        partial: '일부 조회 실패(partial) · 확인된 취약점 정보는 유지, 나머지는 확인 불가',
+        not_checked: '아직 조회 안 함(not_checked) · 승인된 공개 조회 대상이 없어 미조회',
+        not_configured: '조회 준비 미완료(not_configured) · 조회 대상 프로젝트 설정 필요',
+        unverifiable: '잠금 파일 확인 불가(unverifiable) · 설치 목록을 검증할 수 없어 미확인',
+      };
+      const packageNames = {
+        known_vulnerabilities: '알려진 취약점 항목 있음(known_vulnerabilities)',
+        none_found: '조회 범위에서 알려진 취약점 항목 없음(none_found) · 패키지나 앱 전체의 안전을 보장하지 않음',
+        unverifiable: '조회 확인 불가(unverifiable) · 취약점 없음이나 안전함을 의미하지 않음',
+      };
+      if (status === 'idle') {
+        print(root, '설치 패키지 조회', '조회 전(idle) · 아직 OSV 조회 결과가 없습니다.');
+        return root;
+      }
+      if (status === 'loading') {
+        print(root, '설치 패키지 조회', '조회 중(loading) · 이전 조회 결과를 현재 결과로 표시하지 않습니다.');
+        return root;
+      }
+      if (status === 'error') {
+        print(root, '설치 패키지 조회', '조회 실패(error) · 이전 결과는 현재 확인 결과가 아닙니다.');
+        if (validCode(error?.code)) print(root, '오류 코드', error.code);
+        print(root, '오류 내용', safe(error?.message) ? error.message : '안전하게 표시할 수 있는 오류 설명이 없습니다.');
+        print(root, '안내', '실패를 취약점 없음으로 판단하지 마세요. 필요하면 제공 화면에서 직접 다시 조회하세요.');
+        return root;
+      }
+      if (status !== 'ok' || !data || !Object.hasOwn(stateNames, data.status)
+        || !Array.isArray(data.packages)) {
+        print(root, '설치 패키지 조회', '조회 결과 형식 확인 불가 · 취약점 없음으로 판단하지 마세요.');
+        return root;
+      }
+
+      print(root, '전체 조회 상태', stateNames[data.status]);
+      if (mode === 'demo') print(root, '자료 모드', '예제(demo) · 실제 OSV 조회가 아닙니다.');
+      if (validCode(data.code)) print(root, '상태 코드', data.code);
+      if (Number.isSafeInteger(data.lockfileVersion) && [2, 3].includes(data.lockfileVersion))
+        print(root, '잠금 파일 버전(lockfileVersion)', data.lockfileVersion);
+      if (typeof data.lockfileHash === 'string' && /^[0-9a-f]{64}$/.test(data.lockfileHash))
+        print(root, '잠금 파일 SHA-256(lockfileHash)', data.lockfileHash);
+      if (safe(data.checkedAt, 80)) print(root, '전체 조회 시각(checkedAt)', data.checkedAt);
+      if (data.excluded && Number.isSafeInteger(data.excluded.count) && data.excluded.count >= 0)
+        print(root, '조회 제외 패키지 수', data.excluded.count);
+      if (data.status === 'partial')
+        print(root, '부분 조회', '확인된 취약점 ID는 유지합니다. 확인하지 못한 패키지를 취약점 없음으로 표시하지 않습니다.');
+      if (data.status === 'not_configured')
+        print(root, '운영 설정', '운영자가 조회 대상 프로젝트를 준비해야 합니다. 학생 화면에서 임의 변경하지 않습니다.');
+      if (data.status === 'not_checked')
+        print(root, '미조회 사유', '허용된 공개 패키지가 없어 조회하지 않았습니다. 미조회는 취약점 없음이 아닙니다.');
+      if (data.status === 'unverifiable')
+        print(root, '설치 목록', 'package-lock.json 또는 설치 메타데이터를 검증하지 못했습니다. 미조회는 취약점 없음이 아닙니다.');
+      if (!data.packages.length) {
+        print(root, '패키지 결과', data.status === 'complete'
+          ? '조회된 패키지 행이 없습니다. 앱 전체의 안전을 보장하지 않습니다.'
+          : '표시할 검증된 패키지 결과가 없습니다. 미조회·실패를 취약점 없음으로 판단하지 않습니다.');
+        return root;
+      }
+
+      const versionPattern = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+      for (const pkg of data.packages) {
+        if (!pkg || !safe(pkg.name, 214) || !safe(pkg.version, 100)
+          || !versionPattern.test(pkg.version) || !Object.hasOwn(packageNames, pkg.status)
+          || !Array.isArray(pkg.vulnerabilities)) {
+          print(root, '패키지', '패키지 정보 또는 정확한 설치 버전을 확인할 수 없습니다.');
+          continue;
+        }
+        const block = document.createElement('section');
+        block.setAttribute('data-student-package-name', pkg.name);
+        block.setAttribute('data-student-package-version', pkg.version);
+        print(block, '패키지명(name)', pkg.name);
+        print(block, '설치 버전(version)', pkg.version);
+        print(block, '패키지 조회 상태', packageNames[pkg.status]);
+        if (pkg.status === 'unverifiable' && pkg.vulnerabilities.length)
+          print(block, '부분 조회 결과', '일부 확인·전체 조회 확인 불가 · 이미 받은 취약점 ID는 보존합니다.');
+        print(block, 'OSV 조회 출처(source)', safe(pkg.source, 200) ? pkg.source : '확인 불가');
+        print(block, '패키지 확인 시각(checkedAt)', safe(pkg.checkedAt, 80) ? pkg.checkedAt : '확인 불가');
+        if (!pkg.vulnerabilities.length) {
+          print(block, '취약점 세부 결과', pkg.status === 'none_found'
+            ? '이번 조회 범위에서 알려진 항목이 없습니다. 안전을 보장하지 않습니다.'
+            : '확인 가능한 취약점 ID가 없습니다. 미조회·실패는 취약점 없음과 다릅니다.');
+        }
+        for (const finding of pkg.vulnerabilities) {
+          if (safe(finding?.id, 160)) {
+            print(block, '취약점 ID(id)', finding.id);
+            print(block, '정보 수정 시각(modified)', safe(finding.modified, 80) ? finding.modified : '확인 불가');
+          }
+        }
+        root.append(block);
+      }
+      print(root, '조회 범위 안내', 'OSV에 알려진 취약점 데이터와 허용된 설치 패키지만 조회합니다. 결과가 없어도 보안성을 보장하지 않습니다.');
+      return root;
+    },
     renderAiConnection({ status, mode, data, error, checkedAt, explanationAccepted } = {}) {
       // 연결 점검은 실제 보안 기록의 AI 설명 요청과 별개다.
       // 현재 입력만으로 새 DOM을 반환해 지난 점검 결과가 남지 않도록 한다.
