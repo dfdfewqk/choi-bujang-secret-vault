@@ -15,7 +15,7 @@
 | 항목 | 저장소 원문에서 확인한 내용 | 실제 PC에서 확인 |
 | --- | --- | --- |
 | 운영체제·터미널 | Windows PowerShell, 실제 디렉터리의 `on-client`에서 실행하도록 설계 | Windows 직접 실행 미확인 |
-| Node.js | `on-client/package.json`의 `engines.node`는 `24.19.0`; 제공 안내는 Node.js 22~24를 지원한다고 설명 | 설치된 PC 버전 미확인 |
+| Node.js | `on-client/package.json`의 `engines.node`는 `>=22.0.0 <25.0.0`(Node 22~24 메이저 허용). `tools/start-alekov.ps1`도 22~24 허용. **수업 검수 기준·권장 버전은 24.19.0**이며 모든 버전을 실제 PC에서 시험한 것은 아님 | 설치된 PC 및 버전별 실실행 미확인 |
 | 학생 앱 패키지 | `on-client/package.json`: `alekov-client-starter` 0.2.11, `type: module` | 버전 문자열 소스 확인 |
 | 의존성 | `on-client/package.json`에는 외부 `dependencies`가 없음. **루트** `package-lock.json`과 혼동하지 않는다 | on-client 외부 설치 필요 없음(구성상) |
 | 브라우저 | Windows PC의 브라우저에서 loopback 접속 | 브라우저 실검증 미확인 |
