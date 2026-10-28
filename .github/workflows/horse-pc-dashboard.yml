@@ -26,3 +26,12 @@ jobs:
         with:
           node-version: '24'
       - run: node --test on-client/test/pc-connectivity.test.mjs
+      - name: Check one-click launcher syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile('on-client/tools/horse-oneclick.ps1', [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw ($errors | Out-String) }
+          if (-not (Test-Path 'HORSE_실행.cmd')) { throw 'Launcher CMD missing' }
+          if (-not (Select-String -Path 'HORSE_실행.cmd' -Pattern 'horse-oneclick.ps1' -Quiet)) { throw 'Launcher CMD not linked' }
