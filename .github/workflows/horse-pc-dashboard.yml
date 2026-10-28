@@ -14,6 +14,7 @@ jobs:
       - run: node --check on-client/src/server.mjs
       - run: node --check on-client/src/pc-metrics.mjs
       - run: node --check on-client/public/pc-dashboard.js
+      - run: node --check on-client/src/pc-connectivity.mjs
       - run: npm run check
         working-directory: on-client
-      - run: node --test on-client/test/pc-metrics.test.mjs on-client/test/pc-integration.test.mjs
+      - run: node --test on-client/test/pc-metrics.test.mjs on-client/test/pc-integration.test.mjs on-client/test/pc-connectivity.test.mjs

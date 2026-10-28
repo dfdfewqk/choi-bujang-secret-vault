@@ -1,5 +1,6 @@
 import http from 'node:http';
 import {readPcStatus} from './pc-metrics.mjs';
+import {readPcConnectivity,classifySdp} from './pc-connectivity.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
@@ -684,6 +685,19 @@ export function createOnServer(serverOptions={}) {
       }
       if(req.method==='GET'&&url.pathname==='/api/pc-status'){
         const data=await bounded(()=>readPcStatus());send(200,{ok:true,data});return;
+      }
+      if(req.method==='GET'&&url.pathname==='/api/pc-connectivity'){
+        // Distinct from local PC inspection: verified SDP identity is required to claim a live SDP connection.
+        const data=await bounded(()=>readPcConnectivity());
+        let check={mode,ownedHost:sdpHostEngine!==null,identityActive:false,failed:false};
+        if(mode==='connected'&&check.ownedHost){
+          try{
+            const identity=assertData('identity',await call('readIdentity'));
+            check.identityActive=identity.session?.status==='active'&&id(engine.projectId);
+          }catch{check.failed=true;}
+        }
+        const sdp=classifySdp(check,clock().toISOString());
+        send(200,{ok:true,data:{...data,sdp}});return;
       }
       if(req.method==='GET'&&url.pathname==='/api/diagnostics'){
         // 자동 호출이나 비밀 원문·전체 설정 출력 없이 로컬 연결 상태만 진단한다.

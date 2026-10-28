@@ -102,3 +102,62 @@ if(area){
  window.addEventListener('pagehide',()=>clearInterval(timer),{once:true});
  check();
 }
+
+
+// Day 3 - independent manual, read-only Windows connectivity and event overview.
+const connectionArea=document.getElementById('pc-connectivity');
+if(connectionArea){
+ const element=name=>document.getElementById('pc-con-'+name);
+ const set=(name,value)=>{element(name).textContent=String(value);};
+ const fmt=stamp=>{const d=new Date(stamp);return Number.isFinite(d.getTime())?d.toLocaleString('ko-KR',{hour12:false}):'확인 불가';};
+ const list=(name,values)=>{const target=element(name+'-list');target.replaceChildren();for(const value of values){const li=document.createElement('li');li.textContent=value;target.append(li);}};
+ function show(data){
+  if(data?.source!=='local-os'||data.demo!==false)throw Error('로컬 실측 자료의 출처를 확인할 수 없습니다.');
+  set('status','로컬 조회 · '+fmt(data.checkedAt)+' · 관리자 권한 상승 없음');
+  const net=data.network;
+  if(net?.status==='ok'){
+   set('network',net.link==='up'?'네트워크 어댑터 연결':net.link==='down'?'어댑터 연결 끊김':'IP 구성 확인 · 링크 상태 확인 불가');
+   set('network-detail',(net.reason||'')+' · 조회 '+fmt(net.checkedAt));
+   list('network',(net.interfaces||[]).map(x=>x.name+' · IPv4 '+x.ipv4+' · 링크 '+(x.link==='up'?'연결':x.link==='down'?'끊김':'확인 불가')+' · 게이트웨이 '+(x.gateway||'확인 불가')));
+  }else{set('network','확인 불가');set('network-detail',(net?.reason||'조회 실패')+' · '+fmt(net?.checkedAt));list('network',[]);}
+  const fw=data.firewall;
+  if(fw?.status==='ok'){
+   set('firewall','프로필 '+fw.profiles.length+'개 읽음');
+   set('firewall-detail',(fw.reason||'Windows 방화벽 설정을 읽기만 했습니다.')+' · '+fmt(fw.checkedAt));
+   list('firewall',fw.profiles.map(x=>x.name+' · '+(x.enabled?'켜짐':'꺼짐')));
+  }else{set('firewall','확인 불가');set('firewall-detail',(fw?.reason||'조회 실패')+' · '+fmt(fw?.checkedAt));list('firewall',[]);}
+  const ev=data.events;
+  const logs=Array.isArray(ev?.logs)?ev.logs:[];
+  const checked=logs.filter(x=>x.status==='ok');
+  set('events',checked.length===2?'System·Application 읽음':checked.length===1?'일부 확인 · 1개 로그':'확인 불가');
+  set('events-detail','최근 24시간 · '+fmt(ev?.checkedAt)+' · 침해 탐지 결과 아님');
+  list('events',['System','Application'].map(name=>{
+   const item=logs.find(x=>x.name===name);
+   return item?.status==='ok'?name+' · 경고 '+item.warning+'건 · 오류 '+item.error+'건':
+     name+' · 확인 불가 · '+(item?.reason||'조회 결과 없음');
+  }));
+  const sdp=data.sdp;
+  set('sdp',sdp?.status==='disconnected'?'SDP 미연결':sdp?.status==='connected'?'SDP 신원 조회 확인':'확인 불가');
+  set('sdp-detail',(sdp?.reason||'SDP 상태 검증 자료 없음')+' · '+fmt(sdp?.checkedAt));
+ }
+ let busy=false;
+ async function refresh(){
+  if(busy)return;busy=true;element('check').disabled=true;set('status','네트워크·Windows 이벤트 조회 중');
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),13000);
+  try{
+   const response=await fetch('/api/pc-connectivity',{cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const body=await response.json();
+   if(body.ok!==true)throw Error('연결 상태 응답 검증 실패');
+   show(body.data);
+  }catch(error){
+   set('status','확인 불가 · '+error.message);
+   for(const name of ['network','firewall','events','sdp']){
+    set(name,'확인 불가');set(name+'-detail','조회 실패: '+error.message);
+   }
+   for(const name of ['network','firewall','events'])list(name,[]);
+  }finally{clearTimeout(timeout);busy=false;element('check').disabled=false;}
+ }
+ element('check').addEventListener('click',refresh);
+ refresh();
+}
