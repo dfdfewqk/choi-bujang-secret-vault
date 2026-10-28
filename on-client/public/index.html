@@ -57,7 +57,29 @@
             <article class="pc-card" id="pc-alert-card"><h3>위험 알림</h3><div class="pc-value" id="pc-alert">측정 전</div><div class="pc-info" id="pc-alert-details">확인 불가 · 측정 전</div></article>
           </div>
           <div class="pc-bottom">
-            <section class="pc-panel"><h3>CPU 사용률 추이</h3><svg id="pc-chart" role="img" aria-label="CPU 실측 사용률 추이" viewBox="0 0 640 112"></svg><p id="pc-caption">수집된 실측 데이터 없음</p></section>
+            <section class="pc-panel">
+              <h3>CPU 사용률 추이</h3>
+              <svg id="pc-chart" role="img" aria-label="CPU 실측 사용률 추이" viewBox="0 0 640 112"></svg>
+              <p id="pc-caption">수집된 실측 데이터 없음</p>
+              <div class="pc-compare" aria-label="CPU 직전 측정과 현재 측정 비교">
+                <div class="pc-compare-item">
+                  <span class="pc-compare-label">직전 측정</span>
+                  <strong id="pc-compare-previous">측정 전</strong>
+                  <small id="pc-compare-previous-time">이전 측정 없음</small>
+                </div>
+                <div class="pc-compare-item">
+                  <span class="pc-compare-label">현재 측정</span>
+                  <strong id="pc-compare-current">확인 불가</strong>
+                  <small id="pc-compare-current-time">확인 불가 · 측정 전</small>
+                </div>
+                <div class="pc-compare-item" id="pc-compare-delta-card" data-state="unknown">
+                  <span class="pc-compare-label">CPU 변화량</span>
+                  <strong id="pc-compare-delta" aria-live="polite">비교 전</strong>
+                  <small id="pc-compare-delta-time">두 번 측정하면 비교 가능</small>
+                </div>
+              </div>
+              <p id="pc-compare-note" class="pc-compare-note">실측 두 번 이상일 때만 변화량(%p)을 계산합니다.</p>
+            </section>
             <section class="pc-panel"><h3>측정 기록 및 경고</h3><ol id="pc-logs"><li>측정 대기 중</li></ol></section>
           </div>
           <p>경고 기준: CPU·메모리 90% 이상, 디스크 여유 10% 또는 10 GiB 미만. 기록은 이번 화면 실행 중에만 유지됩니다.</p>
