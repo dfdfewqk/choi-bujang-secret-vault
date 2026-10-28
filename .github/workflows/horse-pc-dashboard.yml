@@ -27,6 +27,43 @@ jobs:
         with:
           node-version: '24'
       - run: node --test on-client/test/pc-connectivity.test.mjs
+      - name: Test ZIP extraction and real one-click local startup (no Git)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tmp = Join-Path $env:RUNNER_TEMP 'HORSE one click 한글 경로'
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          Copy-Item on-client (Join-Path $tmp 'on-client') -Recurse
+          Copy-Item HORSE_실행.cmd (Join-Path $tmp 'HORSE_실행.cmd')
+          if (Test-Path (Join-Path $tmp '.git')) { throw 'ZIP fixture must not contain .git' }
+          $port = 52819
+          $launcher = Join-Path $tmp 'on-client/tools/horse-oneclick.ps1'
+          $serverPid = $null
+          try {
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -NoBrowser -Port $port
+            if ($LASTEXITCODE -ne 0) { throw "One-click ZIP launcher failed: $LASTEXITCODE" }
+            $index = Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:$port/" -TimeoutSec 10
+            if ($index.StatusCode -ne 200 -or $index.Content -notmatch 'id="pc-dashboard"') { throw 'HORSE HTML is not served' }
+            foreach ($asset in @('/pc-dashboard.js','/app.js','/student/extension.mjs')) {
+              $r = Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:$port$asset" -TimeoutSec 8
+              if ($r.StatusCode -ne 200 -or [string]::IsNullOrWhiteSpace($r.Content)) { throw "Missing $asset" }
+            }
+            $metrics = Invoke-RestMethod "http://127.0.0.1:$port/api/pc-status" -TimeoutSec 12
+            if ($metrics.ok -ne $true -or $metrics.data.source -ne 'local-os' -or $metrics.data.demo -ne $false) { throw 'PC metrics API failed' }
+            $connect = Invoke-RestMethod "http://127.0.0.1:$port/api/pc-connectivity" -TimeoutSec 30
+            if ($connect.ok -ne $true -or $connect.data.source -ne 'local-os' -or $connect.data.demo -ne $false) { throw 'Windows connectivity API failed' }
+            if ($connect.data.sdp.status -eq 'connected') { throw 'SDP must not be faked in ZIP startup' }
+            # Launching again must reuse the existing matching HORSE server.
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -NoBrowser -Port $port
+            if ($LASTEXITCODE -ne 0) { throw "Second launch failed: $LASTEXITCODE" }
+            Write-Host 'PASS: ZIP -> launcher -> local server -> browser assets -> two real PC APIs -> second launch'
+          } finally {
+            # CI only: kill the server we started on this private runner/test port.
+            $listening = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($listening -and $listening.OwningProcess) {
+              Stop-Process -Id $listening.OwningProcess -ErrorAction SilentlyContinue
+            }
+          }
       - name: Check one-click launcher syntax
         shell: pwsh
         run: |
