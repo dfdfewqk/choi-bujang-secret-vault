@@ -18,3 +18,11 @@ jobs:
       - run: npm run check
         working-directory: on-client
       - run: node --test on-client/test/pc-metrics.test.mjs on-client/test/pc-integration.test.mjs on-client/test/pc-connectivity.test.mjs
+  windows-readonly:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test on-client/test/pc-connectivity.test.mjs

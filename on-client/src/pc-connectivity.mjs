@@ -12,7 +12,9 @@ const NETWORK = String.raw`$ErrorActionPreference='Stop';
 $items=@(Get-NetIPConfiguration -ErrorAction Stop | ForEach-Object {
   $ip=@($_.IPv4Address | Select-Object -ExpandProperty IPAddress -ErrorAction SilentlyContinue);
   $gw=@($_.IPv4DefaultGateway | Select-Object -ExpandProperty NextHop -ErrorAction SilentlyContinue);
-  [pscustomobject]@{name=[string]$_.InterfaceAlias;link=[string]$_.NetAdapter.Status;ipv4=if($ip.Count){[string]$ip[0]}else{''};gateway=if($gw.Count){[string]$gw[0]}else{''}}
+  $localIp=if($ip.Count){[string]$ip[0]}else{''};
+  $gateway=if($gw.Count){[string]$gw[0]}else{''};
+  [pscustomobject]@{name=[string]$_.InterfaceAlias;link=[string]$_.NetAdapter.Status;ipv4=$localIp;gateway=$gateway}
 });
 @{items=$items}|ConvertTo-Json -Depth 5 -Compress`;
 const FIREWALL = String.raw`$ErrorActionPreference='Stop';
@@ -41,6 +43,8 @@ foreach($name in @('System','Application')){
 }
 @{logs=$logs}|ConvertTo-Json -Depth 5 -Compress`;
 
+// Exposed for read-only script syntax checks on Windows CI. No command mutates system state.
+export const WINDOWS_READ_QUERIES = Object.freeze({network:NETWORK,firewall:FIREWALL,events:EVENTS});
 export async function invokePowerShell(script) {
   const {stdout}=await exec('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command',script],
     {timeout:9000,windowsHide:true,maxBuffer:65536});
