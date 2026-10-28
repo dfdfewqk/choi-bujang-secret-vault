@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0on-client\tools\horse-oneclick.ps1"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0on-client\tools\horse-oneclick.ps1" %*
 set "exitcode=%errorlevel%"
 if not "%exitcode%"=="0" (
   echo.

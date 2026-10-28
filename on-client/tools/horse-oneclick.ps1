@@ -38,13 +38,13 @@ function Update-Checkout {
     return
   }
   try {
-    $origin = Read-Git @('-C',$repo,'remote','get-url','origin')
-    $active = Read-Git @('-C',$repo,'branch','--show-current')
+    $origin = Read-Git -argsToGit @('-C',$repo,'remote','get-url','origin')
+    $active = Read-Git -argsToGit @('-C',$repo,'branch','--show-current')
     if ($origin -ne $expectedOrigin -or $active -ne $branch) {
       Write-Host '[HORSE] 다른 저장소 또는 브랜치이므로 자동 업데이트는 건너뜁니다.'
       return
     }
-    $dirty = Read-Git @('-C',$repo,'status','--porcelain')
+    $dirty = Read-Git -argsToGit @('-C',$repo,'status','--porcelain')
     if (-not [string]::IsNullOrWhiteSpace($dirty)) {
       Write-Host '[HORSE] 로컬 수정 파일이 있어 자동 업데이트를 건너뜁니다.'
       return

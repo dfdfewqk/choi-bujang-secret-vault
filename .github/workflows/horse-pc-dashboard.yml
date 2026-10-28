@@ -53,10 +53,26 @@ jobs:
             $connect = Invoke-RestMethod "http://127.0.0.1:$port/api/pc-connectivity" -TimeoutSec 30
             if ($connect.ok -ne $true -or $connect.data.source -ne 'local-os' -or $connect.data.demo -ne $false) { throw 'Windows connectivity API failed' }
             if ($connect.data.sdp.status -eq 'connected') { throw 'SDP must not be faked in ZIP startup' }
-            # Launching again must reuse the existing matching HORSE server.
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -NoBrowser -Port $port
-            if ($LASTEXITCODE -ne 0) { throw "Second launch failed: $LASTEXITCODE" }
-            Write-Host 'PASS: ZIP -> launcher -> local server -> browser assets -> two real PC APIs -> second launch'
+            # Exercise the actual CMD entry point, not only the PowerShell helper.
+            $cmd = Join-Path $tmp 'HORSE_실행.cmd'
+            & $cmd -NoBrowser -Port $port
+            if ($LASTEXITCODE -ne 0) { throw "Double-click CMD entry failed: $LASTEXITCODE" }
+            # A different source folder must not silently open a stale server.
+            $other = Join-Path $env:RUNNER_TEMP 'HORSE different source'
+            Copy-Item $tmp $other -Recurse
+            Add-Content -LiteralPath (Join-Path $other 'on-client/public/app.js') -Value '// Simulated newer user interface'
+            $alternate = Join-Path $other 'on-client/tools/horse-oneclick.ps1'
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $alternate -NoBrowser -Port $port
+            if ($LASTEXITCODE -ne 0) { throw "Collision launch failed: $LASTEXITCODE" }
+            $alternateIndex = Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:$($port+1)/app.js" -TimeoutSec 10
+            if ($alternateIndex.Content -notmatch 'Simulated newer user interface') {
+              throw 'Port collision opened the stale app instead of starting the new version'
+            }
+            $otherListener = Get-NetTCPConnection -LocalPort ($port+1) -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($otherListener -and $otherListener.OwningProcess) {
+              Stop-Process -Id $otherListener.OwningProcess -ErrorAction SilentlyContinue
+            }
+            Write-Host 'PASS: ZIP -> local server -> PC APIs -> CMD double-click -> stale instance port fallback'
           } finally {
             # CI only: kill the server we started on this private runner/test port.
             $listening = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
