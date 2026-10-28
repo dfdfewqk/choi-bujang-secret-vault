@@ -1,6 +1,190 @@
 // 이 파일은 학생이 같은 프로젝트에서 이어서 구현합니다.
 // 제공 UI를 받은 것만으로 단계 완료를 인정하지 않습니다.
-export function createStudentView() {
+export function createStudentView({ api, onChange } = {}) {
+  // 4일차: 학생 영역에서 허용된 GET 3개만 직접 재조회한다.
+  // 제공 공통 UI, 인증, SDP 설정, PC 상태 측정 API에는 손대지 않는다.
+  const day4 = { phase: 'idle', values: null };
+  const sources = [
+    { key: 'devices', path: '/api/devices', scope: 'own-registered-devices', limit: 100, label: '등록 기기' },
+    { key: 'sessions', path: '/api/sessions', scope: 'current-verified-connection', limit: 1, label: '현재 세션' },
+    { key: 'events', path: '/api/events', scope: 'own-recorded-events', limit: 40, label: '보안 기록' },
+  ];
+  const allowedModes = new Set(['connected', 'demo', 'disconnected']);
+  const safeCode = v => typeof v === 'string' && /^[A-Z][A-Z0-9_]{0,79}$/.test(v) ? v : 'QUERY_FAILED';
+  const moment = v => typeof v === 'string' && Number.isFinite(Date.parse(v))
+    ? new Date(v).toLocaleString('ko-KR', {hour12:false}) : '확인 시각 확인 불가';
+
+  function announceDay4() {
+    if (typeof onChange !== 'function') return;
+    const focused = document.activeElement?.getAttribute?.('data-student-day4-recheck') === 'true';
+    onChange();
+    if (focused) document.querySelector?.('[data-student-day4-recheck]')?.focus?.({preventScroll:true});
+  }
+  function checkedCoverage(value, spec, length, startedAt, endedAt) {
+    if (value == null) return true; // 구버전 어댑터의 선택 필드
+    if (typeof value !== 'object' || Array.isArray(value)) return false;
+    const required = ['schema','kind','scope','limit','total','returned','truncated','observedAtMs'];
+    if (Object.keys(value).length !== required.length || !required.every(k=>Object.hasOwn(value,k))) return false;
+    const {total,returned,truncated,observedAtMs}=value;
+    return value.schema==='alekov.sdp.coverage.v1' && value.kind===spec.key
+      && value.scope===spec.scope && value.limit===spec.limit
+      && Number.isSafeInteger(total) && total>=0 && Number.isSafeInteger(returned)
+      && returned===length && returned<=total && returned<=spec.limit
+      && typeof truncated==='boolean' && truncated===(total>returned)
+      && Number.isSafeInteger(observedAtMs) && observedAtMs>0
+      && observedAtMs>=startedAt-5000 && observedAtMs<=endedAt+5000
+      && endedAt-observedAtMs<=20000
+      && (spec.key!=='sessions'||(total===1&&returned===1&&!truncated));
+  }
+  function checkResult(spec, result, startedAt, endedAt) {
+    if (!result || result.ok !== true) {
+      const code=safeCode(result?.error?.code);
+      const connection=code==='ENGINE_NOT_CONNECTED'||code==='SDP_NOT_CONNECTED';
+      const next=connection?'SDP 호스트 연결을 확인한 뒤 다시 조회하세요.':
+        code==='TIMEOUT'?'응답 시간이 초과됐습니다. 로컬 서버 상태를 확인한 뒤 다시 조회하세요.':
+        '상단 연결 표시와 로컬 서버를 확인한 뒤 다시 조회하세요.';
+      return {state:'error',label:spec.label,detail:'확인 불가 · '+code,action:next};
+    }
+    if (!Array.isArray(result.data) ||
+      result.data.length>spec.limit ||
+      !result.data.every(v=>v&&typeof v==='object'&&!Array.isArray(v)&&typeof v.id==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.test(v.id)) ||
+      new Set(result.data.map(v=>v.id)).size!==result.data.length ||
+      !checkedCoverage(result.coverage,spec,result.data.length,startedAt,endedAt)) {
+      return {state:'error',label:spec.label,detail:'확인 불가 · 응답 또는 조회 범위 검증 실패',
+        action:'제공 화면의 도움정보를 확인하고 서버 연결 상태를 점검하세요.'};
+    }
+    const mode=allowedModes.has(result.meta?.mode)?result.meta.mode:'unknown';
+    if (mode==='demo') return {state:'demo',label:spec.label,detail:'예시 '+result.data.length+'건 · 실제 연결 자료 아님',
+      time:moment(result.meta?.checkedAt)};
+    if (mode!=='connected') return {state:'error',label:spec.label,detail:'확인 불가 · 실제 SDP 조회 근거 없음',
+      action:'SDP 연결 상태를 확인한 다음 직접 다시 조회하세요.'};
+    return {state:'ok',label:spec.label,detail:'확인 '+result.data.length+'건',time:moment(result.meta?.checkedAt)};
+  }
+  async function refreshDay4() {
+    if (day4.phase==='loading'||typeof api?.get!=='function') return;
+    day4.phase='loading';
+    day4.values=null; // 오래된 성공·예시값을 조회 중 화면에 남기지 않는다.
+    announceDay4();
+    const outcomes=await Promise.allSettled(sources.map(async spec=>{
+      const startedAt=Date.now();
+      const result=await api.get(spec.path);
+      return checkResult(spec,result,startedAt,Date.now());
+    }));
+    const next={};
+    for(let i=0;i<sources.length;i++){
+      const spec=sources[i],out=outcomes[i];
+      next[spec.key]=out.status==='fulfilled'?out.value:{
+        state:'error',label:spec.label,detail:'확인 불가 · 요청 처리 실패',
+        action:'로컬 서버 상태를 확인한 뒤 다시 조회하세요.'
+      };
+    }
+    day4.values=next;
+    day4.phase='done';
+    announceDay4();
+  }
+  function textNode(tag,value) {
+    const node=document.createElement(tag);
+    node.textContent=value;
+    return node;
+  }
+  function card(parent,title,value,detail,state) {
+    const group=document.createElement('article');
+    group.setAttribute('data-student-day4-card',state);
+    Object.assign(group.style,{
+      border:'1px solid #68759b',borderRadius:'10px',padding:'12px',background:'#202940',
+      color:'#f3f5ff',minWidth:'0'
+    });
+    const heading=textNode('h4',title);
+    Object.assign(heading.style,{fontSize:'15px',margin:'0 0 7px'});
+    const primary=textNode('strong',value);
+    Object.assign(primary.style,{display:'block',fontSize:'20px',lineHeight:'1.5',overflowWrap:'anywhere'});
+    const note=textNode('p',detail);
+    Object.assign(note.style,{fontSize:'13px',lineHeight:'1.6',color:'#d2daf2',margin:'6px 0 0'});
+    group.append(heading,primary,note);
+    parent.append(group);
+  }
+  function renderDay4({devices,sessions,notifications,mode}) {
+    const box=document.createElement('section');
+    box.setAttribute('data-student-day4-overview','true');
+    box.setAttribute('aria-label','학생 핵심 기능 3가지');
+    const h=textNode('h3','핵심 기능 · 기기와 세션 / 연결과 알림 / 보안 기록');
+    Object.assign(h.style,{fontSize:'19px',margin:'0 0 10px'});
+    box.append(h);
+    const intro=textNode('p','학생 조회 영역 · 실제 서버 결과와 예시·확인 불가를 구분합니다. CPU·방화벽의 로컬 측정은 위쪽 기존 대시보드에서 확인합니다.');
+    box.append(intro);
+    const grid=document.createElement('div');
+    Object.assign(grid.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:'10px',marginBottom:'12px'});
+    const manual=day4.values;
+    const deviceValue=manual?.devices,sessionsValue=manual?.sessions;
+    let first='확인 불가',firstDetail='기기 또는 세션 응답 대기',firstState='unknown';
+    if(day4.phase==='loading'){first='조회 중…';firstDetail='기기·세션을 다시 읽는 중입니다.';firstState='loading';}
+    else if(manual){
+      if(deviceValue.state==='ok'&&sessionsValue.state==='ok'){
+        first=deviceValue.detail+' / '+sessionsValue.detail;
+        firstDetail='기기 '+deviceValue.time+' · 세션 '+sessionsValue.time;firstState='ok';
+      }else if(deviceValue.state==='demo'||sessionsValue.state==='demo'){
+        first='예시 데이터';firstDetail=deviceValue.detail+' / '+sessionsValue.detail;firstState='demo';
+      }else{first='확인 불가';firstDetail=deviceValue.detail+' / '+sessionsValue.detail;}
+    }else if(mode==='demo'){first='예시 데이터';firstDetail='실제 연결 결과가 아닙니다.';firstState='demo';}
+    else if(mode==='connected'&&devices?.status==='ok'&&sessions?.status==='ok'
+        &&Array.isArray(devices.data)&&Array.isArray(sessions.data)){
+      first='기기 '+devices.data.length+'건 · 세션 '+sessions.data.length+'건';
+      firstDetail='제공 조회 결과 · 별도 다시 조회 전';firstState='ok';
+    }else if(devices?.status==='loading'||sessions?.status==='loading'){
+      first='조회 중…';firstDetail='제공 서버 조회를 기다리는 중';firstState='loading';
+    }else{
+      first='확인 불가';firstDetail='상단 연결 상태 확인 후 다시 조회하세요.';
+    }
+    card(grid,'1. 내 기기·세션',first,firstDetail,firstState);
+    let second='확인 불가',secondDetail='현재 연결을 확인하지 못했습니다.',secondState='unknown';
+    if(mode==='demo'){second='예시 데이터';secondDetail='연결·알림은 실제 서버 증거가 아닙니다.';secondState='demo';}
+    else if(mode==='disconnected'){second='연결 없음';secondDetail='SDP 연결을 확인한 뒤 조회하세요.';}
+    else if(mode==='connected'){
+      if(!Array.isArray(notifications)){second='확인 불가';secondDetail='알림 응답 형식 확인 실패';}
+      else if(devices?.status==='loading'||sessions?.status==='loading'){
+        second='조회 중…';secondDetail='알림 정보 갱신 중';secondState='loading';
+      }else if(devices?.status==='error'||sessions?.status==='error'){
+        second='일부 확인 불가';secondDetail='기기·세션 조회 실패를 먼저 확인하세요.';
+      }else{second='알림 '+notifications.length+'건';secondDetail='제공 화면의 연결 상태 및 본인 알림 기준';secondState='ok';}
+    }
+    card(grid,'2. 연결·알림',second,secondDetail,secondState);
+    const eventValue=manual?.events;
+    card(grid,'3. 보안 기록',day4.phase==='loading'?'조회 중…':
+       !eventValue?'조회 전':eventValue.state==='error'?'확인 불가':eventValue.detail,
+       day4.phase==='loading'?'서버 기록을 읽고 있습니다.':
+       !eventValue?'아래 다시 조회 버튼을 눌러 실제 결과를 확인하세요.':
+       eventValue.time||eventValue.action||'',
+       day4.phase==='loading'?'loading':eventValue?.state||'unknown');
+    box.append(grid);
+    const button=textNode('button',day4.phase==='loading'?'다시 조회 중…':'기기·세션·보안 기록 다시 조회');
+    button.type='button';
+    button.setAttribute('data-student-day4-recheck','true');
+    button.setAttribute('aria-disabled',String(day4.phase==='loading'||typeof api?.get!=='function'));
+    button.addEventListener('click',()=>{if(day4.phase!=='loading')void refreshDay4();});
+    box.append(button);
+    const progress=textNode('p',day4.phase==='loading'?'읽는 중… 완료 전 결과는 정상으로 표시하지 않습니다.':
+      day4.phase==='idle'?'조회 전 · 버튼을 누르면 허용된 읽기 전용 요청 3개만 실행합니다.':
+      '조회 완료 · 각 항목의 현재 조회 결과와 실패 사유를 확인하세요.');
+    progress.setAttribute('role','status');
+    progress.setAttribute('aria-live','polite');
+    box.append(progress);
+    if(day4.phase==='done'&&day4.values){
+      const failures=Object.values(day4.values).filter(v=>v.state==='error');
+      if(failures.length){
+        const section=document.createElement('section');
+        section.setAttribute('role','alert');
+        section.append(textNode('h4','조회하지 못한 항목과 다음 행동'));
+        const list=document.createElement('ul');
+        for(const f of failures){
+          const item=textNode('li',f.label+' — '+f.detail+' · 다음: '+f.action);
+          list.append(item);
+        }
+        section.append(list);box.append(section);
+      }
+    }
+    const divider=document.createElement('hr');box.append(divider);
+    return box;
+  }
   return {
     renderIdentity({ me, devices, sessions }) {
       // 매 호출마다 새 DOM을 생성한다. 제공 앱이 학생 칸의 이전 DOM을 교체한다.
@@ -334,6 +518,7 @@ export function createStudentView() {
     renderStatus({ devices, sessions, notifications, diagnostics, mode } = {}) {
       // 이전 조회 결과가 남지 않도록 매 호출마다 현재 입력으로 새 DOM을 만든다.
       const root = document.createElement('section');
+      root.append(renderDay4({devices,sessions,notifications,mode}));
       const deviceLabels = { compliant: '보안 기준 충족', noncompliant: '보안 기준 미충족', unknown: '확인 불가' };
       const sessionLabels = { active: '활성', expired: '만료', revoked: '철회됨', unknown: '확인 불가' };
 
