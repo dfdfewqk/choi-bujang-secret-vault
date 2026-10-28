@@ -348,7 +348,10 @@ export function createOnServer(serverOptions={}) {
     }
     const requestId=randomUUID();
     let actionRequest=false;
-    const send=(status,body)=>{if(res.destroyed||res.writableEnded)return;res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-on-request-id':requestId});res.end(JSON.stringify({...body,meta:meta()}));};
+    // Online HORSE may read ONLY user-approved, read-only local PC telemetry.
+    // All identity/SDP/actions/AI APIs remain same-origin and inaccessible to the cloud page.
+    let webBridgeHeaders=null;
+    const send=(status,body)=>{if(res.destroyed||res.writableEnded)return;res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-on-request-id':requestId,...(webBridgeHeaders||{})});res.end(JSON.stringify({...body,meta:meta()}));};
     const {captureSource,assertCurrent,readMapping,finishMapping}=sourceReader({call,bounded,assertAlive});
     const authOptions=(binding)=>({expectedScope:Object.freeze({subjectId:binding.canonicalStudentId,projectId:binding.projectId,appId:'aleph-on',audience:'on-client'}),
       expectedContext:Object.freeze({alephUserId:binding.alephUserId,siteId:binding.siteId,identityVersion:binding.identityVersion}),signal:lifetime.signal});
@@ -359,7 +362,20 @@ export function createOnServer(serverOptions={}) {
       if(!allowedHosts.includes(host))throw engineError('HOST_REJECTED','로컬 실행 주소를 확인하세요.',403);
       const url=new URL(req.url,`http://${host}`);
       if(url.search)throw engineError('QUERY_REJECTED','지원하지 않는 요청입니다.',400);
-      if(url.pathname.startsWith('/api/')&&req.headers['sec-fetch-site']==='cross-site')throw engineError('ORIGIN_REJECTED','');
+      const webOrigin='https://horse-dashboard-open-preview.vercel.app';
+      const readOnlyTelemetry=url.pathname==='/api/pc-status'||url.pathname==='/api/pc-connectivity';
+      if(readOnlyTelemetry&&req.headers.origin===webOrigin&&
+        (req.method==='GET'||req.method==='OPTIONS')){
+        webBridgeHeaders={'access-control-allow-origin':webOrigin,'access-control-allow-methods':'GET, OPTIONS',
+          'access-control-allow-headers':'Content-Type','access-control-allow-private-network':'true',
+          'vary':'Origin'};
+        if(req.method==='OPTIONS'){
+          res.writeHead(204,{'cache-control':'no-store',...webBridgeHeaders});
+          res.end();
+          return;
+        }
+      }
+      if(url.pathname.startsWith('/api/')&&req.headers['sec-fetch-site']==='cross-site'&&!webBridgeHeaders)throw engineError('ORIGIN_REJECTED','');
       if(req.method==='POST'&&req.headers.origin!==`http://${host}`)throw engineError('ORIGIN_REJECTED','앱 화면에서 다시 요청하세요.',403);
       if(url.pathname.startsWith('/api/native-login/')){
         const kind=url.pathname.slice('/api/native-login/'.length);
