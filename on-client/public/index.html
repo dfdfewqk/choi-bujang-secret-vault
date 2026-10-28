@@ -7,7 +7,9 @@
   <meta name="referrer" content="no-referrer">
   <title>케셰브 · ZTNA &amp; XDR</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/pc-dashboard.css">
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/pc-dashboard.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로 건너뛰기</a>
@@ -45,6 +47,22 @@
 
       <section id="view-protection" class="view" role="tabpanel" aria-labelledby="tab-protection">
         <h1>보호 현황</h1>
+        <section id="pc-dashboard" class="pc-dashboard" aria-labelledby="pc-title">
+          <div class="pc-head"><div><h2 id="pc-title">HORSE · 내 PC 관제 대시보드</h2><p>실측 · 관리자 권한 불필요 · 예시 수치 사용하지 않음</p></div><button id="pc-check" type="button">지금 측정</button></div>
+          <p id="pc-status" role="status" aria-live="polite">측정 전 · 실측 값 없음</p>
+          <div class="pc-grid">
+            <article class="pc-card" id="pc-cpu-card"><h3>CPU 사용률</h3><div class="pc-value" id="pc-cpu">측정 전</div><div class="pc-info" id="pc-cpu-details">확인 불가 · 측정 전</div></article>
+            <article class="pc-card" id="pc-memory-card"><h3>메모리 사용률</h3><div class="pc-value" id="pc-memory">측정 전</div><div class="pc-info" id="pc-memory-details">확인 불가 · 측정 전</div></article>
+            <article class="pc-card" id="pc-disk-card"><h3>프로젝트 디스크 여유</h3><div class="pc-value" id="pc-disk">측정 전</div><div class="pc-info" id="pc-disk-details">확인 불가 · 측정 전</div></article>
+            <article class="pc-card" id="pc-alert-card"><h3>위험 알림</h3><div class="pc-value" id="pc-alert">측정 전</div><div class="pc-info" id="pc-alert-details">확인 불가 · 측정 전</div></article>
+          </div>
+          <div class="pc-bottom">
+            <section class="pc-panel"><h3>CPU 사용률 추이</h3><svg id="pc-chart" role="img" aria-label="CPU 실측 사용률 추이" viewBox="0 0 640 112"></svg><p id="pc-caption">수집된 실측 데이터 없음</p></section>
+            <section class="pc-panel"><h3>측정 기록 및 경고</h3><ol id="pc-logs"><li>측정 대기 중</li></ol></section>
+          </div>
+          <p>경고 기준: CPU·메모리 90% 이상, 디스크 여유 10% 또는 10 GiB 미만. 기록은 이번 화면 실행 중에만 유지됩니다.</p>
+        </section>
+
 
         <div class="grid-2">
           <section class="card provided" aria-labelledby="identity-title">

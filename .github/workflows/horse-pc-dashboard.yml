@@ -1,0 +1,19 @@
+name: HORSE PC dashboard verification
+on:
+  push:
+    branches: ['work/horse-pc-dashboard-20261028']
+  workflow_dispatch:
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check on-client/src/server.mjs
+      - run: node --check on-client/src/pc-metrics.mjs
+      - run: node --check on-client/public/pc-dashboard.js
+      - run: npm run check
+        working-directory: on-client
+      - run: node --test on-client/test/pc-metrics.test.mjs
