@@ -9,14 +9,29 @@ const unavailable = (reason, at) => ({status:'unavailable',reason,checkedAt:at})
 const clampText = value => typeof value === 'string' ? value.slice(0,120) : '';
 const nonNegative = value => Number.isSafeInteger(value) && value >= 0;
 const NETWORK = String.raw`$ErrorActionPreference='Stop';
-$items=@(Get-NetIPConfiguration -ErrorAction Stop | ForEach-Object {
-  $ip=@($_.IPv4Address | Select-Object -ExpandProperty IPAddress -ErrorAction SilentlyContinue);
-  $gw=@($_.IPv4DefaultGateway | Select-Object -ExpandProperty NextHop -ErrorAction SilentlyContinue);
-  $localIp=if($ip.Count){[string]$ip[0]}else{''};
-  $gateway=if($gw.Count){[string]$gw[0]}else{''};
-  [pscustomobject]@{name=[string]$_.InterfaceAlias;link=[string]$_.NetAdapter.Status;ipv4=$localIp;gateway=$gateway}
-});
-@{items=$items}|ConvertTo-Json -Depth 5 -Compress`;
+$items=@();
+# Use PowerShell as the authority for the adapter's status and default gateway.
+# Return every IPv4 address so that Node interface names need not match the Windows alias.
+foreach($cfg in @(Get-NetIPConfiguration -All -ErrorAction Stop)){
+  if($null -eq $cfg){continue}
+  $ips=@($cfg.IPv4Address | ForEach-Object { [string]$_.IPAddress } | Where-Object { $_ });
+  if($ips.Count -eq 0){continue}
+  $gws=@($cfg.IPv4DefaultGateway | ForEach-Object { [string]$_.NextHop } | Where-Object { $_ });
+  $gateway=if($gws.Count -gt 0){[string]$gws[0]}else{''};
+  $state=if($null -ne $cfg.NetAdapter){[string]$cfg.NetAdapter.Status}else{''};
+  # Some Windows builds leave the NetAdapter property blank in Get-NetIPConfiguration.
+  # Fallback: obtain a link state by interface index, without changing any settings.
+  if([string]::IsNullOrWhiteSpace($state)){
+    try {
+      $adapter=Get-NetAdapter -InterfaceIndex $cfg.InterfaceIndex -ErrorAction Stop | Select-Object -First 1;
+      if($null -ne $adapter){$state=[string]$adapter.Status}
+    }catch{$state=''}
+  }
+  foreach($address in $ips){
+    $items+=@{name=[string]$cfg.InterfaceAlias;ipv4=[string]$address;gateway=$gateway;link=$state}
+  }
+}
+@{items=$items}|ConvertTo-Json -Depth 6 -Compress`;
 const FIREWALL = String.raw`$ErrorActionPreference='Stop';
 $profiles=@(Get-NetFirewallProfile -ErrorAction Stop | ForEach-Object {
   @{name=[string]$_.Name;enabled=[bool]$_.Enabled}
@@ -71,12 +86,24 @@ function makeNetwork(interfaces,ps,at){
   if(!interfaces.length)return {...unavailable('루프백 이외의 IPv4 주소를 확인하지 못했습니다. 인터넷 끊김을 의미하지는 않습니다.',at),interfaces:[],link:'unknown'};
   const results=Array.isArray(ps?.items)?ps.items:[];
   const copy=interfaces.map(item=>{
-    const details=results.find(row=>row&&row.name===item.name&&row.ipv4===item.ipv4);
-    const state=details?.link==='Up'?'up':details?.link==='Disconnected'?'down':'unknown';
-    return {...item,link:state,gateway:typeof details?.gateway==='string'&&details.gateway?clampText(details.gateway):null};
+    // Match by the actual IPv4 address, not by a localized Windows interface alias.
+    // Never borrow status/gateway from a different interface when an address is ambiguous.
+    const matches=results.filter(row=>row&&row.ipv4===item.ipv4);
+    let details=matches.length===1?matches[0]:null;
+    if(matches.length>1){
+      const named=matches.filter(row=>row.name===item.name);
+      if(named.length===1)details=named[0];
+    }
+    const raw=typeof details?.link==='string'?details.link.trim().toLowerCase():'';
+    const state=raw==='up'?'up':(raw==='disconnected'||raw==='disabled')?'down':'unknown';
+    // Blank gateway from a successfully matched Windows result means no configured
+    // default gateway, not a read failure. Null continues to mean not verified.
+    const gateway=typeof details?.gateway==='string'
+      ?(details.gateway?clampText(details.gateway):'설정되지 않음'):null;
+    return {...item,link:state,gateway};
   });
   const link=copy.some(x=>x.link==='up')?'up':copy.every(x=>x.link==='down')?'down':'unknown';
-  return {status:'ok',interfaces:copy,link,reason:link==='unknown'?'IP 구성을 읽었지만 네트워크 링크 상태는 확인 불가입니다. 인터넷 연결 성공을 뜻하지 않습니다.':'네트워크 어댑터 링크만 확인했습니다. 인터넷·SDP 연결은 별도입니다.',checkedAt:at};
+  return {status:'ok',interfaces:copy,link,reason:link==='unknown'?'IP는 확인했지만 Windows 링크 상태를 검증하지 못했습니다. 인터넷 연결 여부와는 별개입니다.':'Windows 네트워크 어댑터 링크만 확인했습니다. 인터넷·SDP 연결과는 별개입니다.',checkedAt:at};
 }
 function makeFirewall(raw,at){
   const profiles=Array.isArray(raw?.profiles)?raw.profiles:[];

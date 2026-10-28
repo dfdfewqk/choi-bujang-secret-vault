@@ -99,3 +99,51 @@ test('Windows host read-only collection returns independently labeled results',{
   else{assert.equal(log.warning,undefined);assert.ok(log.reason);}
  }
 });
+
+
+test('IPv4-based matching works when localized Windows interface alias differs from Node name',async()=>{
+ const data=await readPcConnectivity({
+   platform:'win32',now:timestamp,
+   networkInterfaces:()=>({
+     '이더넷 2':[{address:'192.168.100.229',family:'IPv4',internal:false}],
+     '이더넷 3':[{address:'169.254.133.19',family:'IPv4',internal:false}]
+   }),
+   invoke:async kind=>kind==='network'?{items:[
+     {name:'Ethernet 2',ipv4:'192.168.100.229',gateway:'192.168.100.1',link:'Up'},
+     {name:'Ethernet 3',ipv4:'169.254.133.19',gateway:'',link:'Disconnected'}
+   ]}:replies[kind]
+ });
+ assert.equal(data.network.status,'ok');
+ assert.equal(data.network.link,'up');
+ assert.deepEqual(data.network.interfaces.map(x=>x.link),['up','down']);
+ assert.deepEqual(data.network.interfaces.map(x=>x.gateway),['192.168.100.1','설정되지 않음']);
+});
+test('unknown link values and unmatched adapters stay unknown; do not invent gateway or connectivity',async()=>{
+ const data=await readPcConnectivity({
+   platform:'win32',now:timestamp,networkInterfaces:adapters,
+   invoke:async kind=>kind==='network'?{items:[
+     {name:'Ethernet',ipv4:'198.51.100.99',gateway:'198.51.100.1',link:'Up'}
+   ]}:replies[kind]
+ });
+ assert.equal(data.network.link,'unknown');
+ assert.equal(data.network.interfaces[0].link,'unknown');
+ assert.equal(data.network.interfaces[0].gateway,null);
+ assert.match(data.network.reason,/검증하지 못했습니다/);
+});
+test('duplicate IPv4 requires an unambiguous interface name before using link and gateway',async()=>{
+ const data=await readPcConnectivity({
+   platform:'win32',now:timestamp,networkInterfaces:adapters,
+   invoke:async kind=>kind==='network'?{items:[
+     {name:'Unknown A',ipv4:'192.0.2.23',gateway:'192.0.2.1',link:'Up'},
+     {name:'Unknown B',ipv4:'192.0.2.23',gateway:'192.0.2.2',link:'Disconnected'}
+   ]}:replies[kind]
+ });
+ assert.equal(data.network.link,'unknown');
+ assert.equal(data.network.interfaces[0].link,'unknown');
+ assert.equal(data.network.interfaces[0].gateway,null);
+});
+test('Get-NetIPConfiguration includes per-address rows and fallback read-only adapter status',()=>{
+ assert.match(WINDOWS_READ_QUERIES.network,/Get-NetIPConfiguration -All/);
+ assert.match(WINDOWS_READ_QUERIES.network,/Get-NetAdapter -InterfaceIndex/);
+ assert.match(WINDOWS_READ_QUERIES.network,/foreach\(\$address in \$ips\)/);
+});
